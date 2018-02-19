@@ -2,9 +2,8 @@ from fdc import FDC
 
 class VAC:
 
-    def __init__(self, X, density_clf = None, outlier_ratio=0.2, nn_pure_ratio=0.9):
+    def __init__(self, density_clf = None, outlier_ratio=0.2, nn_pure_ratio=0.9):
         
-        self.X = X
         if density_clf is None:
             self.density_clf = FDC()
         else:
@@ -13,17 +12,18 @@ class VAC:
         self.nn_pure_ratio = nn_pure_ratio
         self.n_sample = len(X)
 
-    def fit(self):
+    def fit(self, X):
+        self.n_sample = len(X)
         
         # compute "outliers" based on density
-        self.density_clf.fit_density(self.X)
+        self.density_clf.fit_density(X)
         rho = self.density_clf.rho
         asort = np.argsort(rho)
 
 
         self.n_out = int(self.outlier_ratio*self.n_sample)
-        self.X_in = self.X[asort[self.n_out:]] # well defined clusters
-        self.X_out = self.X[asort[:self.n_out]] # will be classified at the very end
+        self.X_in = X[asort[self.n_out:]] # well defined clusters
+        self.X_out = X[asort[:self.n_out]] # will be classified at the very end
 
         self.density_clf.reset()
 
@@ -33,7 +33,7 @@ class VAC:
         self.nn_list = self.density_clf.nn_list
 
         self.identify_boundary()
-        
+
 
     def identify_boundary(self):
 
