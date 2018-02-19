@@ -32,6 +32,9 @@ class VAC:
         self.cluster_label = self.density_clf.cluster_label
         self.nn_list = self.density_clf.nn_list
 
+        self.identify_boundary()
+        
+
     def identify_boundary(self):
 
         y_mask = np.copy(self.cluster_label)
@@ -50,7 +53,7 @@ class VAC:
 
         ratio = self.nn_pure_ratio
         pos = (y_mask == cluster_number)
-        nn = nn_list[pos][:,1:]
+        nn = self.nn_list[pos][:,1:]
 
         r1 = [] # purity ratios
         for n in nn:
