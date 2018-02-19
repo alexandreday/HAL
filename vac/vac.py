@@ -25,7 +25,44 @@ class VAC:
         self.X_in = self.X[asort[self.n_out:]] # well defined clusters
         self.X_out = self.X[asort[:self.n_out]] # will be classified at the very end
 
+        self.density_clf.reset()
+
+        # refit density model on remaining data points:
+        self.density_clf.fit(X_in)
+        self.cluster_label = self.density_clf.cluster_label
+        self.nn_list = self.density_clf.nn_list
+
+    def identify_boundary(self):
+
+        y_mask = np.copy(self.cluster_label)
+        y_unique = np.unique(self.cluster_label)
+        idx_all = np.arange(len(self.cluster_label)
+
+        for yu in y_unique:
+            self.mask_boundary_cluster(y_mask, yu)
+    
+        self.boundary = idx_all[(y_mask == -1)]
+        self.pure = idx_all[(y_mask != -1)]
+
+    def mask_boundary_cluster(self, y_mask, cluster_number):
+        # check for points have that multiple points in their neighborhood
+        # that do not have the same label as them
+
+        ratio = self.nn_pure_ratio
+        pos = (y_mask == cluster_number)
+        nn = nn_list[pos][:,1:]
+
+        r1 = [] # purity ratios
+        for n in nn:
+            l1 = self.cluster_label[n]
+            r1.append(np.count_nonzero(l1 == cluster_number)/len(l1))
         
+        r1 = np.array(r1)
+
+        y_mask[pos & (r1 < self.nn_pure_ratio)] = -1 #
+
+
+
 
 
 
