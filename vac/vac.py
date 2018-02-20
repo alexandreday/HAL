@@ -53,7 +53,9 @@ class VAC:
 
         # now build graph !
     def construct_graph(self, Xoriginal):
-        model = VGRAPH(clf_type='rf')
+        vgraph = VGRAPH(clf_type='rf')
+        vgraph.fit(Xoriginal, self.cluster_label_pure)
+        
         #model.fit(
 
     def identify_boundary(self):
