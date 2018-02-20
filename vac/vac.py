@@ -26,8 +26,8 @@ class VAC:
         self.X_in = X[asort[self.n_out:]] # well defined clusters
         self.X_out = X[asort[:self.n_out]] # will be classified at the very end
 
-        self.idx_inliers = asort[:self.n_out]
-        self.idx_outiers = asort[self.n_out:]
+        self.idx_inliers = asort[self.n_out:]
+        self.idx_outiers = asort[:self.n_out]
 
         self.density_clf.reset()
 
@@ -36,11 +36,22 @@ class VAC:
         self.cluster_label = self.density_clf.cluster_label
         self.nn_list = self.density_clf.nn_list
 
+        # mark boundary point
         self.identify_boundary()
         self.idx_boundary = self.idx_inliers[self.idx_in_boundary]
         self.idx_pure = self.idx_inliers[self.idx_in_pure]
+        
+        # remaining data set -- maybe we can avoid doing those copies here, but for now memory is not an issue
+        self.X_pure = self.X_in[self.idx_in_pure] # remaining data points
+        self.cluster_label_pure = self.cluster_label[self.idx_pure] # labels
+
+
+
+    def 
+
 
     def identify_boundary(self):
+        """ Iterates over all cluster and marks "boundary" points """
 
         y_mask = np.copy(self.cluster_label)
         y_unique = np.unique(self.cluster_label)
