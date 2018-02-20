@@ -1,5 +1,6 @@
 from fdc import FDC
 import numpy as np
+from .vgraph import VGRAPH
 
 class VAC:
 
@@ -43,12 +44,11 @@ class VAC:
         
         # remaining data set -- maybe we can avoid doing those copies here, but for now memory is not an issue
         self.X_pure = self.X_in[self.idx_in_pure] # remaining data points
-        self.cluster_label_pure = self.cluster_label[self.idx_pure] # labels
+        self.cluster_label_pure = self.cluster_label[self.idx_in_pure] # labels
 
-
-
-    def 
-
+        # now build graph !
+    def construct_graph(self):
+        obj = VGRAPH()
 
     def identify_boundary(self):
         """ Iterates over all cluster and marks "boundary" points """
