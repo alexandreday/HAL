@@ -13,7 +13,7 @@ class VAC:
         self.outlier_ratio = outlier_ratio
         self.nn_pure_ratio = nn_pure_ratio
 
-    def fit(self, X):
+    def fit(self, X, Xoriginal = None):
         # notation for idx stuff ... names seperated by underscore "_" specifies the subset
 
         self.n_sample = len(X)
@@ -46,9 +46,15 @@ class VAC:
         self.X_pure = self.X_in[self.idx_in_pure] # remaining data points
         self.cluster_label_pure = self.cluster_label[self.idx_in_pure] # labels
 
+        if Xoriginal is None:
+            self.construct_graph(self.X_pure)
+        else:
+            self.construct_graph(Xoriginal[self.idx_pure])
+
         # now build graph !
-    def construct_graph(self):
-        obj = VGRAPH()
+    def construct_graph(self, Xoriginal):
+        model = VGRAPH(clf_type='rf')
+        #model.fit(
 
     def identify_boundary(self):
         """ Iterates over all cluster and marks "boundary" points """

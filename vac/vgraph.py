@@ -5,11 +5,10 @@ from collections import Counter, OrderedDict
 from matplotlib import pyplot as plt
 import pickle
 
-class VGRAPH:
+class VGRAPH():
     """ Validation graph class - builds a graph with nodes corresponding
     to clusters and draws edges between clusters that have a low validation score
     """
-
     def __init__(self, n_average = 10, cv_score = 0., edge_min=0.8, test_size_ratio = 0.8, clf_type='svm', clf_args=None):
         self.n_average = n_average
         self.cv_score_threshold = cv_score
