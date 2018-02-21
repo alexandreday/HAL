@@ -1,5 +1,5 @@
 from .vgraph import VGRAPH
-from .vac import VAC
-from . import vac
+from .main import VAC
+from .tupledict import TupleDict
 
 __all__ = ['VGRAPH', 'VAC']

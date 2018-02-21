@@ -1,6 +1,7 @@
 from fdc import FDC
 import numpy as np
-from .vgraph import VGRAPH
+from .vgraph import VGraph
+from .tupledict import TupleDict
 
 class VAC:
 
@@ -53,10 +54,12 @@ class VAC:
 
         # now build graph !
     def construct_graph(self, Xoriginal):
-        vgraph = VGRAPH(clf_type='rf')
-        vgraph.fit(Xoriginal, self.cluster_label_pure)
-        
-        #model.fit(
+        self.vgraph = VGraph(clf_type='rf')
+        self.vgraph.fit(Xoriginal, self.cluster_label_pure)
+
+    def merge_untill_robust(self, Xoriginal, cv_score):
+
+        self.vgraph.merge_untill_robust(Xoriginal[self.idx_pure], 
 
     def identify_boundary(self):
         """ Iterates over all cluster and marks "boundary" points """
@@ -91,12 +94,3 @@ class VAC:
         idx_unpure = idx_sub[(r1 < self.nn_pure_ratio)]
 
         y_mask[idx_unpure] = -1 #masking boundary terms
-
-
-
-
-
-
-        
-    
-
