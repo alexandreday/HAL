@@ -57,9 +57,8 @@ class VAC:
         self.vgraph = VGraph(clf_type='rf')
         self.vgraph.fit(Xoriginal, self.cluster_label_pure)
 
-    def merge_untill_robust(self, Xoriginal, cv_score):
-
-        self.vgraph.merge_untill_robust(Xoriginal[self.idx_pure], 
+    #def merge_untill_robust(self, Xoriginal, cv_score):
+    #self.vgraph.merge_untill_robust(Xoriginal[self.idx_pure], 
 
     def identify_boundary(self):
         """ Iterates over all cluster and marks "boundary" points """
