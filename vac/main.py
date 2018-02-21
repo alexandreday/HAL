@@ -6,6 +6,9 @@ from .tupledict import TupleDict
 class VAC:
 
     def __init__(self, density_clf = None, outlier_ratio=0.2, nn_pure_ratio=0.9):
+        """
+        pass in a density classifier, need to be able to get labels and compute a density map
+        """
         
         if density_clf is None:
             self.density_clf = FDC()
@@ -14,7 +17,7 @@ class VAC:
         self.outlier_ratio = outlier_ratio
         self.nn_pure_ratio = nn_pure_ratio
 
-    def fit(self, X, Xoriginal = None):
+    def purify(self, X):
         # notation for idx stuff ... names seperated by underscore "_" specifies the subset
 
         self.n_sample = len(X)
@@ -46,19 +49,13 @@ class VAC:
         # remaining data set -- maybe we can avoid doing those copies here, but for now memory is not an issue
         self.X_pure = self.X_in[self.idx_in_pure] # remaining data points
         self.cluster_label_pure = self.cluster_label[self.idx_in_pure] # labels
-
-        if Xoriginal is None:
-            self.construct_graph(self.X_pure)
-        else:
-            self.construct_graph(Xoriginal[self.idx_pure])
-
-        # now build graph !
-    def construct_graph(self, Xoriginal):
-        self.vgraph = VGraph(clf_type='rf')
-        self.vgraph.fit(Xoriginal, self.cluster_label_pure)
-
-    #def merge_untill_robust(self, Xoriginal, cv_score):
-    #self.vgraph.merge_untill_robust(Xoriginal[self.idx_pure], 
+    
+    def fit_raw_graph(self, X_original, edge_min=0.8, clf_args = None):
+        X_original_pure = X_original[self.idx_pure]
+        self.VGraph = VGraph(clf_type='rf', edge_min=edge_min, clf_args=clf_args)
+        self.VGraph.fit(X_original_pure, self.cluster_label_pure)
+        # ---> merge clusters here ...
+        # ---> save info as well, need to check that everything is working properly ...
 
     def identify_boundary(self):
         """ Iterates over all cluster and marks "boundary" points """

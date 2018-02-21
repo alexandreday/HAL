@@ -23,7 +23,7 @@ class VGraph:
 
     def fit(self, X, y_pred):  
         """ In this graph representation neighbors are define by clusters that share an edge
-        with a score lower than some predefined threshold
+        with a score lower than some predefined threshold (edge_min)
             
         Parameters:
         ----------------
@@ -52,12 +52,17 @@ class VGraph:
 
         scores = []
         keys = []
-        for k, clf in self.graph.items():
+        for k, clf in self.graph_fast.items():
             scores.append(clf.cv_score - clf.cv_score_std)
             keys.append(k)
 
-        asort = np.argsort(scores)[:max(int(0.05*n_iteration),100)] # just work with those edges
+        asort = np.argsort(scores)[:max(int(0.1*n_iteration),100)] # just work with those edges
+        # how to select the edges ? should you look at distribution and take a percentile ----> probably !
 
+        print("edges that will remain")
+        for i in asort:
+            print(keys[i][0],'\t',keys[i][1])
+    
         self.graph = TupleDict()
         self.nn_list = OrderedDict()
         self.edge_score = TupleDict()
@@ -90,11 +95,6 @@ class VGraph:
         
         return self
         
-    # ok need to sort out this mess  ....... what did you just do here ?
-    # ----------- ......... ------------ ........... ----------- 
-    # ----------- ......... ------------ ........... -----------
-    
-
     def classify_edge(self, edge_tuple, X, C = 1.0, quick_estimate = None, n_average=3):
         """ Trains a classifier on the childs of "root" and returns a classifier for these types.
 
