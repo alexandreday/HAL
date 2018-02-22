@@ -23,8 +23,12 @@ class VAC:
         """  Determines outliers and boundary points from X (low-dim points)
 
         self.idx_pure : idx of the pure points for the original array
-
         self.boundary : idx of the boundary points for the original array
+
+        Returns idx for original data along with labels
+
+        idx_in, cluster_label, idx_out
+
         """
 
         # Notation for idx stuff ... names seperated by underscore "_" specifies the subset
@@ -75,20 +79,27 @@ class VAC:
         # ... large enough clusters
         print("[vac.py]   Removing %i clusters since they are too small (< nh_size) ..."%n_remove)
         self.idx_in_pure_large = np.hstack(idx_tmp)
-        
-        # complementary set of indices (for later post-classification)
+
+        # ... complementary set of indices (for later post-classification)
         self.idx_final = self.idx_pure[self.idx_in_pure_large]
         self.idx_final_out = np.setdiff1d(np.arange(self.n_sample), self.idx_final)
-        self.X_final = X[self.idx_final]
         self.cluster_label_final = self.cluster_label_pure[self.idx_in_pure_large]
 
-    def fit_raw_graph(self, X_original, edge_min=0.9, clf_args = None):
-        X_original_final = X_original[self.idx_final] # coordinates to train on in the original space.
+        idx_out = self.idx_final_out
+        idx_in =  self.idx_final
+        cluster_label = self.cluster_label_final
+
+        return idx_in, cluster_label, idx_out
+        
+    def fit_raw_graph(self, X_original, y_pred, edge_min=0.9, clf_args = None):
         self.VGraph = VGraph(clf_type='rf', edge_min=edge_min, clf_args=clf_args)
-        self.VGraph.fit(X_original_final, self.cluster_label_final)
+        self.VGraph.fit(X_original, y_pred)
         self.save() # saving at this point
-        # ---> merge clusters here ...
-        # ---> save info as well, need to check that everything is working properly ...
+        
+    def fit_robust_graph(self, X_original, cv_robust = 0.99):
+        self.load()
+        self.VGraph.merge_until_robust(X_original_final, cv_robust)
+        self.save(name="tmp.pkl")
 
     def identify_boundary(self):
         """ Iterates over all cluster and marks "boundary" points """
@@ -142,3 +153,7 @@ class VAC:
     def make_file_name(self):
         t_name = "clf_vgraph.pkl"
         return t_name
+    
+    def edge_info(self):
+        self.VGraph.print_edge_score()
+    

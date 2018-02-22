@@ -1,4 +1,5 @@
 from fdc.classify import CLF
+from fdc import FDC
 import numpy as np
 from copy import deepcopy
 from collections import Counter, OrderedDict
@@ -19,7 +20,8 @@ class VGraph:
         self.cluster_label = None
         self.edge_min = edge_min
         self.edge_score = OrderedDict()
-        self.quick_estimate = 50
+        self.quick_estimate = 50 # should we replace this 
+        self.fout = open('out.txt','a')
 
     def fit(self, X, y_pred):  
         """ In this graph representation neighbors are define by clusters that share an edge
@@ -38,7 +40,7 @@ class VGraph:
         y_unique = np.unique(y_pred)
         n_cluster = len(y_unique)
         n_iteration = (n_cluster*(n_cluster-1))/2
-
+        
         print('[vgraph.py]  Performing classification sweep over %i pairs of clusters'%n_iteration)
         self.graph_fast = OrderedDict() 
         self.cluster_label = np.copy(y_pred)
@@ -47,7 +49,7 @@ class VGraph:
             for j, yu2 in enumerate(y_unique):
                 if i<j:
                     idx_tuple = (yu1, yu2)
-                    clf = self.classify_edge(idx_tuple, X, quick_estimate = self.quick_estimate)
+                    clf = self.classify_edge(idx_tuple, X)# quick_estimate = self.quick_estimate)
                     edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold)
                     self.graph_fast[idx_tuple] = clf
 
@@ -57,13 +59,12 @@ class VGraph:
             scores.append(clf.cv_score - clf.cv_score_std)
             keys.append(k)
 
-        asort = np.argsort(scores)[:max(int(0.1*n_iteration),100)] # just work with those edges
-        # how to select the edges ? should you look at distribution and take a percentile ----> probably !
+        asort = np.argsort(scores)[:max(int(0.2*n_iteration), 100)] # just --- work with those edges
 
+        # How to select the edges ? Should you look at distribution and take a percentile, maybe <= =(
         print("Edges that will be used ...")
         for i in asort:
             print("{0:<5d}".format(keys[i][0]),'\t',"{0:<5d}".format(keys[i][1]),'\t',"%.4f"%scores[i])
-
 
         # Now looping over those edges and making sure scores are accurately estimated (IMPORTANT)
         self.graph = TupleDict()
@@ -96,9 +97,11 @@ class VGraph:
 
             self.graph[idx_tuple] = clf
         
+        del self.graph_fast
+        
         return self
         
-    def classify_edge(self, edge_tuple, X, C = 1.0, quick_estimate = None, n_average=3):
+    def classify_edge(self, edge_tuple, X, quick_estimate = None, n_average=3):
         """ Trains a classifier on the childs of "root" and returns a classifier for these types.
 
         Important attributes are (for CLF object):
@@ -224,6 +227,10 @@ class VGraph:
             self.graph[(k1[0], new_cluster_label)] = self.graph.pop(k1)
 
     def merge_until_robust(self, X, cv_robust):
+
+        self.init_n_cluster = len(np.unique(self.cluster_label))
+        self.current_n_merge = 0
+        
         self.history = []
     
         while True:
@@ -245,12 +252,12 @@ class VGraph:
                 merge_info(worst_edge[0], worst_edge[1], worst_effect_cv, current_label, n_cluster)
                 
                 # info before the merge -> this score goes with these labels
-                self.history.append([worst_effect_cv, np.copy(self.cluster_label),np.copy(self.idx_centers), deepcopy(self.nn_list)])
+                self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list)])
                 
-                pos_idx0 = (self.cluster_label[self.idx_centers] == worst_edge[0])
-                pos_idx1 = (self.cluster_label[self.idx_centers] == worst_edge[1])
+                #pos_idx0 = (self.cluster_label[self.idx_centers] == worst_edge[0])
+                #pos_idx1 = (self.cluster_label[self.idx_centers] == worst_edge[1])
                 
-                rho_0 = self.rho_idx_centers[pos_idx0]
+                ''' rho_0 = self.rho_idx_centers[pos_idx0]
                 rho_1 = self.rho_idx_centers[pos_idx1]
 
                 if rho_0 > rho_1:
@@ -274,7 +281,7 @@ class VGraph:
                 tmp_rho_array = np.zeros(len(self.rho_idx_centers)-1,dtype=float)
                 tmp_rho_array[:-1] = self.rho_idx_centers[pos_del]
                 tmp_rho_array[-1] = tmp_rho
-                self.rho_idx_centers = tmp_rho_array
+                self.rho_idx_centers = tmp_rho_array '''
                 
                 self.merge_edge(X, worst_edge)
         
@@ -282,14 +289,37 @@ class VGraph:
                 break
 
         if len(self.idx_centers) == 1:
-            self.history.append([1.0, np.copy(self.cluster_label),np.copy(self.idx_centers), deepcopy(self.nn_list)])
+            self.history.append([1.0, np.copy(self.cluster_label), deepcopy(self.nn_list)])
         else:
-            self.history.append([worst_effect_cv, np.copy(self.cluster_label),np.copy(self.idx_centers), deepcopy(self.nn_list)])
+            self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list)])
 
+    def print_edge_score(self):
+        """ Print edge scores in sorted """
+
+        score = []
+        idx_list =[]
+        for idx, s in self.edge_score.items():
+            score.append(s[0]-s[1])
+            idx_list.append(idx)
+    
+        asort = np.argsort(score)
+        print("{0:<8s}{1:<8s}{2:<10s}".format('e1', 'e2', 'score'))
+        for a in asort:
+            print("{0:<8d}{1:<8d}{2:<10.4f}".format(idx_list[a][0], idx_list[a][1], score[a]))
 
 def edge_info(edge_tuple, cv_score, std_score, min_score):
     edge_str = "{0:5<d}{1:4<s}{2:5<d}".format(edge_tuple[0]," -- ",edge_tuple[1])
     if cv_score > min_score:
-        print("[graph.py] : {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format("robust edge ",edge_str,"score =",cv_score,"\t+-",std_score))
+        out = "[graph.py] : {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format("robust edge ",edge_str,"score =",cv_score,"\t+-",std_score)
     else:
-        print("[graph.py] : {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format("reject edge ",edge_str,"score =",cv_score,"\t+-",std_score))
+        out = "[graph.py] : {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format("reject edge ",edge_str,"score =",cv_score,"\t+-",std_score)
+    print(out)
+    self.fout.write(out)
+    
+
+def merge_info(c1, c2, score, new_c, n_cluster):
+    edge_str = "{0:5<d}{1:4<s}{2:5<d}".format(c1," -- ",c2)
+    out = "[graph.py] : {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6d}{6:>15s}{7:>5d}".format("merge edge ",edge_str,"score - std =",score,
+    "\tnew label ->",new_c,'n_cluster=',n_cluster)
+    print(out)
+    self.fout.write(out)
