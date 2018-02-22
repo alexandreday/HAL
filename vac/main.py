@@ -2,6 +2,8 @@ from fdc import FDC
 import numpy as np
 from .vgraph import VGraph
 from .tupledict import TupleDict
+import pickle
+from collections import Counter
 
 class VAC:
 
@@ -25,11 +27,11 @@ class VAC:
         self.boundary : idx of the boundary points for the original array
         """
 
-        # notation for idx stuff ... names seperated by underscore "_" specifies the subset
+        # Notation for idx stuff ... names seperated by underscore "_" specifies the subset
 
         self.n_sample = len(X)
 
-        # compute "outliers" based on density
+        # Compute "outliers" based on density
         self.density_clf.fit_density(X)
         rho = self.density_clf.rho
         asort = np.argsort(rho)
@@ -43,24 +45,48 @@ class VAC:
 
         self.density_clf.reset()
 
-        # refit density model on remaining data points:
+        # Refit density model on remaining data points:
         self.density_clf.fit(self.X_in)
         self.cluster_label = self.density_clf.cluster_label
         self.nn_list = self.density_clf.nn_list
 
-        # mark boundary point
+        # Mark boundary point
         self.identify_boundary()
         self.idx_boundary = self.idx_inliers[self.idx_in_boundary]
         self.idx_pure = self.idx_inliers[self.idx_in_pure]
         
-        # remaining data set -- maybe we can avoid doing those copies here, but for now memory is not an issue
+        # Remaining data set -- maybe we can avoid doing those copies here, but for now memory is not an issue
         self.X_pure = self.X_in[self.idx_in_pure] # remaining data points
         self.cluster_label_pure = self.cluster_label[self.idx_in_pure] # labels
-    
+
+        # Finally ... remove clusters that are too small 
+        nh_size = self.density_clf.nh_size
+
+        # Here it comes ...
+        count = Counter(self.cluster_label_pure)
+        idx_tmp = []
+        n_remove = 0
+        for k, v in count.items():
+            if v > nh_size:
+                idx_tmp.append(np.where(self.cluster_label_pure == k)[0])
+            else:
+                n_remove+=1
+        
+        # ... large enough clusters
+        print("[vac.py]   Removing %i clusters since they are too small (< nh_size) ..."%n_remove)
+        self.idx_in_pure_large = np.hstack(idx_tmp)
+        
+        # complementary set of indices (for later post-classification)
+        self.idx_final = self.idx_pure[self.idx_in_pure_large]
+        self.idx_final_out = np.setdiff1d(np.arange(self.n_sample), self.idx_final)
+        self.X_final = X[self.idx_final]
+        self.cluster_label_final = self.cluster_label_pure[self.idx_in_pure_large]
+
     def fit_raw_graph(self, X_original, edge_min=0.9, clf_args = None):
-        X_original_pure = X_original[self.idx_pure] # coordinates to train on in the original space.
+        X_original_final = X_original[self.idx_final] # coordinates to train on in the original space.
         self.VGraph = VGraph(clf_type='rf', edge_min=edge_min, clf_args=clf_args)
-        self.VGraph.fit(X_original_pure, self.cluster_label_pure)
+        self.VGraph.fit(X_original_final, self.cluster_label_final)
+        self.save() # saving at this point
         # ---> merge clusters here ...
         # ---> save info as well, need to check that everything is working properly ...
 
@@ -112,3 +138,7 @@ class VAC:
             name = self.make_file_name()
         self.__dict__.update(pickle.load(open(name,'rb')).__dict__)
         return self
+
+    def make_file_name(self):
+        t_name = "clf_vgraph.pkl"
+        return t_name

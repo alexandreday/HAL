@@ -10,7 +10,7 @@ class VGraph:
     """ Validation graph class - builds a graph with nodes corresponding
     to clusters and draws edges between clusters that have a low validation score
     """
-    def __init__(self, n_average = 10, cv_score = 0., edge_min=0.8, test_size_ratio = 0.8, clf_type='svm', clf_args=None):
+    def __init__(self, n_average = 10, cv_score = 0., edge_min=0.8, test_size_ratio = 0.8, clf_type='rf', clf_args=None):
         self.n_average = n_average
         self.cv_score_threshold = cv_score
         self.test_size_ratio = test_size_ratio
@@ -23,7 +23,8 @@ class VGraph:
 
     def fit(self, X, y_pred):  
         """ In this graph representation neighbors are define by clusters that share an edge
-        with a score lower than some predefined threshold (edge_min)
+        with a score lower than some predefined threshold (edge_min). Compute nn_list (dict of sets)
+        for edges that have a score below the edge_min requirement. 
             
         Parameters:
         ----------------
@@ -59,10 +60,12 @@ class VGraph:
         asort = np.argsort(scores)[:max(int(0.1*n_iteration),100)] # just work with those edges
         # how to select the edges ? should you look at distribution and take a percentile ----> probably !
 
-        print("edges that will remain")
+        print("Edges that will be used ...")
         for i in asort:
-            print(keys[i][0],'\t',keys[i][1])
-    
+            print("{0:<5d}".format(keys[i][0]),'\t',"{0:<5d}".format(keys[i][1]),'\t',"%.4f"%scores[i])
+
+
+        # Now looping over those edges and making sure scores are accurately estimated (IMPORTANT)
         self.graph = TupleDict()
         self.nn_list = OrderedDict()
         self.edge_score = TupleDict()
@@ -76,19 +79,19 @@ class VGraph:
             i1, i2 = idx_tuple
 
             if i1 in self.nn_list.keys():
-                self.nn_list[i1].append(i2)
+                self.nn_list[i1].add(i2)
             else:
-                self.nn_list[i1] = [i2]
+                self.nn_list[i1] = set([i2])
             
             if i2 in self.nn_list.keys():
-                self.nn_list[i2].append(i1)
+                self.nn_list[i2].add(i1)
             else:
-                self.nn_list[i1] = [i1]
+                self.nn_list[i1] = set([i1])
 
             clf = self.classify_edge(idx_tuple, X, n_average=10)
 
+            edge_info(idx_tuple, scores[idx], 0., self.cv_score_threshold)
             self.edge_score[idx_tuple] = [clf.cv_score, clf.cv_score_std]
-
             edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold)
 
             self.graph[idx_tuple] = clf
@@ -162,6 +165,7 @@ class VGraph:
             new_idx.append(e)
         
         new_nn_to_add = set([])
+
         for k, v in self.nn_list.items():
             if idx_1 in v:
                 v.remove(idx_1)
@@ -172,14 +176,14 @@ class VGraph:
                 v.add(new_cluster_label)
                 new_nn_to_add.add(k)
         
-        self.nn_list[new_cluster_label] = set(new_nn_to_add)
-
+        self.nn_list[new_cluster_label] = new_nn_to_add
+        
         if idx_1 in self.nn_list.keys():
             del self.nn_list[idx_1]
         if idx_2 in self.nn_list.keys():
             del self.nn_list[idx_2]
         
-        for k,v in self.nn_list.items():
+        for k, v in self.nn_list.items():
             if idx_1 in v:
                 v.remove(idx_1)
             if idx_2 in v:
