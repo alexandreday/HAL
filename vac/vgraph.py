@@ -49,7 +49,7 @@ class VGraph:
             for j, yu2 in enumerate(y_unique):
                 if i<j:
                     idx_tuple = (yu1, yu2)
-                    clf = self.classify_edge(idx_tuple, X)# quick_estimate = self.quick_estimate)
+                    clf = self.classify_edge(idx_tuple, X)# quick_estimate = self.quick_estimate), can shortcut this ?
                     edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold)
                     self.graph_fast[idx_tuple] = clf
 
@@ -59,7 +59,7 @@ class VGraph:
             scores.append(clf.cv_score - clf.cv_score_std)
             keys.append(k)
 
-        asort = np.argsort(scores)[:max(int(0.2*n_iteration), 100)] # just --- work with those edges
+        asort = np.argsort(scores)[:max(int(0.2*n_iteration), 200)] # just --- work with those edges
 
         # How to select the edges ? Should you look at distribution and take a percentile, maybe <= =(
         print("Edges that will be used ...")
@@ -72,7 +72,7 @@ class VGraph:
         self.edge_score = TupleDict()
 
         print('\n\n\n')
-        print('Performing deeper sweep over worst edges and coarse-graining from there')
+        print('Performing deeper sweep over worst edges and coarse-graining from there:')
 
         for idx in asort:
 
