@@ -18,6 +18,13 @@ class VAC:
         self.nn_pure_ratio = nn_pure_ratio
 
     def purify(self, X):
+        """  Determines outliers and boundary points from X (low-dim points)
+
+        self.idx_pure : idx of the pure points for the original array
+
+        self.boundary : idx of the boundary points for the original array
+        """
+
         # notation for idx stuff ... names seperated by underscore "_" specifies the subset
 
         self.n_sample = len(X)
@@ -50,8 +57,8 @@ class VAC:
         self.X_pure = self.X_in[self.idx_in_pure] # remaining data points
         self.cluster_label_pure = self.cluster_label[self.idx_in_pure] # labels
     
-    def fit_raw_graph(self, X_original, edge_min=0.8, clf_args = None):
-        X_original_pure = X_original[self.idx_pure]
+    def fit_raw_graph(self, X_original, edge_min=0.9, clf_args = None):
+        X_original_pure = X_original[self.idx_pure] # coordinates to train on in the original space.
         self.VGraph = VGraph(clf_type='rf', edge_min=edge_min, clf_args=clf_args)
         self.VGraph.fit(X_original_pure, self.cluster_label_pure)
         # ---> merge clusters here ...
@@ -68,6 +75,7 @@ class VAC:
             self.mask_boundary_cluster(y_mask, yu)
     
         self.idx_in_boundary = idx_all[(y_mask == -1)]
+
         self.idx_in_pure = idx_all[(y_mask != -1)]
 
     def mask_boundary_cluster(self, y_mask, cluster_number):
@@ -90,3 +98,17 @@ class VAC:
         idx_unpure = idx_sub[(r1 < self.nn_pure_ratio)]
 
         y_mask[idx_unpure] = -1 #masking boundary terms
+
+    def save(self, name=None):
+        """ Saves current model to specified path 'name' """
+        if name is None:
+            name = self.make_file_name()
+        fopen = open(name, 'wb')
+        pickle.dump(self, fopen)
+        fopen.close()
+        
+    def load(self, name=None):
+        if name is None:
+            name = self.make_file_name()
+        self.__dict__.update(pickle.load(open(name,'rb')).__dict__)
+        return self
