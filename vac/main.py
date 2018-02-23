@@ -90,9 +90,15 @@ class VAC:
         cluster_label = self.cluster_label_final
 
         return idx_in, cluster_label, idx_out
+    def get_purify_result(self):
+        idx_out = self.idx_final_out
+        idx_in =  self.idx_final
+        cluster_label = self.cluster_label_final
+
+        return self.idx_final, self.cluster_label_final, self.idx_final_out
         
-    def fit_raw_graph(self, X_original, y_pred, edge_min=0.9, clf_args = None):
-        self.VGraph = VGraph(clf_type='rf', edge_min=edge_min, clf_args=clf_args)
+    def fit_raw_graph(self, X_original, y_pred, n_average = 10, edge_min=0.9, clf_args = None):
+        self.VGraph = VGraph(clf_type='rf', n_average = n_average, edge_min=edge_min, clf_args=clf_args)
         self.VGraph.fit(X_original, y_pred)
         self.save() # saving at this point
         

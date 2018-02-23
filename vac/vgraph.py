@@ -4,7 +4,7 @@ import numpy as np
 from copy import deepcopy
 from collections import Counter, OrderedDict
 from matplotlib import pyplot as plt
-import pickle
+import pickle, time
 from .tupledict import TupleDict
 from .utility import FOUT
 
@@ -42,15 +42,20 @@ class VGraph:
         n_cluster = len(y_unique)
         n_iteration = (n_cluster*(n_cluster-1))/2
         
+        
         print('[vgraph.py]  Performing classification sweep over %i pairs of clusters'%n_iteration)
         self.graph_fast = OrderedDict() 
         self.cluster_label = np.copy(y_pred)
 
+        n_average_pre = 1
+        clf_args_pre = {'class_weight':'balanced','n_estimators': 5, 'max_features': 150}
+
+        print('parameters:\t',"n_average =%i"%n_average_pre,'\t',clf_args_pre)
         for i, yu1 in enumerate(y_unique):
             for j, yu2 in enumerate(y_unique):
                 if i<j:
                     idx_tuple = (yu1, yu2)
-                    clf = self.classify_edge(idx_tuple, X)# quick_estimate = self.quick_estimate), can shortcut this ?
+                    clf = self.classify_edge(idx_tuple, X, clf_args=clf_args_pre, n_average=n_average_pre)# quick_estimate = self.quick_estimate), can shortcut this ?
                     edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
                     self.graph_fast[idx_tuple] = clf
 
@@ -78,13 +83,14 @@ class VGraph:
         for yu in y_unique:
             self.nn_list[yu] = set([])
 
+        print('parameters:\t',"n_average =%i"%self.n_average,'\t',self.clf_args)
         for idx in asort:
             idx_tuple = keys[idx]
             i1, i2 = idx_tuple
             self.nn_list[i1].add(i2)
             self.nn_list[i2].add(i1)
             
-            clf = self.classify_edge(idx_tuple, X, n_average=10)
+            clf = self.classify_edge(idx_tuple, X, n_average=self.n_average, clf_args = self.clf_args)
 
             edge_info(idx_tuple, scores[idx], 0., self.cv_score_threshold, fout=self.fout)
             self.edge_score[idx_tuple] = [clf.cv_score, clf.cv_score_std]
@@ -96,7 +102,7 @@ class VGraph:
         
         return self
         
-    def classify_edge(self, edge_tuple, X, quick_estimate = None, n_average=3):
+    def classify_edge(self, edge_tuple, X, quick_estimate = None, n_average=3, clf_args = None):
         """ Trains a classifier on the childs of "root" and returns a classifier for these types.
 
         Important attributes are (for CLF object):
@@ -116,7 +122,6 @@ class VGraph:
         """
         ## ok need to down sample somewhere here
         test_size_ratio = self.test_size_ratio
-        n_average = self.n_average
 
         y = np.copy(self.cluster_label)
         y[(y != edge_tuple[0]) & (y != edge_tuple[1])] = -1
@@ -135,7 +140,7 @@ class VGraph:
             Xsubset = np.vstack((Xsubset[pos_0[:quick_estimate]], Xsubset[pos_1[:quick_estimate]]))
             ysubset = np.hstack((ysubset[pos_0[:quick_estimate]], ysubset[pos_1[:quick_estimate]]))
 
-        return CLF(clf_type=self.clf_type, n_average=n_average, test_size=self.test_size_ratio, clf_args=self.clf_args).fit(Xsubset, ysubset)
+        return CLF(clf_type=self.clf_type, n_average=n_average, test_size=self.test_size_ratio, clf_args=clf_args).fit(Xsubset, ysubset)
 
     def merge_edge(self, X, edge_tuple, n_average=10):
         """ relabels data according to merging, and recomputing new classifiers for new edges """
