@@ -149,7 +149,7 @@ class VGraph:
             np.random.shuffle(pos_1)
             Xsubset = np.vstack((Xsubset[pos_0[:quick_estimate]], Xsubset[pos_1[:quick_estimate]]))
             ysubset = np.hstack((ysubset[pos_0[:quick_estimate]], ysubset[pos_1[:quick_estimate]]))
-
+        
         return CLF(clf_type=self.clf_type, n_average=n_average, test_size=self.test_size_ratio, clf_args=clf_args).fit(Xsubset, ysubset)
 
     def merge_edge(self, X, edge_tuple):
@@ -158,23 +158,30 @@ class VGraph:
         idx_1, idx_2 = edge_tuple
         pos_1 = (self.cluster_label == idx_1)
         pos_2 = (self.cluster_label == idx_2)
-        new_cluster_label = self.init_n_cluster + self.current_n_merge
+        new_cluster_label = self.current_max_label + 1
         
-        self.cluster_label[pos_1] = self.init_n_cluster + self.current_n_merge # updating labels !
-        self.cluster_label[pos_2] = self.init_n_cluster + self.current_n_merge # updating labels !
+        self.cluster_label[pos_1] = new_cluster_label   # updating labels !
+        self.cluster_label[pos_2] = new_cluster_label   # updating labels !
+        
         self.current_n_merge += 1
+        self.current_max_label += 1 
 
-        # recompute classifiers for merged edge
-        new_idx = []
-        idx_to_del = set([]) # avoids duplicates
+        new_idx = []    # recompute classifiers for merged edge
+        idx_to_del = set([])    # avoids duplicates
+
         for e in self.nn_list[idx_1]:
-            idx_to_del.add((e, idx_1))
-            idx_to_del.add((idx_1, e))
+            if e<idx_1:
+                idx_to_del.add((e, idx_1))
+            else:
+                idx_to_del.add((idx_1, e))
             new_idx.append(e)
 
         for e in self.nn_list[idx_2]:
-            idx_to_del.add((e, idx_2))
-            idx_to_del.add((idx_2, e))
+            if e<idx_2:
+                idx_to_del.add((e, idx_2))
+            else:
+                idx_to_del.add((idx_2, e))
+            #idx_to_del.add((idx_2, e))
             new_idx.append(e)
         
         new_nn_to_add = set([])
@@ -238,7 +245,9 @@ class VGraph:
 
     def merge_until_robust(self, X, cv_robust):
 
-        self.init_n_cluster = len(np.unique(self.cluster_label))
+        yunique = np.unique(self.cluster_label)
+        self.init_n_cluster = len(yunique)
+        self.current_max_label = np.max(yunique)
         self.current_n_merge = 0
         self.history = []
     
@@ -267,10 +276,8 @@ class VGraph:
             else:
                 break
 
-        if len(self.idx_centers) == 1:
-            self.history.append([1.0, np.copy(self.cluster_label), deepcopy(self.nn_list)])
-        else:
             self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list)])
+        
 
     def print_edge_score(self, option = 0):
         """ Print edge scores in sorted """
