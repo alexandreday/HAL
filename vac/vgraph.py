@@ -6,6 +6,7 @@ from collections import Counter, OrderedDict
 from matplotlib import pyplot as plt
 import pickle
 from .tupledict import TupleDict
+from .utility import FOUT
 
 class VGraph:
     """ Validation graph class - builds a graph with nodes corresponding
@@ -20,8 +21,8 @@ class VGraph:
         self.cluster_label = None
         self.edge_min = edge_min
         self.edge_score = OrderedDict()
-        self.quick_estimate = 50 # should we replace this 
-        self.fout = open('out.txt','a')
+        self.quick_estimate = 50 # should we replace this
+        self.fout = FOUT('out.txt')
 
     def fit(self, X, y_pred):  
         """ In this graph representation neighbors are define by clusters that share an edge
@@ -50,7 +51,7 @@ class VGraph:
                 if i<j:
                     idx_tuple = (yu1, yu2)
                     clf = self.classify_edge(idx_tuple, X)# quick_estimate = self.quick_estimate), can shortcut this ?
-                    edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold)
+                    edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
                     self.graph_fast[idx_tuple] = clf
 
         scores = []
@@ -74,26 +75,20 @@ class VGraph:
         print('\n\n\n')
         print('Performing deeper sweep over worst edges and coarse-graining from there:')
 
-        for idx in asort:
+        for yu in y_unique:
+            self.nn_list[yu] = set([])
 
+        for idx in asort:
             idx_tuple = keys[idx]
             i1, i2 = idx_tuple
-
-            if i1 in self.nn_list.keys():
-                self.nn_list[i1].add(i2)
-            else:
-                self.nn_list[i1] = set([i2])
+            self.nn_list[i1].add(i2)
+            self.nn_list[i2].add(i1)
             
-            if i2 in self.nn_list.keys():
-                self.nn_list[i2].add(i1)
-            else:
-                self.nn_list[i1] = set([i1])
-
             clf = self.classify_edge(idx_tuple, X, n_average=10)
 
-            edge_info(idx_tuple, scores[idx], 0., self.cv_score_threshold)
+            edge_info(idx_tuple, scores[idx], 0., self.cv_score_threshold, fout=self.fout)
             self.edge_score[idx_tuple] = [clf.cv_score, clf.cv_score_std]
-            edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold)
+            edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
 
             self.graph[idx_tuple] = clf
         
@@ -307,19 +302,20 @@ class VGraph:
         for a in asort:
             print("{0:<8d}{1:<8d}{2:<10.4f}".format(idx_list[a][0], idx_list[a][1], score[a]))
 
-def edge_info(edge_tuple, cv_score, std_score, min_score):
+def edge_info(edge_tuple, cv_score, std_score, min_score, fout=None, perc=0):
     edge_str = "{0:5<d}{1:4<s}{2:5<d}".format(edge_tuple[0]," -- ",edge_tuple[1])
     if cv_score > min_score:
         out = "[graph.py] : {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format("robust edge ",edge_str,"score =",cv_score,"\t+-",std_score)
     else:
         out = "[graph.py] : {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format("reject edge ",edge_str,"score =",cv_score,"\t+-",std_score)
     print(out)
-    self.fout.write(out)
+    if fout is not None:
+        fout.write(out)
     
-
-def merge_info(c1, c2, score, new_c, n_cluster):
+def merge_info(c1, c2, score, new_c, n_cluster, fout=None):
     edge_str = "{0:5<d}{1:4<s}{2:5<d}".format(c1," -- ",c2)
     out = "[graph.py] : {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6d}{6:>15s}{7:>5d}".format("merge edge ",edge_str,"score - std =",score,
     "\tnew label ->",new_c,'n_cluster=',n_cluster)
     print(out)
-    self.fout.write(out)
+    if fout is not None:
+        fout.write(out)
