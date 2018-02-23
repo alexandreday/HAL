@@ -86,9 +86,7 @@ class VGraph:
         for yu in y_unique:
             self.nn_list[yu] = set([])
 
-        print('parameters:\t',"n_average =%i"%self.n_average,'\t',self.clf_args)
-
-        info = 'parameters:\t'+("n_average =%i"%n_average)+'\t'+str(self.clf_args)
+        info = 'parameters:\t'+("n_average =%i"%self.n_average)+'\t'+str(self.clf_args)
         print(info)
         self.fout.write(info)
 
@@ -158,7 +156,7 @@ class VGraph:
         idx_1, idx_2 = edge_tuple
         pos_1 = (self.cluster_label == idx_1)
         pos_2 = (self.cluster_label == idx_2)
-        new_cluster_label = self.current_max_label + 1
+        new_cluster_label = self.current_max_label
         
         self.cluster_label[pos_1] = new_cluster_label   # updating labels !
         self.cluster_label[pos_2] = new_cluster_label   # updating labels !
@@ -247,7 +245,7 @@ class VGraph:
 
         yunique = np.unique(self.cluster_label)
         self.init_n_cluster = len(yunique)
-        self.current_max_label = np.max(yunique)
+        self.current_max_label = np.max(yunique) + 1
         self.current_n_merge = 0
         self.history = []
     
@@ -265,19 +263,16 @@ class VGraph:
             
             if all_robust is False:
                 n_cluster = self.init_n_cluster - self.current_n_merge - 1
-                current_label = self.init_n_cluster + self.current_n_merge - 1
 
-                merge_info(worst_edge[0], worst_edge[1], worst_effect_cv, current_label, n_cluster, fout = self.fout)
+                merge_info(worst_edge[0], worst_edge[1], worst_effect_cv, self.current_max_label, n_cluster, fout = self.fout)
                 
-                # info before the merge -> this score goes with these labels
-                self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list)])            
+                # info before the merge -> this score goes with these labels            
+                self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list)])
                 self.merge_edge(X, worst_edge)
-        
             else:
+                self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list)])
                 break
 
-            self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list)])
-        
 
     def print_edge_score(self, option = 0):
         """ Print edge scores in sorted """
