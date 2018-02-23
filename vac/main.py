@@ -18,6 +18,8 @@ class VAC:
             self.density_clf = density_clf
         self.outlier_ratio = outlier_ratio
         self.nn_pure_ratio = nn_pure_ratio
+        self.cluster_label = None
+        self.idx_centers = None
 
     def purify(self, X):
         """  Determines outliers and boundary points from X (low-dim points)
@@ -100,12 +102,13 @@ class VAC:
     def fit_raw_graph(self, X_original, y_pred, n_average = 10, edge_min=0.9, clf_args = None):
         self.VGraph = VGraph(clf_type='rf', n_average = n_average, edge_min=edge_min, clf_args=clf_args)
         self.VGraph.fit(X_original, y_pred)
+        self.cluster_label = y_pred
         self.save() # saving at this point
         
     def fit_robust_graph(self, X_original, cv_robust = 0.99):
         self.load()
-        self.VGraph.merge_until_robust(X_original_final, cv_robust)
-        self.save(name="tmp.pkl")
+        self.VGraph.merge_until_robust(X_original, cv_robust)
+        self.save(name="robust.pkl")
 
     def identify_boundary(self):
         """ Iterates over all cluster and marks "boundary" points """

@@ -92,6 +92,8 @@ class VGraph:
         print(info)
         self.fout.write(info)
 
+        # comment : may need to add, for each cluster, the worst link. 
+
         for idx in asort:
             idx_tuple = keys[idx]
             i1, i2 = idx_tuple
@@ -150,7 +152,7 @@ class VGraph:
 
         return CLF(clf_type=self.clf_type, n_average=n_average, test_size=self.test_size_ratio, clf_args=clf_args).fit(Xsubset, ysubset)
 
-    def merge_edge(self, X, edge_tuple, n_average=10):
+    def merge_edge(self, X, edge_tuple):
         """ relabels data according to merging, and recomputing new classifiers for new edges """
         
         idx_1, idx_2 = edge_tuple
@@ -206,7 +208,7 @@ class VGraph:
         new_idx.remove(idx_1)
         new_idx.remove(idx_2)
     
-        for idxd in idx_to_del:
+        for idxd in idx_to_del: # these edges have been reassigned ... 
             del self.graph[idxd]
         
         new_idx_set = set([])
@@ -214,13 +216,13 @@ class VGraph:
             new_idx_set.add((new_cluster_label, ni))
 
         for idx_tuple in new_idx_set:
-            clf = self.classify_edge(idx_tuple, X, n_average=n_average)
+            clf = self.classify_edge(idx_tuple, X, n_average=self.n_average, clf_args = self.clf_args)
             self.edge_score[idx_tuple] = [clf.cv_score, clf.cv_score_std]
-            edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold)
+            edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
             self.graph[idx_tuple] = clf
             idx_tuple_reverse = (idx_tuple[1], idx_tuple[0])
-            self.graph[idx_tuple_reverse] = self.graph[idx_tuple]
         
+
         k0_update = []
         k1_update = []
         for k, v in self.graph.items():
@@ -238,7 +240,6 @@ class VGraph:
 
         self.init_n_cluster = len(np.unique(self.cluster_label))
         self.current_n_merge = 0
-        
         self.history = []
     
         while True:
@@ -257,40 +258,10 @@ class VGraph:
                 n_cluster = self.init_n_cluster - self.current_n_merge - 1
                 current_label = self.init_n_cluster + self.current_n_merge - 1
 
-                merge_info(worst_edge[0], worst_edge[1], worst_effect_cv, current_label, n_cluster)
+                merge_info(worst_edge[0], worst_edge[1], worst_effect_cv, current_label, n_cluster, fout = self.fout)
                 
                 # info before the merge -> this score goes with these labels
-                self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list)])
-                
-                #pos_idx0 = (self.cluster_label[self.idx_centers] == worst_edge[0])
-                #pos_idx1 = (self.cluster_label[self.idx_centers] == worst_edge[1])
-                
-                ''' rho_0 = self.rho_idx_centers[pos_idx0]
-                rho_1 = self.rho_idx_centers[pos_idx1]
-
-                if rho_0 > rho_1:
-                    tmp_idx = self.idx_centers[pos_idx0]
-                    tmp_rho = rho_0
-                else:
-                    tmp_idx = self.idx_centers[pos_idx1]
-                    tmp_rho = rho_1
-
-                self.idx_centers[pos_idx0] = -20
-                self.idx_centers[pos_idx1] = -20
-
-                pos_del = self.idx_centers > -1
-
-                # new "center" should go to end of list
-                tmp_idx_center_array = np.zeros(len(self.idx_centers)-1,dtype=int)
-                tmp_idx_center_array[:-1] = self.idx_centers[pos_del]
-                tmp_idx_center_array[-1] = tmp_idx
-                self.idx_centers = tmp_idx_center_array
-
-                tmp_rho_array = np.zeros(len(self.rho_idx_centers)-1,dtype=float)
-                tmp_rho_array[:-1] = self.rho_idx_centers[pos_del]
-                tmp_rho_array[-1] = tmp_rho
-                self.rho_idx_centers = tmp_rho_array '''
-                
+                self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list)])            
                 self.merge_edge(X, worst_edge)
         
             else:
