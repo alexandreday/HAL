@@ -160,6 +160,6 @@ class VAC:
         t_name = "clf_vgraph.pkl"
         return t_name
     
-    def edge_info(self):
-        self.VGraph.print_edge_score()
+    def edge_info(self,option=0):
+        self.VGraph.print_edge_score(option = option)
     

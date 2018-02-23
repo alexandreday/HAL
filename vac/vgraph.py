@@ -49,8 +49,11 @@ class VGraph:
 
         n_average_pre = 1
         clf_args_pre = {'class_weight':'balanced','n_estimators': 5, 'max_features': 150}
+        
+        info = 'parameters:\t'+("n_average =%i"%n_average_pre)+'\t'+str(clf_args_pre)
+        print(info)
+        self.fout.write(info)
 
-        print('parameters:\t',"n_average =%i"%n_average_pre,'\t',clf_args_pre)
         for i, yu1 in enumerate(y_unique):
             for j, yu2 in enumerate(y_unique):
                 if i<j:
@@ -84,6 +87,11 @@ class VGraph:
             self.nn_list[yu] = set([])
 
         print('parameters:\t',"n_average =%i"%self.n_average,'\t',self.clf_args)
+
+        info = 'parameters:\t'+("n_average =%i"%n_average)+'\t'+str(self.clf_args)
+        print(info)
+        self.fout.write(info)
+
         for idx in asort:
             idx_tuple = keys[idx]
             i1, i2 = idx_tuple
@@ -293,13 +301,16 @@ class VGraph:
         else:
             self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list)])
 
-    def print_edge_score(self):
+    def print_edge_score(self, option = 0):
         """ Print edge scores in sorted """
 
         score = []
         idx_list =[]
         for idx, s in self.edge_score.items():
-            score.append(s[0]-s[1])
+            if option == 0:
+                score.append(s[0]-s[1])
+            else:
+                score.append(s[0])
             idx_list.append(idx)
     
         asort = np.argsort(score)
