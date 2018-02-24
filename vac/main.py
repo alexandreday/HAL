@@ -20,8 +20,10 @@ class VAC:
         self.nn_pure_ratio = nn_pure_ratio
         self.cluster_label = None
         self.idx_centers = None
+        self.boundary_ratio = {} # dict of idx (w.r.t to inliers) to dict of ratios.
 
     def get_pure_idx(self, X, eta=0.1):
+
         """  Determines outliers and boundary points from X (low-dim points)
 
         self.idx_pure : idx of the pure points for the original array
@@ -29,7 +31,7 @@ class VAC:
 
         Returns
         -----------
-        
+
         idx_in, idx_boundary, idx_out
 
         """
@@ -57,39 +59,44 @@ class VAC:
         self.idx_boundary = idx_inliers[idx_in_boundary] # w.r.t to original data points
         idx_pure = idx_inliers[idx_in_pure] # w.r.t to original data points
 
-        return idx_pure, self.idx_boundary, idx_low_rho
+        # Finally ... remove clusters that are too small [those should go in the outlier category, i.e. they will be post-classified]        
+        cluster_label_pure = self.cluster_label[idx_in_pure] # (>_<) labels
+        nh_size = self.density_clf.nh_size
 
-        # Finally ... remove clusters that are too small [those should go in the outlier category, i.e. they will be post-classified]
-        cluster_label_pure = self.cluster_label[idx_in_pure] # labels
-        nh_size = self.density_clf.nh_size 
-
-        # Here it comes ...
+        # Here it comes ... 
         count = Counter(cluster_label_pure)
-        n_remove = 0
         idx_big = []
         idx_small = []
+
         for k, v in count.items():
-            if v > nh_size:
+            if v >= nh_size:
                 idx_big.append(np.where(cluster_label_pure == k)[0])
             else:
                 idx_small.append(np.where(cluster_label_pure == k)[0])
-                n_remove+=1
         
-        # ... large enough clusters # need to remove the ones that are added !!!!!!!!!!!!!!!!
-        print("[vac.py]   Removing %i clusters since they are too small (< nh_size) ..."%n_remove)
-        assert len(idx_big) > 0, 'Assert false, no cluster is large enough !'
+        # Large enough clusters
+        print("[vac.py]   Removing %i clusters since they are too small (< nh_size) ..."% len(idx_small))
+        assert len(idx_big) > 0, 'Assert false, no cluster is large enough, consider changing purity and outlier ratios !'
         
+        # ----------------> 
         idx_in_pure_large = np.hstack(idx_big)
-        idx_final = idx_pure[idx_in_pure_large] # (1st set)
+
+        self.cluster_pure_label = cluster_label_pure[idx_in_pure_large] # labels of points that will be used for classification 
+        self.cluster_boundary_label = self.cluster_label[idx_in_boundary]
+
+        idx_final = idx_pure[idx_in_pure_large] # (1st set --> <--) 
 
         if len(idx_small) > 0:
             idx_in_pure_small = np.hstack(idx_small)
-            self.idx_out = np.hstack((idx_low_rho, idx_in_pure_small))
+            self.idx_out = np.hstack((idx_low_rho, idx_pure[idx_in_pure_small]))
         else:
             self.idx_out = idx_low_rho
 
         self.idx_in = idx_final
 
+        # --------- boundaries would need to be remerged -------> 
+
+        
         return self.idx_in, self.idx_boundary, self.idx_out
         
     def get_purify_result(self):
@@ -128,22 +135,27 @@ class VAC:
         # check for points have that multiple points in their neighborhood
         # that do not have the same label as them
 
-        ratio = self.nn_pure_ratio
         n_sample = len(y_mask)
         pos = (y_mask == cluster_number)
         nn = nn_list[pos][:,1:] # nn of cluster members
         idx_sub = np.arange(n_sample)[pos]
+        n_neighbor = len(nn[0]) 
 
         r1 = [] # purity ratios
-        for n in nn:
+        idx_unpure = []
+        for i, n in enumerate(nn):
             l1 = self.cluster_label[n]
-            r1.append(np.count_nonzero(l1 == cluster_number)/len(l1))
-        
-        r1 = np.array(r1)
+            count_l1 = Counter(l1)
+            count_l1 = {k: v / n_neighbor for k, v in count_l1.items()} # keep track of those only for boundary terms
 
-        idx_unpure = idx_sub[(r1 < self.nn_pure_ratio)]
-
-        y_mask[idx_unpure] = -1 #masking boundary terms
+            # Notes to me: when merging two clusters -> recover overlapping boundary
+            # remaining boundary should be added to the new cluster. i.e. every cluster has a boundary
+            ratio = count_l1[cluster_number]
+            if ratio < self.nn_pure_ratio:      # is a boundary term
+                idx_unpure.append(idx_sub[i])
+                self.boundary_ratio[idx_sub[i]] = count_l1 # each data point only appears once ...
+                
+        y_mask[np.array(idx_unpure)] = -1 #masking boundary terms
 
     def save(self, name=None):
         """ Saves current model to specified path 'name' """
