@@ -21,6 +21,7 @@ class VAC:
         self.cluster_label = None
         self.idx_centers = None
         self.boundary_ratio = {} # dict of idx (w.r.t to inliers) to dict of ratios.
+        # dict of cluster labels -> idx, cluster with largest overlap, ratio of overlap
 
     def get_pure_idx(self, X, eta=0.1):
 
@@ -141,20 +142,29 @@ class VAC:
         idx_sub = np.arange(n_sample)[pos]
         n_neighbor = len(nn[0]) 
 
+        # we want to access boundary ratios in the following ez way
+        # dict of cluster labels to boundary points
+        # boundary points have a list of ratios [dict again cuz you need to know with respect to which cluster that is]
+    
         r1 = [] # purity ratios
         idx_unpure = []
+        
+        boundary_ratios = []
         for i, n in enumerate(nn):
             l1 = self.cluster_label[n]
             count_l1 = Counter(l1)
+            kmax = max(count_l1.items(), key=lambda k: stats[k[0]])
             count_l1 = {k: v / n_neighbor for k, v in count_l1.items()} # keep track of those only for boundary terms
-
+        
             # Notes to me: when merging two clusters -> recover overlapping boundary
             # remaining boundary should be added to the new cluster. i.e. every cluster has a boundary
             ratio = count_l1[cluster_number]
             if ratio < self.nn_pure_ratio:      # is a boundary term
                 idx_unpure.append(idx_sub[i])
-                self.boundary_ratio[idx_sub[i]] = count_l1 # each data point only appears once ...
-                
+                boundary_ratios.append([idx_sub[i], kmax, count_l1[kmax]/n_neighbor])
+                # ------ --------- ------------ ----------------------- -------------------- 
+        
+        self.boundary_ratio[cluster_number] = boundary_ratios
         y_mask[np.array(idx_unpure)] = -1 #masking boundary terms
 
     def save(self, name=None):
