@@ -44,8 +44,8 @@ class VAC:
         asort = np.argsort(rho)
         
         n_out = int(self.outlier_ratio*n_sample)
-        idx_inliers = asort[n_out:]
-        idx_low_rho = asort[:n_out]
+        idx_inliers = np.sort(asort[n_out:])
+        idx_low_rho = np.sort(asort[:n_out])
 
         self.density_clf.reset()
         self.density_clf.eta = 0.0
@@ -54,7 +54,7 @@ class VAC:
         self.density_clf.fit(X[idx_inliers])
         self.density_clf.coarse_grain(np.linspace(0.,eta,10))
         self.cluster_label = self.density_clf.cluster_label # this is important // labels for later ...
-
+        
         # Mark boundary point 
         idx_in_boundary, idx_in_pure = self.identify_boundary(self.density_clf.nn_list) # computed idx of inliers that are 'pure'
         self.idx_boundary = idx_inliers[idx_in_boundary] # w.r.t to original data points
@@ -76,7 +76,7 @@ class VAC:
                 idx_small.append(np.where(cluster_label_pure == k)[0])
         
         # Large enough clusters
-        print("[vac.py]   Removing %i clusters since they are too small (< nh_size) ..."% len(idx_small))
+        print("[vac.py]    Removing %i clusters since they are too small (< nh_size) ..."% len(idx_small))
         assert len(idx_big) > 0, 'Assert false, no cluster is large enough, consider changing purity and outlier ratios !'
         
         # ----------------> 
@@ -85,19 +85,18 @@ class VAC:
         self.cluster_pure_label = cluster_label_pure[idx_in_pure_large] # labels of points that will be used for classification 
         self.cluster_boundary_label = self.cluster_label[idx_in_boundary]
 
-        idx_final = idx_pure[idx_in_pure_large] # (1st set --> <--) 
-
+        self.idx_in = idx_pure[idx_in_pure_large] # (1st set --> <--) 
+    
         if len(idx_small) > 0:
             idx_in_pure_small = np.hstack(idx_small)
             self.idx_out = np.hstack((idx_low_rho, idx_pure[idx_in_pure_small]))
         else:
             self.idx_out = idx_low_rho
 
-        self.idx_in = idx_final
 
         # --------- boundaries would need to be remerged -------> 
 
-        
+        print("[vac.py]    There are %i clusters remaining"% len(np.unique(self.cluster_pure_label)))
         return self.idx_in, self.idx_boundary, self.idx_out
         
     def get_purify_result(self):
@@ -140,8 +139,8 @@ class VAC:
         pos = (y_mask == cluster_number)
         nn = nn_list[pos][:,1:] # nn of cluster members
         idx_sub = np.arange(n_sample)[pos]
-        n_neighbor = len(nn[0]) 
-
+        n_neighbor = len(nn[0])
+    
         # we want to access boundary ratios in the following ez way
         # dict of cluster labels to boundary points
         # boundary points have a list of ratios [dict again cuz you need to know with respect to which cluster that is]
@@ -153,7 +152,9 @@ class VAC:
         for i, n in enumerate(nn):
             l1 = self.cluster_label[n]
             count_l1 = Counter(l1)
-            kmax = max(count_l1.items(), key=lambda k: stats[k[0]])
+            #print(count_l1)
+            kmax = max(count_l1.items(), key=lambda k: count_l1[k[0]])[0]
+            #print(kmax)
             count_l1 = {k: v / n_neighbor for k, v in count_l1.items()} # keep track of those only for boundary terms
         
             # Notes to me: when merging two clusters -> recover overlapping boundary
@@ -161,7 +162,7 @@ class VAC:
             ratio = count_l1[cluster_number]
             if ratio < self.nn_pure_ratio:      # is a boundary term
                 idx_unpure.append(idx_sub[i])
-                boundary_ratios.append([idx_sub[i], kmax, count_l1[kmax]/n_neighbor])
+                boundary_ratios.append([idx_sub[i], kmax, count_l1[kmax]])
                 # ------ --------- ------------ ----------------------- -------------------- 
         
         self.boundary_ratio[cluster_number] = boundary_ratios
