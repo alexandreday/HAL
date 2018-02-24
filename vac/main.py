@@ -21,77 +21,77 @@ class VAC:
         self.cluster_label = None
         self.idx_centers = None
 
-    def purify(self, X):
+    def get_pure_idx(self, X, eta=0.1):
         """  Determines outliers and boundary points from X (low-dim points)
 
         self.idx_pure : idx of the pure points for the original array
         self.boundary : idx of the boundary points for the original array
 
-        Returns idx for original data along with labels
-
-        idx_in, cluster_label, idx_out
+        Returns
+        -----------
+        
+        idx_in, idx_boundary, idx_out
 
         """
-
-        # Notation for idx stuff ... names seperated by underscore "_" specifies the subset
-
-        self.n_sample = len(X)
+        n_sample = len(X)
 
         # Compute "outliers" based on density
         self.density_clf.fit_density(X)
         rho = self.density_clf.rho
         asort = np.argsort(rho)
         
-        self.n_out = int(self.outlier_ratio*self.n_sample)
-        self.X_in = X[asort[self.n_out:]] # well defined clusters
-        self.X_out = X[asort[:self.n_out]] # will be classified at the very end
-
-        self.idx_inliers = asort[self.n_out:]
-        self.idx_outiers = asort[:self.n_out]
+        n_out = int(self.outlier_ratio*n_sample)
+        idx_inliers = asort[n_out:]
+        idx_low_rho = asort[:n_out]
 
         self.density_clf.reset()
+        self.density_clf.eta = 0.0
 
         # Refit density model on remaining data points:
-        self.density_clf.fit(self.X_in)
-        self.cluster_label = self.density_clf.cluster_label
-        self.nn_list = self.density_clf.nn_list
+        self.density_clf.fit(X[idx_inliers])
+        self.density_clf.coarse_grain(np.linspace(0.,eta,10))
+        self.cluster_label = self.density_clf.cluster_label # this is important // labels for later ...
 
-        # Mark boundary point
-        self.identify_boundary()
-        self.idx_boundary = self.idx_inliers[self.idx_in_boundary]
-        self.idx_pure = self.idx_inliers[self.idx_in_pure]
-        
-        # Remaining data set -- maybe we can avoid doing those copies here, but for now memory is not an issue
-        self.X_pure = self.X_in[self.idx_in_pure] # remaining data points
-        self.cluster_label_pure = self.cluster_label[self.idx_in_pure] # labels
+        # Mark boundary point 
+        idx_in_boundary, idx_in_pure = self.identify_boundary(self.density_clf.nn_list) # computed idx of inliers that are 'pure'
+        self.idx_boundary = idx_inliers[idx_in_boundary] # w.r.t to original data points
+        idx_pure = idx_inliers[idx_in_pure] # w.r.t to original data points
 
-        # Finally ... remove clusters that are too small 
-        nh_size = self.density_clf.nh_size
+        return idx_pure, self.idx_boundary, idx_low_rho
+
+        # Finally ... remove clusters that are too small [those should go in the outlier category, i.e. they will be post-classified]
+        cluster_label_pure = self.cluster_label[idx_in_pure] # labels
+        nh_size = self.density_clf.nh_size 
 
         # Here it comes ...
-        count = Counter(self.cluster_label_pure)
-        idx_tmp = []
+        count = Counter(cluster_label_pure)
         n_remove = 0
+        idx_big = []
+        idx_small = []
         for k, v in count.items():
             if v > nh_size:
-                idx_tmp.append(np.where(self.cluster_label_pure == k)[0])
+                idx_big.append(np.where(cluster_label_pure == k)[0])
             else:
+                idx_small.append(np.where(cluster_label_pure == k)[0])
                 n_remove+=1
         
-        # ... large enough clusters
+        # ... large enough clusters # need to remove the ones that are added !!!!!!!!!!!!!!!!
         print("[vac.py]   Removing %i clusters since they are too small (< nh_size) ..."%n_remove)
-        self.idx_in_pure_large = np.hstack(idx_tmp)
+        assert len(idx_big) > 0, 'Assert false, no cluster is large enough !'
+        
+        idx_in_pure_large = np.hstack(idx_big)
+        idx_final = idx_pure[idx_in_pure_large] # (1st set)
 
-        # ... complementary set of indices (for later post-classification)
-        self.idx_final = self.idx_pure[self.idx_in_pure_large]
-        self.idx_final_out = np.setdiff1d(np.arange(self.n_sample), self.idx_final)
-        self.cluster_label_final = self.cluster_label_pure[self.idx_in_pure_large]
+        if len(idx_small) > 0:
+            idx_in_pure_small = np.hstack(idx_small)
+            self.idx_out = np.hstack((idx_low_rho, idx_in_pure_small))
+        else:
+            self.idx_out = idx_low_rho
 
-        idx_out = self.idx_final_out
-        idx_in =  self.idx_final
-        cluster_label = self.cluster_label_final
+        self.idx_in = idx_final
 
-        return idx_in, cluster_label, idx_out
+        return self.idx_in, self.idx_boundary, self.idx_out
+        
     def get_purify_result(self):
         idx_out = self.idx_final_out
         idx_in =  self.idx_final
@@ -110,7 +110,7 @@ class VAC:
         self.VGraph.merge_until_robust(X_original, cv_robust)
         self.save(name="robust.pkl")
 
-    def identify_boundary(self):
+    def identify_boundary(self, nn_list):
         """ Iterates over all cluster and marks "boundary" points """
 
         y_mask = np.copy(self.cluster_label)
@@ -118,20 +118,20 @@ class VAC:
         idx_all = np.arange(len(self.cluster_label))
 
         for yu in y_unique:
-            self.mask_boundary_cluster(y_mask, yu)
+            self.mask_boundary_cluster(y_mask, yu, nn_list)
     
-        self.idx_in_boundary = idx_all[(y_mask == -1)]
+        idx_in_boundary = idx_all[(y_mask == -1)]
+        idx_in_pure = idx_all[(y_mask != -1)]
+        return idx_in_boundary, idx_in_pure
 
-        self.idx_in_pure = idx_all[(y_mask != -1)]
-
-    def mask_boundary_cluster(self, y_mask, cluster_number):
+    def mask_boundary_cluster(self, y_mask, cluster_number, nn_list):
         # check for points have that multiple points in their neighborhood
         # that do not have the same label as them
 
         ratio = self.nn_pure_ratio
         n_sample = len(y_mask)
         pos = (y_mask == cluster_number)
-        nn = self.nn_list[pos][:,1:] # nn of cluster members
+        nn = nn_list[pos][:,1:] # nn of cluster members
         idx_sub = np.arange(n_sample)[pos]
 
         r1 = [] # purity ratios
