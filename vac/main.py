@@ -154,7 +154,7 @@ class VAC:
             count_l1 = Counter(l1)
             #print(count_l1)
             kmax = max(count_l1.items(), key=lambda k: count_l1[k[0]])[0]
-            #print(kmax)
+            #print(kmax)l
             count_l1 = {k: v / n_neighbor for k, v in count_l1.items()} # keep track of those only for boundary terms
         
             # Notes to me: when merging two clusters -> recover overlapping boundary
