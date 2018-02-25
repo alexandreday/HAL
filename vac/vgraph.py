@@ -48,8 +48,8 @@ class VGraph:
         print('[vgraph.py]  Performing classification sweep over %i pairs of clusters'%n_iteration)
         self.cluster_label = np.copy(y_pred)
 
-        n_average_pre = 1 # don't bother with this now, we just want a rough idea of what is good and what is bad.
-        clf_args_pre = {'class_weight':'balanced','n_estimators': 20, 'max_features': 200}
+        n_average_pre = 3 # don't bother with this now, we just want a rough idea of what is good and what is bad.
+        clf_args_pre = {'class_weight':'balanced', 'n_estimators': 10, 'max_features': 200}
         
         info = 'parameters:\t'+("n_average =%i"%n_average_pre)+'\t'+str(clf_args_pre)
         print(info)
@@ -63,7 +63,7 @@ class VGraph:
                     idx_tuple = (yu1, yu2)
                     clf = self.classify_edge(idx_tuple, X, clf_args=clf_args_pre, n_average=n_average_pre)# quick_estimate = self.quick_estimate), can shortcut this ?
                     edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
-                    score[i][j] = clf.cv_score - clf.cv_score_std # any way to quickly estimate if the estimate is good or not ?
+                    score[i][j] = clf.cv_score # since n_average is small, just use mean, no variance for now !
         
         edge_list = []
         score_list = []
@@ -313,10 +313,10 @@ def edge_info_update(edge_tuple, cv_score_pre, std_score_pre, cv_score_post, std
     edge_str = "{0:5<d}{1:4<s}{2:5<d}".format(edge_tuple[0]," -- ",edge_tuple[1])
 
     robust_or_not = "robust edge" if cv_score_post - std_score_post > min_score else "reject edge "
-    out = "[vgraph.py]    {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}{6:<10s}{6:<7.4f}{7:<16s}{8:>6.5f}".format(robust_or_not, edge_str, "score change", 
-    cv_score_post, "+-", std_score_pre,
-    "\t",
-    cv_score_pre, "+-", std_score_post
+    out ="[vgraph.py]    {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:^8s}{5:6.5f}{6:^10s}{7:<7.4f}{8:^8s}{9:6.5f}".format(robust_or_not, edge_str, "score change", 
+    cv_score_pre, '+/-', std_score_pre,
+    '\t>>>>\t', 
+    cv_score_post, '+/-', std_score_post
     )
 
     print(out)
