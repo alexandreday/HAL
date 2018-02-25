@@ -12,23 +12,22 @@ class VGraph:
     """ Validation graph class - builds a graph with nodes corresponding
     to clusters and draws edges between clusters that have a low validation score
     """
-    def __init__(self, n_average = 10, cv_score = 0., edge_min=0.8, test_size_ratio = 0.8, clf_type='rf', clf_args=None):
+    def __init__(self, n_average = 10, cv_score = 0., test_size_ratio = 0.8, clf_type='rf', clf_args=None, n_edge =2):
         self.n_average = n_average
         self.cv_score_threshold = cv_score
         self.test_size_ratio = test_size_ratio
         self.clf_type = clf_type
         self.clf_args = clf_args
         self.cluster_label = None
-        self.edge_min = edge_min
         self.edge_score = OrderedDict()
         self.quick_estimate = 50 # should we replace this
         self.fout = FOUT('out.txt')
+        self.n_edge = n_edge
 
-    def fit(self, X, y_pred, n_edge = 2):  
-        """ In this graph representation neighbors are define by clusters that share an edge
-        with a score lower than some predefined threshold (edge_min). Compute nn_list (dict of sets)
-        for edges that have a score below the edge_min requirement. 
-            
+    def fit(self, X, y_pred):  
+        """ Constructs a low connectivity graph by joining clusters that have low edge scores.
+        Each cluster is connected to n_edge other clusters.
+
         Parameters:
         ----------------
 
@@ -43,26 +42,27 @@ class VGraph:
         y_unique = np.unique(y_pred)
         n_cluster = len(y_unique)
         n_iteration = (n_cluster*(n_cluster-1))/2
+        n_edge = self.n_edge
         
         
         print('[vgraph.py]  Performing classification sweep over %i pairs of clusters'%n_iteration)
-        self.graph_fast = OrderedDict() 
         self.cluster_label = np.copy(y_pred)
 
         n_average_pre = 1 # don't bother with this now, we just want a rough idea of what is good and what is bad.
-        clf_args_pre = {'class_weight':'balanced','n_estimators': 10, 'max_features': 200}
+        clf_args_pre = {'class_weight':'balanced','n_estimators': 20, 'max_features': 200}
         
         info = 'parameters:\t'+("n_average =%i"%n_average_pre)+'\t'+str(clf_args_pre)
         print(info)
         self.fout.write(info)
         score = {yu:{} for yu in y_unique} # dict of dict score[i][j] returns score for that edge
-        for i, yu1 in enumerate(y_unique):
+
+        # This is O(N^2) complexity in the number of clusters ...
+        for i, yu1 in enumerate(y_unique): 
             for j, yu2 in enumerate(y_unique):
                 if i<j:
                     idx_tuple = (yu1, yu2)
                     clf = self.classify_edge(idx_tuple, X, clf_args=clf_args_pre, n_average=n_average_pre)# quick_estimate = self.quick_estimate), can shortcut this ?
                     edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
-                    self.graph_fast[idx_tuple] = clf
                     score[i][j] = clf.cv_score - clf.cv_score_std # any way to quickly estimate if the estimate is good or not ?
         
         edge_list = []
@@ -72,16 +72,16 @@ class VGraph:
             v_tmp = list(score[cluster_idx].values())
             asort = np.argsort(v_tmp)
             for pos in asort[:n_edge]: ## ---------> For each node, get n_edges (worst ones) ==> here may want to look at a distribution or something like that
-                edge_list.append(key_tmp[pos])
+                edge_list.append((cluster_idx, key_tmp[pos]))
                 score_list.append(v_tmp[pos])
     
         edge_list = np.array(edge_list)[np.argsort(score_list)] # resort end list 
 
         # How to select the edges ? Should you look at distribution and take a percentile, maybe <= =(
-        print("[vac.py]    Edges that will be used ...")
+        print("[vgraph.py]    Edges that will be used ...")
         for edge in edge_list:
             i, j = edge
-            print("[vac.py]    {0:<5d}".format(i),' ---- ',"{0:<5d}".format(j),'  =~  ',"%.4f"%score[i][j])
+            print("[vgraph.py]    {0:<5d}".format(i),' ---- ',"{0:<5d}".format(j),'  =~  ',"%.4f"%score[i][j])
 
         # Now looping over those edges and making sure scores are accurately estimated (IMPORTANT)
         self.graph = TupleDict()
@@ -89,32 +89,29 @@ class VGraph:
         self.edge_score = TupleDict()
 
         print('\n\n\n')
-        print('Performing deeper sweep over worst edges and coarse-graining from there:')
+        print('[graph.py]    Performing deeper sweep over worst edges and coarse-graining from there:')
 
         for yu in y_unique:
             self.nn_list[yu] = set([])
 
-        info = 'parameters:\t'+("n_average =%i"%self.n_average)+'\t'+str(self.clf_args)
+        info = '[graph.py]    '+'Parameters:\t'+("n_average =%i"%self.n_average)+'\t'+str(self.clf_args)
         print(info)
         self.fout.write(info)
 
-        # comment : may need to add, for each cluster, the worst link. 
-
+        # This is O(N) in the number of clusters
         for edge in edge_list:
             n1, n2 = edge
             self.nn_list[n1].add(n2)
             self.nn_list[n2].add(n1)
             
             clf = self.classify_edge(edge, X, n_average=self.n_average, clf_args = self.clf_args)
-
-            edge_info(idx_tuple, scores[idx], 0., self.cv_score_threshold, fout=self.fout)
             self.edge_score[idx_tuple] = [clf.cv_score, clf.cv_score_std]
-            edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
+
+            # printing out results
+            edge_info_update(edge, score[n1][n2], 0., clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
 
             self.graph[idx_tuple] = clf
-        
-        del self.graph_fast
-        
+            
         return self
         
     def classify_edge(self, edge_tuple, X, quick_estimate = None, n_average=3, clf_args = None):
@@ -298,30 +295,38 @@ class VGraph:
         for a in asort:
             print("{0:<8d}{1:<8d}{2:<10.4f}".format(idx_list[a][0], idx_list[a][1], score[a]))
 
-def edge_info(edge_tuple, cv_score, std_score, min_score, fout=None, perc=0):
+def edge_info(edge_tuple, cv_score, std_score, min_score, fout=None):
     
     edge_str = "{0:5<d}{1:4<s}{2:5<d}".format(edge_tuple[0]," -- ",edge_tuple[1])
 
-    robust_or_not = "robust edge" if cv_score > min_score else "reject edge "
+    robust_or_not = "robust edge" if cv_score - std_score > min_score else "reject edge "
 
-    out = "[graph.py] : {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format(robust_or_not, edge_str, "score =", cv_score, "\t+-",std_score)
+    out = "[vgraph.py]    {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format(robust_or_not, edge_str, "score =", cv_score, "\t+-",std_score)
 
     print(out)
 
     if fout is not None:
         fout.write(out)
 
-def edge_info_update(edge_tuple, cv_score, std_score, min_score, fout=None):
+def edge_info_update(edge_tuple, cv_score_pre, std_score_pre, cv_score_post, std_score_post, min_score, fout=None):
+    
+    edge_str = "{0:5<d}{1:4<s}{2:5<d}".format(edge_tuple[0]," -- ",edge_tuple[1])
 
+    robust_or_not = "robust edge" if cv_score_post - std_score_post > min_score else "reject edge "
+    out = "[vgraph.py]    {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}{6:<10s}{6:<7.4f}{7:<16s}{8:>6.5f}".format(robust_or_not, edge_str, "score change", 
+    cv_score_post, "+-", std_score_pre,
+    "\t",
+    cv_score_pre, "+-", std_score_post
+    )
 
+    print(out)
 
-
-
-
+    if fout is not None:
+        fout.write(out)
     
 def merge_info(c1, c2, score, new_c, n_cluster, fout=None):
     edge_str = "{0:5<d}{1:4<s}{2:5<d}".format(c1," -- ",c2)
-    out = "[graph.py] : {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6d}{6:>15s}{7:>5d}".format("merge edge ",edge_str,"score - std =",score,
+    out = "[vgraph.py]    {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6d}{6:>15s}{7:>5d}".format("merge edge ",edge_str,"score - std =",score,
     "\tnew label ->",new_c,'n_cluster=',n_cluster)
     print(out)
     if fout is not None:
