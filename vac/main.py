@@ -7,7 +7,7 @@ from collections import Counter
 
 class VAC:
 
-    def __init__(self, density_clf = None, outlier_ratio=0.2, nn_pure_ratio=0.9):
+    def __init__(self, density_clf = None, outlier_ratio=0.2, nn_pure_ratio=0.9, min_size_cluster=20):
         """
         pass in a density classifier, need to be able to get labels and compute a density map
         """
@@ -20,6 +20,7 @@ class VAC:
         self.nn_pure_ratio = nn_pure_ratio
         self.cluster_label = None
         self.idx_centers = None
+        self.min_size_cluster = min_size_cluster
         self.boundary_ratio = {} # dict of idx (w.r.t to inliers) to dict of ratios.
         # dict of cluster labels -> idx, cluster with largest overlap, ratio of overlap
 
@@ -63,21 +64,20 @@ class VAC:
 
         # Finally ... remove clusters that are too small [those should go in the outlier category, i.e. they will be post-classified]        
         cluster_label_pure = self.cluster_label[idx_in_pure] # (>_<) labels
-        nh_size = self.density_clf.nh_size
-
+        
         # Here it comes ... 
         count = Counter(cluster_label_pure)
         idx_big = []
         idx_small = []
 
         for k, v in count.items():
-            if v >= nh_size:
+            if v >= self.min_size_cluster:
                 idx_big.append(np.where(cluster_label_pure == k)[0])
             else:
                 idx_small.append(np.where(cluster_label_pure == k)[0])
         
         # Large enough clusters
-        print("[vac.py]    Removing %i clusters since they are too small (< nh_size) ..."% len(idx_small))
+        print("[vac.py]    Removing %i clusters since they are too small (< min_size_cluster) ..."% len(idx_small))
         assert len(idx_big) > 0, 'Assert false, no cluster is large enough, consider changing purity and outlier ratios !'
         
         # ----------------> 
