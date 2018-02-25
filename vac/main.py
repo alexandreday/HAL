@@ -23,7 +23,7 @@ class VAC:
         self.boundary_ratio = {} # dict of idx (w.r.t to inliers) to dict of ratios.
         # dict of cluster labels -> idx, cluster with largest overlap, ratio of overlap
 
-    def get_pure_idx(self, X, eta = 0.1):
+    def get_pure_idx(self, X):
 
         """  Determines outliers and boundary points from X (low-dim points)
 
@@ -46,13 +46,14 @@ class VAC:
         n_out = int(self.outlier_ratio*n_sample)
         idx_inliers = np.sort(asort[n_out:])
         idx_low_rho = np.sort(asort[:n_out])
-
+        eta = self.density_clf.eta
         self.density_clf.reset()
         self.density_clf.eta = 0.0
 
         # Refit density model on remaining data points:
         self.density_clf.fit(X[idx_inliers])
-        self.density_clf.coarse_grain(np.linspace(0., eta, 10))
+        self.density_clf.eta = eta
+        self.density_clf.coarse_grain(np.linspace(0., eta, 10)) # soft merging is usually better 
         self.cluster_label = self.density_clf.cluster_label # this is important // labels for later ...
         
         # Mark boundary point 
@@ -107,15 +108,13 @@ class VAC:
         self.VGraph = VGraph(clf_type='rf', n_average = n_average, clf_args=clf_args, n_edge = n_edge)
         self.VGraph.fit(X_original, y_pred)
         self.cluster_label = y_pred
-        self.save() # saving at this point
         
     def fit_robust_graph(self, X_original, cv_robust = 0.99):
         """ Takes worst edges found using raw_graph method and performs retraining on those edges 
         with more expressive classifiers ( = more costly computationally)
         """
-        self.load()
+        #print("here")
         self.VGraph.merge_until_robust(X_original, cv_robust)
-        self.save(name="robust.pkl")
 
     def identify_boundary(self, nn_list):
         """ Iterates over all cluster and marks "boundary" points """

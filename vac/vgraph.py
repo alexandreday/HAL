@@ -45,13 +45,13 @@ class VGraph:
         n_edge = self.n_edge
         
         
-        print('[vgraph.py]  Performing classification sweep over %i pairs of clusters'%n_iteration)
+        print('[vgraph.py]    Performing classification sweep over %i pairs of clusters'%n_iteration)
         self.cluster_label = np.copy(y_pred)
 
         n_average_pre = 3 # don't bother with this now, we just want a rough idea of what is good and what is bad.
         clf_args_pre = {'class_weight':'balanced', 'n_estimators': 10, 'max_features': 200}
         
-        info = 'parameters:\t'+("n_average =%i"%n_average_pre)+'\t'+str(clf_args_pre)
+        info = '[vgraph.py]    parameters:\t'+("n_average =%i"%n_average_pre)+'\t'+str(clf_args_pre)
         print(info)
         self.fout.write(info)
         score = {yu:{} for yu in y_unique} # dict of dict score[i][j] returns score for that edge
@@ -63,7 +63,7 @@ class VGraph:
                     idx_tuple = (yu1, yu2)
                     clf = self.classify_edge(idx_tuple, X, clf_args=clf_args_pre, n_average=n_average_pre)# quick_estimate = self.quick_estimate), can shortcut this ?
                     edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
-                    score[i][j] = clf.cv_score # since n_average is small, just use mean, no variance for now !
+                    score[yu1][yu2] = clf.cv_score # since n_average is small, just use mean, no variance for now !
         
         edge_list = []
         score_list = []
@@ -94,7 +94,7 @@ class VGraph:
         for yu in y_unique:
             self.nn_list[yu] = set([])
 
-        info = '[graph.py]    '+'Parameters:\t'+("n_average =%i"%self.n_average)+'\t'+str(self.clf_args)
+        info = '[vgraph.py]    '+'Parameters:\t'+("n_average =%i"%self.n_average)+'\t'+str(self.clf_args)
         print(info)
         self.fout.write(info)
 
@@ -110,7 +110,7 @@ class VGraph:
             # printing out results
             edge_info_update(edge, score[n1][n2], 0., clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
 
-            self.graph[idx_tuple] = clf
+            self.graph[(n1, n2)] = clf
             
         return self
         
