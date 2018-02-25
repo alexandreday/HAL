@@ -24,7 +24,7 @@ class VGraph:
         self.quick_estimate = 50 # should we replace this
         self.fout = FOUT('out.txt')
 
-    def fit(self, X, y_pred):  
+    def fit(self, X, y_pred, n_edge = 2):  
         """ In this graph representation neighbors are define by clusters that share an edge
         with a score lower than some predefined threshold (edge_min). Compute nn_list (dict of sets)
         for edges that have a score below the edge_min requirement. 
@@ -36,6 +36,8 @@ class VGraph:
             Original space coordinates
         y_pred: array, shape = (n_sample,)
             Cluster labels for each data point
+        n_edge: int, default = 2
+            Number of edges for each node (worst ones)
         """
 
         y_unique = np.unique(y_pred)
@@ -47,13 +49,13 @@ class VGraph:
         self.graph_fast = OrderedDict() 
         self.cluster_label = np.copy(y_pred)
 
-        n_average_pre = 1
-        clf_args_pre = {'class_weight':'balanced','n_estimators': 5, 'max_features': 150}
+        n_average_pre = 1 # don't bother with this now, we just want a rough idea of what is good and what is bad.
+        clf_args_pre = {'class_weight':'balanced','n_estimators': 10, 'max_features': 200}
         
         info = 'parameters:\t'+("n_average =%i"%n_average_pre)+'\t'+str(clf_args_pre)
         print(info)
         self.fout.write(info)
-
+        score = {yu:{} for yu in y_unique} # dict of dict score[i][j] returns score for that edge
         for i, yu1 in enumerate(y_unique):
             for j, yu2 in enumerate(y_unique):
                 if i<j:
@@ -61,19 +63,25 @@ class VGraph:
                     clf = self.classify_edge(idx_tuple, X, clf_args=clf_args_pre, n_average=n_average_pre)# quick_estimate = self.quick_estimate), can shortcut this ?
                     edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
                     self.graph_fast[idx_tuple] = clf
-
-        scores = []
-        keys = []
-        for k, clf in self.graph_fast.items():
-            scores.append(clf.cv_score - clf.cv_score_std)
-            keys.append(k)
-
-        asort = np.argsort(scores)[:max(int(0.2*n_iteration), 200)] # just --- work with those edges
+                    score[i][j] = clf.cv_score - clf.cv_score_std # any way to quickly estimate if the estimate is good or not ?
+        
+        edge_list = []
+        score_list = []
+        for cluster_idx in y_unique:
+            key_tmp = list(score[cluster_idx].keys())
+            v_tmp = list(score[cluster_idx].values())
+            asort = np.argsort(v_tmp)
+            for pos in asort[:n_edge]: ## ---------> For each node, get n_edges (worst ones) ==> here may want to look at a distribution or something like that
+                edge_list.append(key_tmp[pos])
+                score_list.append(v_tmp[pos])
+    
+        edge_list = np.array(edge_list)[np.argsort(score_list)] # resort end list 
 
         # How to select the edges ? Should you look at distribution and take a percentile, maybe <= =(
-        print("Edges that will be used ...")
-        for i in asort:
-            print("{0:<5d}".format(keys[i][0]),'\t',"{0:<5d}".format(keys[i][1]),'\t',"%.4f"%scores[i])
+        print("[vac.py]    Edges that will be used ...")
+        for edge in edge_list:
+            i, j = edge
+            print("[vac.py]    {0:<5d}".format(i),' ---- ',"{0:<5d}".format(j),'  =~  ',"%.4f"%score[i][j])
 
         # Now looping over those edges and making sure scores are accurately estimated (IMPORTANT)
         self.graph = TupleDict()
@@ -92,13 +100,12 @@ class VGraph:
 
         # comment : may need to add, for each cluster, the worst link. 
 
-        for idx in asort:
-            idx_tuple = keys[idx]
-            i1, i2 = idx_tuple
-            self.nn_list[i1].add(i2)
-            self.nn_list[i2].add(i1)
+        for edge in edge_list:
+            n1, n2 = edge
+            self.nn_list[n1].add(n2)
+            self.nn_list[n2].add(n1)
             
-            clf = self.classify_edge(idx_tuple, X, n_average=self.n_average, clf_args = self.clf_args)
+            clf = self.classify_edge(edge, X, n_average=self.n_average, clf_args = self.clf_args)
 
             edge_info(idx_tuple, scores[idx], 0., self.cv_score_threshold, fout=self.fout)
             self.edge_score[idx_tuple] = [clf.cv_score, clf.cv_score_std]
@@ -292,14 +299,25 @@ class VGraph:
             print("{0:<8d}{1:<8d}{2:<10.4f}".format(idx_list[a][0], idx_list[a][1], score[a]))
 
 def edge_info(edge_tuple, cv_score, std_score, min_score, fout=None, perc=0):
+    
     edge_str = "{0:5<d}{1:4<s}{2:5<d}".format(edge_tuple[0]," -- ",edge_tuple[1])
-    if cv_score > min_score:
-        out = "[graph.py] : {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format("robust edge ",edge_str,"score =",cv_score,"\t+-",std_score)
-    else:
-        out = "[graph.py] : {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format("reject edge ",edge_str,"score =",cv_score,"\t+-",std_score)
+
+    robust_or_not = "robust edge" if cv_score > min_score else "reject edge "
+
+    out = "[graph.py] : {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format(robust_or_not, edge_str, "score =", cv_score, "\t+-",std_score)
+
     print(out)
+
     if fout is not None:
         fout.write(out)
+
+def edge_info_update(edge_tuple, cv_score, std_score, min_score, fout=None):
+
+
+
+
+
+
     
 def merge_info(c1, c2, score, new_c, n_cluster, fout=None):
     edge_str = "{0:5<d}{1:4<s}{2:5<d}".format(c1," -- ",c2)
