@@ -153,6 +153,77 @@ class VGraph:
             ysubset = np.hstack((ysubset[pos_0[:quick_estimate]], ysubset[pos_1[:quick_estimate]]))
         
         return CLF(clf_type=self.clf_type, n_average=n_average, test_size=self.test_size_ratio, clf_args=clf_args).fit(Xsubset, ysubset)
+    
+    def merge_until_robust(self, X, cv_robust):
+
+        yunique = np.unique(self.cluster_label)
+        self.init_n_cluster = len(yunique)
+        self.current_max_label = np.max(yunique) + 1
+        self.current_n_merge = 0
+        self.history = []
+
+        while True:
+            all_robust = True
+            if n_cluster == 1:
+                break
+            worst_effect_cv = 10
+            worst_edge = -1
+            score_list = []
+            edge_list = []
+            yunique = np.unique(self.cluster_label)
+            score_dict = {yu: {} for yu in yunique} 
+            for edge, clf in self.graph.items():
+                # can do better at selecting edge, also displaying edges ... 
+                effect_score = clf.cv_score - clf.cv_score_std
+                score_list.append(effect_score)
+                edge_list.append(edge)
+                score_dict[edge[0]][edge[1]] = effect_score
+                score_dict[edge[1]][edge[0]] = effect_score
+            
+            for n1, v in score_dict.items():
+                for n2, score_value in v.items():
+                    print((n1, n2),' = %.4f '%score_value, end='')
+                    print('    ', end='')
+                print('\n', end='')
+
+            certainty_node = {}
+            # for each node just assign a score, and mark the other node that it should be merged with
+            max_certainty = -1
+            for cluster_idx, n_dict in score_dict.items():
+                k, v = list(n_dict.keys()), list(n_dict.values())
+                asort_edge = np.argsort(v) # we want largest value
+                nn = k[asort_edge[0]] # node it should be merged with if certainty is high
+                certainty_value = v[asort_edge[1]]-v[asort_edge[0]]
+                certainty_node[cluster_idx] = [certainty_value, nn]
+                if certainty_value > max_certainty:
+                    max_certainty = certainty_value
+                    edge_merge = (cluster_idx, nn)
+
+            asort = np.argsort(score_list)
+            print('[vgraph.py]    Lowest scores:')
+            for aa in asort[:5]:
+                print(edge_list[aa], '\t\t', score_list[aa])
+
+            worst_effect_cv = score_list[asort[0]]
+            
+            if worst_effect_cv < cv_robust:
+                all_robust = False
+            
+            print('[vgraph.py]    Merging edge %i --- %i\t'%(edge_merge[0], edge_merge[1]),'with certainty=\t%.4f'%max_certainty)
+
+            if all_robust is False:
+                n_cluster = self.init_n_cluster - self.current_n_merge - 1
+                n1, n2 = edge_merge
+                merge_info(n1, n2, score_dict[n1][n2], self.current_max_label, n_cluster, fout = self.fout)
+                
+                # info before the merge -> this score goes with these labels            
+                self.history.append([score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list)])
+                self.merge_edge(X, edge_merge)
+            else:
+                self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list)])
+
+                break
+
 
     def merge_edge(self, X, edge_tuple):
         """ relabels data according to merging, and recomputing new classifiers for new edges """
@@ -244,39 +315,6 @@ class VGraph:
             self.graph[(new_cluster_label, k0[1])] = self.graph.pop(k0)
         for k1 in k1_update:
             self.graph[(k1[0], new_cluster_label)] = self.graph.pop(k1)
-
-    def merge_until_robust(self, X, cv_robust):
-
-        yunique = np.unique(self.cluster_label)
-        self.init_n_cluster = len(yunique)
-        self.current_max_label = np.max(yunique) + 1
-        self.current_n_merge = 0
-        self.history = []
-    
-        while True:
-            all_robust = True
-            worst_effect_cv = 10
-            worst_edge = -1
-            for edge, clf in self.graph.items():
-                effect_cv = clf.cv_score - clf.cv_score_std
-                if effect_cv < worst_effect_cv:
-                    worst_effect_cv = effect_cv
-                    worst_edge = edge
-                if effect_cv < cv_robust:
-                    all_robust = False
-            
-            if all_robust is False:
-                n_cluster = self.init_n_cluster - self.current_n_merge - 1
-
-                merge_info(worst_edge[0], worst_edge[1], worst_effect_cv, self.current_max_label, n_cluster, fout = self.fout)
-                
-                # info before the merge -> this score goes with these labels            
-                self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list)])
-                self.merge_edge(X, worst_edge)
-            else:
-                self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list)])
-                break
-
 
     def print_edge_score(self, option = 0):
         """ Print edge scores in sorted """
