@@ -185,7 +185,7 @@ class VGraph:
                 edge_list.append(edge)
                 score_dict[edge[0]][edge[1]] = effect_score
                 score_dict[edge[1]][edge[0]] = effect_score
-                if effect_score < worst_edge_cv:
+                if effect_score < worst_effect_cv:
                     worst_effect_cv = effect_score
                     worst_edge = (edge[0], edge[1])
             
