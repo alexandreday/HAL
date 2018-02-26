@@ -165,15 +165,18 @@ class VGraph:
 
         X_in : inliers features in the original space
         y_in : inliers labels
+        ratio_dict : dict of cluster labels to list of boundary points for the cluster with info [majority_ratio_cluster_label, idx_in]
 
         --> why not just work with X_in instead ==> so you don't have to reinclude stuff ... !
         """ 
 
-        yunique = np.unique(self.cluster_label)
+        yunique = np.unique(self.cluster_label) # this includes boundary points.
+        yunique = yunique[yunique >=0] # remove boundary !
         self.init_n_cluster = len(yunique)
         self.current_max_label = np.max(yunique) + 1
         self.current_n_merge = 0
         self.history = []
+        self.ratio_dict = deepcopy(ratio_dict)
         n_cluster = self.init_n_cluster
 
         while True:
@@ -186,9 +189,12 @@ class VGraph:
             score_list = []
             edge_list = []
             yunique = np.unique(self.cluster_label)
-            score_dict = {yu: {} for yu in yunique}
+            yunique = yunique[yunique >=0] # remove boundary !
+
+            score_dict = {yu:{} for yu in yunique}
+
             for edge, clf in self.graph.items():
-                # can do better at selecting edge, also displaying edges ... 
+                # Can do better at selecting edge, also displaying edges ... 
                 effect_score = clf.cv_score - clf.cv_score_std
                 score_list.append(effect_score)
                 edge_list.append(edge)
@@ -240,6 +246,7 @@ class VGraph:
 
                 n_cluster = self.init_n_cluster - self.current_n_merge - 1
                 n1, n2 = edge_merge
+
                 merge_info(n1, n2, score_dict[n1][n2], self.current_max_label, n_cluster, fout = self.fout)
                 
                 n_cluster -= 1
@@ -249,7 +256,7 @@ class VGraph:
                 
                 #self.reinclude_bounday(X ===> here)
 
-                self.merge_edge(X_in, edge_merge)
+                self.merge_edge(X_in, edge_merge, ratio_dict) # this will modify cluster_labels and ratio_dict.
                 # when merging edge should reinclude the boundary point ...
                 # 1. this will modify X. 2. this will modify self.cluster_label. 3. This will modify scores (better !)
             
@@ -258,8 +265,29 @@ class VGraph:
 
                 break
 
+    def update_ratio_dict(self, edge_tuple, new_label):
+        # edge_tuple : edge being merged
 
-    def merge_edge(self, X, edge_tuple):
+        # >>>> First updating cluster labels :
+        remaining_element = []
+
+        i1, i2 = edge_tuple
+
+        for ii in [i1,i2]:
+            idx_boundary = np.array(self.ratio_dict[ii])
+            pos =  (idx_boundary[:,0] == i1) | (idx_boundary[:,0] == i2)
+            idx_in_boundary = idx_boundary[pos, 1]
+            remaining_element.append(idx_boundary[(pos == False), 1]) # this will go in new ratio dict slot.
+            self.cluster_label[idx_in_boundary] = new_label # ok once this is done, need to update ratio dict as well ... for neighbors and remove cluster
+
+        self.ratio_dict[new_label] = np.vstack(remaining_element) # updated boundary.
+
+        for k, v in self.ratio_dict:
+            c2_and_idx = v
+            pos = (idx_boundary[:,0] == i1) | (idx_boundary[:,0] == i2)
+            v[pos,0] = new_label 
+
+    def merge_edge(self, X, edge_tuple, ratio_dict):
         """ relabels data according to merging, and recomputing new classifiers for new edges """
         
         idx_1, idx_2 = edge_tuple
@@ -269,6 +297,9 @@ class VGraph:
         
         self.cluster_label[pos_1] = new_cluster_label   # updating labels !
         self.cluster_label[pos_2] = new_cluster_label   # updating labels !
+
+        ratio_dict
+
         
         self.current_n_merge += 1
         self.current_max_label += 1 

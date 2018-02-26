@@ -174,7 +174,7 @@ class VAC:
                     boundary_ratios.append([kmax, idx_sub[i]])
                     #boundary_ratios.append([idx_sub[i], kmax, count_l1[kmax]]) # [idx_original, cluster to merge with, ratio (not useful really)]
                 
-            self.boundary_ratio[cluster_number] = boundary_ratios
+            self.boundary_ratio[cluster_number] = np.array(boundary_ratios)
                     # ------ --------- ------------ ----------------------- -------------------- 
             
             #-> for every cluster. There neighboring cluster with largest 
