@@ -161,6 +161,7 @@ class VGraph:
         self.current_max_label = np.max(yunique) + 1
         self.current_n_merge = 0
         self.history = []
+        n_cluster = self.init_n_cluster
 
         while True:
             all_robust = True
@@ -212,10 +213,12 @@ class VGraph:
             print('[vgraph.py]    Merging edge %i --- %i\t'%(edge_merge[0], edge_merge[1]),'with certainty=\t%.4f'%max_certainty)
 
             if all_robust is False:
+                
                 n_cluster = self.init_n_cluster - self.current_n_merge - 1
                 n1, n2 = edge_merge
                 merge_info(n1, n2, score_dict[n1][n2], self.current_max_label, n_cluster, fout = self.fout)
                 
+                n_cluster -= 1
                 # info before the merge -> this score goes with these labels            
                 self.history.append([score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list)])
                 self.merge_edge(X, edge_merge)
