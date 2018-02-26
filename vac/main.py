@@ -98,6 +98,7 @@ class VAC:
         # --------- boundaries would need to be remerged -------> 
 
         print("[vac.py]    There are %i clusters remaining"% len(np.unique(self.cluster_pure_label)))
+        print("[vac.py]    There are %i data points remaining"% len(self.cluster_pure_label))
         return self.idx_in, self.idx_boundary, self.idx_out
         
     def get_purify_result(self):
