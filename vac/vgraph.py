@@ -34,7 +34,7 @@ class VGraph:
         X : array, shape = (n_sample, n_feature)
             Original space coordinates
         y_pred: array, shape = (n_sample,)
-            Cluster labels for each data point
+            Cluster labels for each data point. Boundary points should be labelled by -1
         n_edge: int, default = 2
             Number of edges for each node (worst ones)
         """
@@ -247,9 +247,9 @@ class VGraph:
 
                 self.history.append([score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list)])
                 
-                #self.reinclude_bounday(X
+                #self.reinclude_bounday(X ===> here)
 
-                self.merge_edge(X, edge_merge)
+                self.merge_edge(X_in, edge_merge)
                 # when merging edge should reinclude the boundary point ...
                 # 1. this will modify X. 2. this will modify self.cluster_label. 3. This will modify scores (better !)
             

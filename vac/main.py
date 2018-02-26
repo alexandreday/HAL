@@ -64,6 +64,8 @@ class VAC:
 
         # Finally ... remove clusters that are too small [those should go in the outlier category, i.e. they will be post-classified]        
         cluster_label_pure = self.cluster_label[idx_in_pure] # (>_<) labels
+        self.cluster_label_in = np.copy(self.cluster_label)
+        self.cluster_label_in[idx_in_boundary] = -1
         
         # Here it comes ... 
         count = Counter(cluster_label_pure)
