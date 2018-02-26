@@ -68,7 +68,8 @@ class VAC:
         # Here it comes ... 
         count = Counter(cluster_label_pure)
         idx_big = []
-        idx_small = []
+        idx_small = [] 
+        # -------- -------- --------- --------- ---------- ----------- ----------- 
 
         for k, v in count.items():
             if v >= self.min_size_cluster:
@@ -93,7 +94,6 @@ class VAC:
             self.idx_out = np.hstack((idx_low_rho, idx_pure[idx_in_pure_small]))
         else:
             self.idx_out = idx_low_rho
-
 
         # --------- boundaries would need to be remerged -------> 
 

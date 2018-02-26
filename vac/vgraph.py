@@ -48,8 +48,8 @@ class VGraph:
         print('[vgraph.py]    Performing classification sweep over %i pairs of clusters'%n_iteration)
         self.cluster_label = np.copy(y_pred)
 
-        n_average_pre = 3 # don't bother with this now, we just want a rough idea of what is good and what is bad.
-        clf_args_pre = {'class_weight':'balanced', 'n_estimators': 10, 'max_features': 200}
+        n_average_pre = 4 # don't bother with this now, we just want a rough idea of what is good and what is bad.
+        clf_args_pre = {'class_weight':'balanced', 'n_estimators': 30, 'max_features': 200}
         
         info = '[vgraph.py]    parameters:\t'+("n_average =%i"%n_average_pre)+'\t'+str(clf_args_pre)
         print(info)
@@ -64,6 +64,7 @@ class VGraph:
                     clf = self.classify_edge(idx_tuple, X, clf_args=clf_args_pre, n_average=n_average_pre)# quick_estimate = self.quick_estimate), can shortcut this ?
                     edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
                     score[yu1][yu2] = clf.cv_score # since n_average is small, just use mean, no variance for now !
+                    score[yu2][yu1] = clf.cv_score
         
         edge_list = []
         score_list = []
@@ -103,14 +104,17 @@ class VGraph:
             n1, n2 = edge
             self.nn_list[n1].add(n2)
             self.nn_list[n2].add(n1)
-            
-            clf = self.classify_edge(edge, X, n_average=self.n_average, clf_args = self.clf_args)
-            self.edge_score[idx_tuple] = [clf.cv_score, clf.cv_score_std]
 
-            # printing out results
-            edge_info_update(edge, score[n1][n2], 0., clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
+            idx_tuple = (n1,n2) if n1 < n2 else (n2, n1)
 
-            self.graph[(n1, n2)] = clf
+            if idx_tuple not in self.graph.keys():
+                clf = self.classify_edge(edge, X, n_average=self.n_average, clf_args = self.clf_args)
+                self.edge_score[idx_tuple] = [clf.cv_score, clf.cv_score_std]
+
+                # printing out results
+                edge_info_update(edge, score[n1][n2], 0., clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
+
+                self.graph[(n1, n2)] = clf
             
         return self
         
@@ -166,13 +170,14 @@ class VGraph:
         while True:
             all_robust = True
             if n_cluster == 1:
+                self.history.append([-1, np.copy(self.cluster_label), deepcopy(self.nn_list)])
                 break
             worst_effect_cv = 10
             worst_edge = -1
             score_list = []
             edge_list = []
             yunique = np.unique(self.cluster_label)
-            score_dict = {yu: {} for yu in yunique} 
+            score_dict = {yu: {} for yu in yunique}
             for edge, clf in self.graph.items():
                 # can do better at selecting edge, also displaying edges ... 
                 effect_score = clf.cv_score - clf.cv_score_std
@@ -180,6 +185,9 @@ class VGraph:
                 edge_list.append(edge)
                 score_dict[edge[0]][edge[1]] = effect_score
                 score_dict[edge[1]][edge[0]] = effect_score
+                if effect_score < worst_edge_cv:
+                    worst_effect_cv = effect_score
+                    worst_edge = (edge[0], edge[1])
             
             for n1, v in score_dict.items():
                 for n2, score_value in v.items():
@@ -194,7 +202,14 @@ class VGraph:
                 k, v = list(n_dict.keys()), list(n_dict.values())
                 asort_edge = np.argsort(v) # we want largest value
                 nn = k[asort_edge[0]] # node it should be merged with if certainty is high
-                certainty_value = v[asort_edge[1]]-v[asort_edge[0]]
+                if len(asort_edge) > 1:
+                    certainty_value = v[asort_edge[1]]-v[asort_edge[0]]
+                else:
+                    # here there is only one edge left. So merge this edge if it has the lowest score of all.
+                    idx_tmp = (cluster_idx, k) if cluster_idx < k else (k, cluster_idx)
+                    if worst_edge == idx_tmp:
+                        certainty_value = 10. # trick !
+                # ----------------> 
                 certainty_node[cluster_idx] = [certainty_value, nn]
                 if certainty_value > max_certainty:
                     max_certainty = certainty_value
@@ -213,7 +228,7 @@ class VGraph:
             print('[vgraph.py]    Merging edge %i --- %i\t'%(edge_merge[0], edge_merge[1]),'with certainty=\t%.4f'%max_certainty)
 
             if all_robust is False:
-                
+
                 n_cluster = self.init_n_cluster - self.current_n_merge - 1
                 n1, n2 = edge_merge
                 merge_info(n1, n2, score_dict[n1][n2], self.current_max_label, n_cluster, fout = self.fout)
