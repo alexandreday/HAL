@@ -99,74 +99,90 @@ class VAC:
 
         print("[vac.py]    There are %i clusters remaining"% len(np.unique(self.cluster_pure_label)))
         print("[vac.py]    There are %i data points remaining"% len(self.cluster_pure_label))
+
         return self.idx_in, self.idx_boundary, self.idx_out
         
     def get_purify_result(self):
         """ Returns idx_in, idx_boundary, idx_out """
         return self.idx_in, self.idx_boundary, self.idx_out
         
-    def fit_raw_graph(self, X_original, y_pred, n_average = 10, n_edge = 2, clf_args = None):
+    def fit_raw_graph(self, X_inlier, y_inlier_pred, n_average = 10, n_edge = 2, clf_args = None):
         self.VGraph = VGraph(clf_type='rf', n_average = n_average, clf_args=clf_args, n_edge = n_edge)
-        self.VGraph.fit(X_original, y_pred)
-        self.cluster_label = y_pred
+        self.VGraph.fit(X_inlier, y_inlier_pred)
         
-    def fit_robust_graph(self, X_original, cv_robust = 0.99):
+    def fit_robust_graph(self, X_inlier, y_inlier_pred, cv_robust = 0.99):
         """ Takes worst edges found using raw_graph method and performs retraining on those edges 
         with more expressive classifiers ( = more costly computationally)
         """
-        #print("here")
-        self.VGraph.merge_until_robust(X_original, cv_robust)
+        self.VGraph.merge_until_robust(X_inlier, y_inlier_pred, cv_robust, self.boundary_ratio)
 
     def identify_boundary(self, nn_list):
         """ Iterates over all cluster and marks "boundary" points """
 
-        y_mask = np.copy(self.cluster_label)
-        y_unique = np.unique(self.cluster_label)
+        #y_mask = np.copy(self.cluster_label)
         idx_all = np.arange(len(self.cluster_label))
+        y_mask = self.mask_boundary_cluster(nn_list)
 
-        for yu in y_unique:
-            self.mask_boundary_cluster(y_mask, yu, nn_list)
-    
         idx_in_boundary = idx_all[(y_mask == -1)]
         idx_in_pure = idx_all[(y_mask != -1)]
+
         return idx_in_boundary, idx_in_pure
 
-    def mask_boundary_cluster(self, y_mask, cluster_number, nn_list):
+    def mask_boundary_cluster(self, nn_list):
         # check for points have that multiple points in their neighborhood
         # that do not have the same label as them
 
+        # construct list of arrays (mix types) the following form :
+        # {cluster_main : [idx_cluster_secondary, idx_wrt_in]}
+        #  
+        y_mask = np.copy(self.cluster_label)
         n_sample = len(y_mask)
-        pos = (y_mask == cluster_number)
-        nn = nn_list[pos][:,1:] # nn of cluster members
-        idx_sub = np.arange(n_sample)[pos]
-        n_neighbor = len(nn[0])
+        y_unique = np.unique(self.cluster_label)
+
+        for cluster_number in y_unique:
+
+            pos = (y_mask == cluster_number)
+            nn = nn_list[pos][:,1:] # nn of cluster members, dim = (n_cluster_member, nh_size)
+            idx_sub = np.arange(n_sample)[pos]
+            n_neighbor = len(nn[0])
     
         # we want to access boundary ratios in the following ez way
         # dict of cluster labels to boundary points
         # boundary points have a list of ratios [dict again cuz you need to know with respect to which cluster that is]
     
-        r1 = [] # purity ratios
-        idx_unpure = []
+            r1 = [] # purity ratios
+            idx_unpure = []
+            
+            boundary_ratios = []
+            for i, n in enumerate(nn): 
+                # For each point in the cluster, compute purity ratio (based on it's neighbors)
+                # 
+                l1 = self.cluster_label[n]
+                count_l1 = Counter(l1)
+
+                kmax = max(count_l1.items(), key=lambda k: count_l1[k[0]])[0]
+
+                count_l1 = {k: v / n_neighbor for k, v in count_l1.items()} # keep track of those only for boundary terms
+            
+                # Notes to me: when merging two clusters -> recover overlapping boundary
+                # remaining boundary should be added to the new cluster. i.e. every cluster has a boundary
+                ratio = count_l1[cluster_number]
+                if ratio < self.nn_pure_ratio:      # is a boundary term
+                    idx_unpure.append(idx_sub[i])
+                    boundary_ratios.append([kmax, idx_sub[i]])
+                    #boundary_ratios.append([idx_sub[i], kmax, count_l1[kmax]]) # [idx_original, cluster to merge with, ratio (not useful really)]
+                
+            self.boundary_ratio[cluster_number] = boundary_ratios
+                    # ------ --------- ------------ ----------------------- -------------------- 
+            
+            #-> for every cluster. There neighboring cluster with largest 
+            # when merging clusters later on, just look at self.boundary_ratio[cluster_number]
+            # then loop over the points of the cluster. If points have a kmax == other cluster, then remove those, and use idx
+            # for forming new cluster. Reindex self.boundary_ratio with new cluster label. 
+
+            y_mask[np.array(idx_unpure)] = -1 #masking boundary terms
         
-        boundary_ratios = []
-        for i, n in enumerate(nn):
-            l1 = self.cluster_label[n]
-            count_l1 = Counter(l1)
-            #print(count_l1)
-            kmax = max(count_l1.items(), key=lambda k: count_l1[k[0]])[0]
-            #print(kmax)l
-            count_l1 = {k: v / n_neighbor for k, v in count_l1.items()} # keep track of those only for boundary terms
-        
-            # Notes to me: when merging two clusters -> recover overlapping boundary
-            # remaining boundary should be added to the new cluster. i.e. every cluster has a boundary
-            ratio = count_l1[cluster_number]
-            if ratio < self.nn_pure_ratio:      # is a boundary term
-                idx_unpure.append(idx_sub[i])
-                boundary_ratios.append([idx_sub[i], kmax, count_l1[kmax]])
-                # ------ --------- ------------ ----------------------- -------------------- 
-        
-        self.boundary_ratio[cluster_number] = boundary_ratios
-        y_mask[np.array(idx_unpure)] = -1 #masking boundary terms
+        return y_mask
 
     def save(self, name=None):
         """ Saves current model to specified path 'name' """

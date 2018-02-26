@@ -40,6 +40,7 @@ class VGraph:
         """
 
         y_unique = np.unique(y_pred)
+        y_unique = y_unique[y_unique >=0] # boundary terms are marked by -1 for now .
         n_cluster = len(y_unique)
         n_iteration = (n_cluster*(n_cluster-1))/2
         n_edge = self.n_edge
@@ -158,7 +159,15 @@ class VGraph:
         
         return CLF(clf_type=self.clf_type, n_average=n_average, test_size=self.test_size_ratio, clf_args=clf_args).fit(Xsubset, ysubset)
     
-    def merge_until_robust(self, X, cv_robust):
+    def merge_until_robust(self, X_in, y_in, cv_robust, ratio_dict):
+        """
+        Merges cluster based on certainty metric
+
+        X_in : inliers features in the original space
+        y_in : inliers labels
+
+        --> why not just work with X_in instead ==> so you don't have to reinclude stuff ... !
+        """ 
 
         yunique = np.unique(self.cluster_label)
         self.init_n_cluster = len(yunique)
@@ -235,8 +244,15 @@ class VGraph:
                 
                 n_cluster -= 1
                 # info before the merge -> this score goes with these labels            
+
                 self.history.append([score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list)])
+                
+                #self.reinclude_bounday(X
+
                 self.merge_edge(X, edge_merge)
+                # when merging edge should reinclude the boundary point ...
+                # 1. this will modify X. 2. this will modify self.cluster_label. 3. This will modify scores (better !)
+            
             else:
                 self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list)])
 
