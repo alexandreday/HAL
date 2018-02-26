@@ -269,38 +269,52 @@ class VGraph:
         # edge_tuple : edge being merged
 
         # >>>> First updating cluster labels :
-        remaining_element = []
+    
 
         i1, i2 = edge_tuple
+        remaining_element = {i1:[], i2:[]}
 
         for ii in [i1,i2]:
-            idx_boundary = np.array(self.ratio_dict[ii])
-            pos =  (idx_boundary[:,0] == i1) | (idx_boundary[:,0] == i2)
-            idx_in_boundary = idx_boundary[pos, 1]
-            remaining_element.append(idx_boundary[(pos == False), 1]) # this will go in new ratio dict slot.
-            self.cluster_label[idx_in_boundary] = new_label # ok once this is done, need to update ratio dict as well ... for neighbors and remove cluster
+            idx_boundary = self.ratio_dict[ii]
+            print(ii, idx_boundary)
+            if len(idx_boundary) > 0:
+                pos = (idx_boundary[:,0] == i1) | (idx_boundary[:,0] == i2)
+                idx_in_boundary = idx_boundary[pos, 1]
+                tmp = idx_boundary[(pos == False)]#, 1]
+                remaining_element[ii] = tmp
+                self.cluster_label[idx_in_boundary] = new_label # ok once this is done, need to update ratio dict as well ... for neighbors and remove cluster
 
-        self.ratio_dict[new_label] = np.vstack(remaining_element) # updated boundary.
+        print(remaining_element)
+        remain = []
+        for k, v in remaining_element.items():
+            for e in v:
+                remain.append(e)
+        if len(remain) > 0:
+            self.ratio_dict[new_label] = np.vstack(remain) # updated boundary.
+        else:
+            self.ratio_dict[new_label] = [] # updated boundary.
 
-        for k, v in self.ratio_dict:
-            c2_and_idx = v
-            pos = (idx_boundary[:,0] == i1) | (idx_boundary[:,0] == i2)
-            v[pos,0] = new_label 
+
+        for k, v in self.ratio_dict.items():
+            if len(v) > 0:
+                pos = (v[:,0] == i1) | (v[:,0] == i2)
+                v[pos,0] = new_label 
 
     def merge_edge(self, X, edge_tuple, ratio_dict):
         """ relabels data according to merging, and recomputing new classifiers for new edges """
         
         idx_1, idx_2 = edge_tuple
+        new_cluster_label = self.current_max_label
+
+
         pos_1 = (self.cluster_label == idx_1)
         pos_2 = (self.cluster_label == idx_2)
-        new_cluster_label = self.current_max_label
-        
+
         self.cluster_label[pos_1] = new_cluster_label   # updating labels !
         self.cluster_label[pos_2] = new_cluster_label   # updating labels !
 
-        ratio_dict
+        self.update_ratio_dict(edge_tuple, new_cluster_label) # will also update self.cluster_label for merging
 
-        
         self.current_n_merge += 1
         self.current_max_label += 1 
 

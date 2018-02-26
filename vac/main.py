@@ -161,8 +161,11 @@ class VAC:
                 # 
                 l1 = self.cluster_label[n]
                 count_l1 = Counter(l1)
-
-                kmax = max(count_l1.items(), key=lambda k: count_l1[k[0]])[0]
+                k, v = list(count_l1.keys()), list(count_l1.values())
+                sort_count = np.argsort(v)
+                kmax = k[sort_count[-1]]
+    
+                #kmax = max(count_l1.items(), key=lambda k: count_l1[k[0]])[0]
 
                 count_l1 = {k: v / n_neighbor for k, v in count_l1.items()} # keep track of those only for boundary terms
             
@@ -171,7 +174,8 @@ class VAC:
                 ratio = count_l1[cluster_number]
                 if ratio < self.nn_pure_ratio:      # is a boundary term
                     idx_unpure.append(idx_sub[i])
-                    boundary_ratios.append([kmax, idx_sub[i]])
+                    # implies there is an overlap
+                    boundary_ratios.append([k[sort_count[-2]], idx_sub[i]])
                     #boundary_ratios.append([idx_sub[i], kmax, count_l1[kmax]]) # [idx_original, cluster to merge with, ratio (not useful really)]
                 
             self.boundary_ratio[cluster_number] = np.array(boundary_ratios)
