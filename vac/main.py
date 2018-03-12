@@ -144,8 +144,8 @@ class VAC:
         for cluster_number in y_unique:
 
             pos = (y_mask == cluster_number)
-            nn = nn_list[pos][:,1:] # nn of cluster members, dim = (n_cluster_member, nh_size)
-            idx_sub = np.arange(n_sample)[pos]
+            nn = nn_list[pos][:,1:] # nn of cluster members, dim = (n_cluster_member, nh_size-1)
+            idx_sub = np.arange(n_sample)[pos] # idx for pure + boundary (removed outliers)
             n_neighbor = len(nn[0])
     
         # we want to access boundary ratios in the following ez way
@@ -154,11 +154,10 @@ class VAC:
     
             r1 = [] # purity ratios
             idx_unpure = []
-            
             boundary_ratios = []
+
             for i, n in enumerate(nn): 
-                # For each point in the cluster, compute purity ratio (based on it's neighbors)
-                # 
+                # For each point in the cluster, compute purity ratio (based on it's neighbors) 
                 l1 = self.cluster_label[n]
                 count_l1 = Counter(l1)
                 k, v = list(count_l1.keys()), list(count_l1.values())
