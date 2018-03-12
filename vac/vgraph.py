@@ -274,17 +274,20 @@ class VGraph:
         i1, i2 = edge_tuple
         remaining_element = {i1:[], i2:[]}
 
-        for ii in [i1,i2]:
-            idx_boundary = self.ratio_dict[ii]
+        for ii in [i1,i2]: # go over each cluster of the edge boundaries
+            idx_boundary = self.ratio_dict[ii] # if the point is on the boundary between the two being merge, include it in the merge.
             #print(ii, idx_boundary)
             if len(idx_boundary) > 0:
-                pos = (idx_boundary[:,0] == i1) | (idx_boundary[:,0] == i2)
-                idx_in_boundary = idx_boundary[pos, 1]
-                tmp = idx_boundary[(pos == False)]# points that are merged with other clusters (than i1, i2) ...
+
+                cond_1 = (idx_boundary[:,0] == i1) & (idx_boundary[:,1] == i2) # is this condition ok ?
+                cond_2 = (idx_boundary[:,1] == i1) & (idx_boundary[:,0] == i2)
+                cond = cond1 | cond_2
+
+                idx_in_boundary = idx_boundary[cond, 2]
+                tmp = idx_boundary[(cond == False)]# points that are merged with other clusters...
                 remaining_element[ii] = tmp
                 self.cluster_label[idx_in_boundary] = new_label # ok once this is done, need to update ratio dict as well ... for neighbors and remove cluster
 
-        #print(remaining_element)
         remain = []
         for k, v in remaining_element.items():
             for e in v:
@@ -296,10 +299,12 @@ class VGraph:
 
         for k, v in self.ratio_dict.items():
             if len(v) > 0:
-                pos = (v[:,0] == i1) | (v[:,0] == i2_
+                pos = (v[:,0] == i1) | (v[:,0] == i2)
                 v[pos,0] = new_label
-        
-        def merge_edge(self, X, edge_tuple, ratio_dict):
+                pos = (v[:,1] == i1) | (v[:,1] == i2)
+                v[pos,1] = new_label
+
+    def merge_edge(self, X, edge_tuple, ratio_dict):
         """ relabels data according to merging, and recomputing new classifiers for new edges """
         
         idx_1, idx_2 = edge_tuple

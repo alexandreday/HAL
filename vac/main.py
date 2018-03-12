@@ -174,9 +174,8 @@ class VAC:
                 if ratio < self.nn_pure_ratio:      # is a boundary term
                     idx_unpure.append(idx_sub[i])
                     # implies there is an overlap
-                    boundary_ratios.append([k[sort_count[-2]], idx_sub[i]]) # ratio dict => 
+                    boundary_ratios.append([k[sort_count[-1]], k[sort_count[-2]], idx_sub[i]])  # ratio dict => 
                     #boundary_ratios.append([idx_sub[i], kmax, count_l1[kmax]]) # [idx_original, cluster to merge with, ratio (not useful really)]
-                
             self.boundary_ratio[cluster_number] = np.array(boundary_ratios)
             # For every cluster there are multiple boundary points.
             # This is stored as an array : dict(cluster_number) -> np.array([2nd cluster to merge with, idx])
