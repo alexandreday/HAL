@@ -276,7 +276,7 @@ class VGraph:
 
         for ii in [i1,i2]:
             idx_boundary = self.ratio_dict[ii]
-            print(ii, idx_boundary)
+            #print(ii, idx_boundary)
             if len(idx_boundary) > 0:
                 pos = (idx_boundary[:,0] == i1) | (idx_boundary[:,0] == i2)
                 idx_in_boundary = idx_boundary[pos, 1]
@@ -284,7 +284,7 @@ class VGraph:
                 remaining_element[ii] = tmp
                 self.cluster_label[idx_in_boundary] = new_label # ok once this is done, need to update ratio dict as well ... for neighbors and remove cluster
 
-        print(remaining_element)
+        #print(remaining_element)
         remain = []
         for k, v in remaining_element.items():
             for e in v:
