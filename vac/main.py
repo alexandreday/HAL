@@ -136,14 +136,14 @@ class VAC:
 
         # construct list of arrays (mix types) the following form :
         # {cluster_main : [idx_cluster_secondary, idx_wrt_in]}
-        #  
+        # 
         y_mask = np.copy(self.cluster_label)
         n_sample = len(y_mask)
         y_unique = np.unique(self.cluster_label)
 
         for cluster_number in y_unique:
-
             pos = (y_mask == cluster_number)
+            # here maybe we want a larger neighborhood size
             nn = nn_list[pos][:,1:] # nn of cluster members, dim = (n_cluster_member, nh_size-1)
             idx_sub = np.arange(n_sample)[pos] # idx for pure + boundary (removed outliers)
             n_neighbor = len(nn[0])
@@ -174,12 +174,14 @@ class VAC:
                 if ratio < self.nn_pure_ratio:      # is a boundary term
                     idx_unpure.append(idx_sub[i])
                     # implies there is an overlap
-                    boundary_ratios.append([k[sort_count[-2]], idx_sub[i]])
+                    boundary_ratios.append([k[sort_count[-2]], idx_sub[i]]) # ratio dict => 
                     #boundary_ratios.append([idx_sub[i], kmax, count_l1[kmax]]) # [idx_original, cluster to merge with, ratio (not useful really)]
                 
             self.boundary_ratio[cluster_number] = np.array(boundary_ratios)
-                    # ------ --------- ------------ ----------------------- -------------------- 
-            
+            # For every cluster there are multiple boundary points.
+            # This is stored as an array : dict(cluster_number) -> np.array([2nd cluster to merge with, idx])
+            # idx is boundary + pure (no outliers here)
+
             #-> for every cluster. There neighboring cluster with largest 
             # when merging clusters later on, just look at self.boundary_ratio[cluster_number]
             # then loop over the points of the cluster. If points have a kmax == other cluster, then remove those, and use idx

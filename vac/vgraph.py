@@ -39,7 +39,7 @@ class VGraph:
             Number of edges for each node (worst ones)
         """
 
-        y_unique = np.unique(y_pred)
+        y_unique = np.unique(y_pred) # keep -1 since we want to add their labels later on !
         y_unique = y_unique[y_unique >=0] # boundary terms are marked by -1 for now .
         n_cluster = len(y_unique)
         n_iteration = (n_cluster*(n_cluster-1))/2
@@ -188,7 +188,7 @@ class VGraph:
             worst_edge = -1
             score_list = []
             edge_list = []
-            yunique = np.unique(self.cluster_label)
+            yunique = np.unique(self.cluster_label) # > how would you prepare this ?
             yunique = yunique[yunique >=0] # remove boundary !
 
             score_dict = {yu:{} for yu in yunique}
@@ -218,12 +218,13 @@ class VGraph:
                 asort_edge = np.argsort(v) # we want largest value
                 nn = k[asort_edge[0]] # node it should be merged with if certainty is high
                 if len(asort_edge) > 1:
-                    certainty_value = v[asort_edge[1]]-v[asort_edge[0]]
+                    certainty_value = v[asort_edge[1]]-v[asort_edge[0]] # certainty value for each edge
                 else:
                     # here there is only one edge left. So merge this edge if it has the lowest score of all.
                     idx_tmp = (cluster_idx, k) if cluster_idx < k else (k, cluster_idx)
                     if worst_edge == idx_tmp:
                         certainty_value = 10. # trick !
+
                 # ----------------> 
                 certainty_node[cluster_idx] = [certainty_value, nn]
                 if certainty_value > max_certainty:
@@ -269,7 +270,6 @@ class VGraph:
         # edge_tuple : edge being merged
 
         # >>>> First updating cluster labels :
-    
 
         i1, i2 = edge_tuple
         remaining_element = {i1:[], i2:[]}
@@ -280,7 +280,7 @@ class VGraph:
             if len(idx_boundary) > 0:
                 pos = (idx_boundary[:,0] == i1) | (idx_boundary[:,0] == i2)
                 idx_in_boundary = idx_boundary[pos, 1]
-                tmp = idx_boundary[(pos == False)]#, 1]
+                tmp = idx_boundary[(pos == False)]# points that are merged with other clusters (than i1, i2) ...
                 remaining_element[ii] = tmp
                 self.cluster_label[idx_in_boundary] = new_label # ok once this is done, need to update ratio dict as well ... for neighbors and remove cluster
 
@@ -294,18 +294,16 @@ class VGraph:
         else:
             self.ratio_dict[new_label] = [] # updated boundary.
 
-
         for k, v in self.ratio_dict.items():
             if len(v) > 0:
-                pos = (v[:,0] == i1) | (v[:,0] == i2)
-                v[pos,0] = new_label 
-
-    def merge_edge(self, X, edge_tuple, ratio_dict):
+                pos = (v[:,0] == i1) | (v[:,0] == i2_
+                v[pos,0] = new_label
+        
+        def merge_edge(self, X, edge_tuple, ratio_dict):
         """ relabels data according to merging, and recomputing new classifiers for new edges """
         
         idx_1, idx_2 = edge_tuple
         new_cluster_label = self.current_max_label
-
 
         pos_1 = (self.cluster_label == idx_1)
         pos_2 = (self.cluster_label == idx_2)
@@ -322,14 +320,14 @@ class VGraph:
         idx_to_del = set([])    # avoids duplicates
 
         for e in self.nn_list[idx_1]:
-            if e<idx_1:
+            if e < idx_1:
                 idx_to_del.add((e, idx_1))
             else:
                 idx_to_del.add((idx_1, e))
             new_idx.append(e)
 
         for e in self.nn_list[idx_2]:
-            if e<idx_2:
+            if e < idx_2:
                 idx_to_del.add((e, idx_2))
             else:
                 idx_to_del.add((idx_2, e))
