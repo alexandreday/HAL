@@ -114,7 +114,7 @@ class TREE:
             c_node = self.root
             score = c_node.scale
             while score > cv :
-                new_id = self.clf_dict[c_node.get_id()].predict([x],option='fast')
+                new_id = self.clf_dict[c_node.get_id()].predict([x], option='fast')
                 c_node = self.node_dict[new_id[0]]
                 score = c_node.scale
             ypred[i] = c_node.parent.get_id()
