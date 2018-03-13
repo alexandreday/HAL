@@ -182,7 +182,7 @@ class VGraph:
         while True:
             all_robust = True
             if n_cluster == 1:
-                self.history.append([-1, np.copy(self.cluster_label), deepcopy(self.nn_list)])
+                self.history.append([-1, np.copy(self.cluster_label), deepcopy(self.nn_list),-1,-1])
                 break
             worst_effect_cv = 10
             worst_edge = -1
@@ -194,7 +194,6 @@ class VGraph:
             score_dict = {yu:{} for yu in yunique}
 
             for edge, clf in self.graph.items():
-                # Can do better at selecting edge, also displaying edges ... 
                 effect_score = clf.cv_score - clf.cv_score_std
                 score_list.append(effect_score)
                 edge_list.append(edge)
@@ -252,8 +251,9 @@ class VGraph:
                 
                 n_cluster -= 1
                 # info before the merge -> this score goes with these labels            
+                self.edge_score
 
-                self.history.append([score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list)])
+                self.history.append([score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list),(n1,n2, self.current_max_label),deepcopy(self.graph[(n1,n2)])])
                 
                 #self.reinclude_bounday(X ===> here)
 
@@ -262,7 +262,7 @@ class VGraph:
                 # 1. this will modify X. 2. this will modify self.cluster_label. 3. This will modify scores (better !)
             
             else:
-                self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list)])
+                self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list), -1, -1])
 
                 break
 
