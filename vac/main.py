@@ -8,8 +8,7 @@ from collections import Counter
 class VAC:
 
     def __init__(self, density_clf = None, outlier_ratio=0.2, nn_pure_ratio=0.9, min_size_cluster=20):
-        """
-        pass in a density classifier, need to be able to get labels and compute a density map
+        """pass in a density classifier, need to be able to get labels and compute a density map
         """
         
         if density_clf is None:
@@ -138,6 +137,7 @@ class VAC:
         # {cluster_main : [idx_cluster_secondary, idx_wrt_in]}
         # 
         y_mask = np.copy(self.cluster_label)
+
         n_sample = len(y_mask)
         y_unique = np.unique(self.cluster_label)
 
@@ -185,8 +185,9 @@ class VAC:
             # when merging clusters later on, just look at self.boundary_ratio[cluster_number]
             # then loop over the points of the cluster. If points have a kmax == other cluster, then remove those, and use idx
             # for forming new cluster. Reindex self.boundary_ratio with new cluster label. 
-
-            y_mask[np.array(idx_unpure)] = -1 #masking boundary terms
+            
+            if len(idx_unpure) > 0:
+                y_mask[np.array(idx_unpure)] = -1 #masking boundary terms
         
         return y_mask
 
