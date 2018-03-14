@@ -33,9 +33,13 @@ class VAC:
         Returns
         -----------
 
-        idx_in, idx_boundary, idx_out
+        idx_pure_big, idx_pure_small, idx_out, idx_boundary
 
         """
+        self.printvac('Outlier ratio = %.3f'%self.outlier_ratio)
+
+        self.idx_sets = {}
+
         n_sample = len(X)
 
         # Compute "outliers" based on density
@@ -44,68 +48,87 @@ class VAC:
         asort = np.argsort(rho)
         
         n_out = int(self.outlier_ratio*n_sample)
-        idx_inliers = np.sort(asort[n_out:])
-        idx_low_rho = np.sort(asort[:n_out])
+        
+        self.idx_sets={}
+        self.label_sets= {}
+        self.idx_sets[('all','inliers')] = np.sort(asort[n_out:])
+        self.idx_sets[('all','outliers')] =  np.sort(asort[:n_out])
+
+        print('[vac.py]    Number of inliers = %i, Number of outliers = %i'%(len(self.idx_sets[('all','inliers')]), len(self.idx_sets[('all','outliers')])))
+
         eta = self.density_clf.eta
         self.density_clf.reset()
         self.density_clf.eta = 0.0
 
         # Refit density model on remaining data points:
-        self.density_clf.fit(X[idx_inliers])
+        self.density_clf.fit(X[self.idx_sets[('all','inliers')]])
         self.density_clf.eta = eta
         self.density_clf.coarse_grain(np.linspace(0., eta, 10)) # soft merging is usually better 
-        self.cluster_label = self.density_clf.cluster_label # this is important // labels for later ...
+        self.label_sets[('all','inliers')] = self.density_clf.cluster_label
         
         # Mark boundary point 
-        idx_in_boundary, idx_in_pure = self.identify_boundary(self.density_clf.nn_list) # computed idx of inliers that are 'pure'
-        self.idx_boundary = idx_inliers[idx_in_boundary] # w.r.t to original data points
-        idx_pure = idx_inliers[idx_in_pure] # w.r.t to original data points
+        self.identify_boundary(self.density_clf.nn_list) # computed idx of inliers that are 'pure'
 
-        # Finally ... remove clusters that are too small [those should go in the outlier category, i.e. they will be post-classified]        
-        cluster_label_pure = self.cluster_label[idx_in_pure] # (>_<) labels
-        self.cluster_label_in = np.copy(self.cluster_label)
-        self.cluster_label_in[idx_in_boundary] = -1
+        print('[vac.py]    Number of boundary inliers = %i, Number of pure inliers = %i'%(len(self.idx_sets[('inliers','boundary')]), len(self.idx_sets[('inliers','pure')])))
         
-        # Here it comes ... 
-        count = Counter(cluster_label_pure)
+        self.idx_sets[('all','boundary')] = self.idx_sets[('all','inliers')][self.idx_sets[('inliers','boundary')]]
+        self.idx_sets[('all','pure')] = self.idx_sets[('all','inliers')][self.idx_sets[('inliers','pure')]]
+        
+        # Finally ... remove clusters that are too small [those should go in the outlier category, i.e. they will be post-classified]        
+        
+        cluster_label_pure = self.label_sets[('all','inliers')][self.idx_sets[('inliers','pure')]]
+
+        # Partitioning pure elements into small and big clusters
+
         idx_big = []
         idx_small = [] 
-        # -------- -------- --------- --------- ---------- ----------- ----------- 
 
-        for k, v in count.items():
-            if v >= self.min_size_cluster:
-                idx_big.append(np.where(cluster_label_pure == k)[0])
+        unique_label = np.unique(cluster_label_pure)
+        for ul in unique_label:
+            idx_tmp = np.where(cluster_label_pure == ul)[0]
+            if len(idx_tmp) >= self.min_size_cluster:
+                idx_big.append(idx_tmp)
             else:
-                idx_small.append(np.where(cluster_label_pure == k)[0])
+                idx_small.append(idx_tmp)
         
         # Large enough clusters
         print("[vac.py]    Removing %i clusters since they are too small (< min_size_cluster) ..."% len(idx_small))
         assert len(idx_big) > 0, 'Assert false, no cluster is large enough, consider changing purity and outlier ratios !'
         
         # ----------------> 
-        idx_in_pure_large = np.hstack(idx_big)
-
-        self.cluster_pure_label = cluster_label_pure[idx_in_pure_large] # labels of points that will be used for classification 
-        self.cluster_boundary_label = self.cluster_label[idx_in_boundary]
-
-        self.idx_in = idx_pure[idx_in_pure_large] # (1st set --> <--) 
+        self.idx_sets[('pure','big')] = np.hstack(idx_big)
+        self.label_sets[('pure','big')] = cluster_label_pure[self.idx_sets[('pure','big')]] # these labels are absolute, and used for classification
     
         if len(idx_small) > 0:
-            idx_in_pure_small = np.hstack(idx_small)
-            self.idx_out = np.hstack((idx_low_rho, idx_pure[idx_in_pure_small]))
+            self.idx_sets[('pure','small')] = np.hstack(idx_small)
         else:
-            self.idx_out = idx_low_rho
+            self.idx_sets[('pure','small')] = []
 
         # --------- boundaries would need to be remerged -------> 
+        # Now print all important information
 
-        print("[vac.py]    There are %i clusters remaining"% len(np.unique(self.cluster_pure_label)))
-        print("[vac.py]    There are %i data points remaining"% len(self.cluster_pure_label))
+        nout, nb, nlarge, nsmall =len(self.idx_sets[('all','outliers')]),len(self.idx_sets[('inliers','boundary')]),len(self.idx_sets[('pure','big')]),len(self.idx_sets[('pure','small')])
 
-        return self.idx_in, self.idx_boundary, self.idx_out
+        self.printvac('Number of outlier pts  = %i'%len(self.idx_sets[('all','outliers')]))
+        self.printvac('Number of boundary pts = %i'%len(self.idx_sets[('inliers','boundary')]))
+        self.printvac('Number of pure pts in large clusters = %i'%len(self.idx_sets[('pure','big')]))
+        self.printvac('Number of pure pts in small clusters = %i'%len(self.idx_sets[('pure','small')]))
+
+        idx_pure_big = self.idx_sets[('all','pure')][self.idx_sets[('pure','big')]]
+        idx_pure_small = self.idx_sets[('all','pure')][self.idx_sets[('pure','small')]]
+        idx_out = self.idx_sets[('all','outliers')]
+        idx_boundary = self.idx_sets[('all','inliers')][self.idx_sets[('inliers','boundary')]]
+
+        return idx_pure_big, idx_pure_small, idx_out, idx_boundary
         
     def get_purify_result(self):
-        """ Returns idx_in, idx_boundary, idx_out """
-        return self.idx_in, self.idx_boundary, self.idx_out
+        """ Returns idx_pure_big, idx_pure_small, idx_out, idx_boundary """
+        idx_pure_big = self.idx_sets[('all','pure')][self.idx_sets[('pure','big')]]
+        idx_pure_small = self.idx_sets[('all','pure')][self.idx_sets[('pure','small')]]
+        idx_out = self.idx_sets[('all','outliers')]
+        idx_boundary = self.idx_sets[('all','inliers')][self.idx_sets[('inliers','boundary')]]
+
+        return idx_pure_big, idx_pure_small, idx_out, idx_boundary
     
     def get_ypred_bound_and_clf(self):
         """ Returns the label ypred for the clusters and -1 for the boundary. The labels are concatenated (pure_label, boundary_label) """
@@ -115,24 +138,21 @@ class VAC:
         self.VGraph = VGraph(clf_type='rf', n_average = n_average, clf_args=clf_args, n_edge = n_edge)
         self.VGraph.fit(X_inlier, y_inlier_pred)
         
-    def fit_robust_graph(self, X_inlier, y_inlier_pred, cv_robust = 0.99):
+    def fit_robust_graph(self, X_inlier, cv_robust = 0.99):
         """ Takes worst edges found using raw_graph method and performs retraining on those edges 
         with more expressive classifiers ( = more costly computationally)
         """
-        self.VGraph.merge_until_robust(X_inlier, y_inlier_pred, cv_robust, self.boundary_ratio)
+        self.VGraph.merge_until_robust(X_inlier, cv_robust, self.boundary_ratio)
 
     def identify_boundary(self, nn_list):
         """ Iterates over all cluster and marks "boundary" points """
 
-        #y_mask = np.copy(self.cluster_label)
-        idx_all = np.arange(len(self.cluster_label))
+        idx_all = np.arange(len(self.label_sets[('all','inliers')]))
         y_mask = self.mask_boundary_cluster(nn_list)
 
-        idx_in_boundary = idx_all[(y_mask == -1)]
-        idx_in_pure = idx_all[(y_mask != -1)]
-
-        return idx_in_boundary, idx_in_pure
-
+        self.idx_sets[('inliers','boundary')] = idx_all[(y_mask == -1)]
+        self.idx_sets[('inliers','pure')] = idx_all[(y_mask != -1)]
+    
     def mask_boundary_cluster(self, nn_list):
         # check for points have that multiple points in their neighborhood
         # that do not have the same label as them
@@ -140,47 +160,44 @@ class VAC:
         # construct list of arrays (mix types) the following form :
         # {cluster_main : [idx_cluster_secondary, idx_wrt_in]}
         # 
-        y_mask = np.copy(self.cluster_label)
+        y_mask = np.copy(self.label_sets[('all','inliers')])
 
         n_sample = len(y_mask)
-        y_unique = np.unique(self.cluster_label)
+        y_unique = np.unique(y_mask)
 
         for cluster_number in y_unique:
-            pos = (y_mask == cluster_number)
+            pos = (y_mask == cluster_number) # checking the neighborhood of all members of these clusters
             # here maybe we want a larger neighborhood size
-            nn = nn_list[pos][:,1:] # nn of cluster members, dim = (n_cluster_member, nh_size-1)
+            nn_cluster = nn_list[pos][:,1:] # nn of cluster members, dim = (n_cluster_member, nh_size-1)
             idx_sub = np.arange(n_sample)[pos] # idx for pure + boundary (removed outliers)
-            n_neighbor = len(nn[0])
+            n_neighbor = len(nn_cluster[0])
     
         # we want to access boundary ratios in the following ez way
         # dict of cluster labels to boundary points
         # boundary points have a list of ratios [dict again cuz you need to know with respect to which cluster that is]
-    
-            r1 = [] # purity ratios
+
             idx_unpure = []
             boundary_ratios = []
 
-            for i, n in enumerate(nn): 
+            for i, nn_idx in enumerate(nn_cluster): 
                 # For each point in the cluster, compute purity ratio (based on it's neighbors) 
-                l1 = self.cluster_label[n]
-                count_l1 = Counter(l1)
-                k, v = list(count_l1.keys()), list(count_l1.values())
+                neighbor_labels = self.label_sets[('all','inliers')][nn_idx]
+                count_nl = Counter(neighbor_labels)
+                k, v = list(count_nl.keys()), list(count_nl.values())
                 sort_count = np.argsort(v)
-                kmax = k[sort_count[-1]]
-    
-                #kmax = max(count_l1.items(), key=lambda k: count_l1[k[0]])[0]
+                kmax = k[sort_count[-1]] # most common cluster
 
-                count_l1 = {k: v / n_neighbor for k, v in count_l1.items()} # keep track of those only for boundary terms
+                count_nl = {k: v / n_neighbor for k, v in count_nl.items()} # keep track of those only for boundary terms
             
                 # Notes to me: when merging two clusters -> recover overlapping boundary
                 # remaining boundary should be added to the new cluster. i.e. every cluster has a boundary
-                ratio = count_l1[cluster_number]
+                ratio = count_nl[cluster_number]
                 if ratio < self.nn_pure_ratio:      # is a boundary term
-                    idx_unpure.append(idx_sub[i])
+                    idx_unpure.append(idx_sub[i]) # w.r.t. to inliers fdc labels
                     # implies there is an overlap
-                    boundary_ratios.append([k[sort_count[-1]], k[sort_count[-2]], idx_sub[i]])  # ratio dict => 
-                    #boundary_ratios.append([idx_sub[i], kmax, count_l1[kmax]]) # [idx_original, cluster to merge with, ratio (not useful really)]
-            self.boundary_ratio[cluster_number] = np.array(boundary_ratios)
+                    boundary_ratios.append([k[sort_count[-1]], k[sort_count[-2]], idx_sub[i]])  # the index here is w.r.t. only to pure+boundary set
+                    
+            self.boundary_ratio[cluster_number] = np.array(boundary_ratios, dtype=int)
             # For every cluster there are multiple boundary points.
             # This is stored as an array : dict(cluster_number) -> np.array([2nd cluster to merge with, idx])
             # idx is boundary + pure (no outliers here)
@@ -208,6 +225,9 @@ class VAC:
             name = self.make_file_name()
         self.__dict__.update(pickle.load(open(name,'rb')).__dict__)
         return self
+
+    def printvac(self, s):
+        print('[vac.py]    %s'%s)
 
     def make_file_name(self):
         t_name = "clf_vgraph.pkl"

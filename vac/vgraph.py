@@ -34,7 +34,7 @@ class VGraph:
         X : array, shape = (n_sample, n_feature)
             Original space coordinates
         y_pred: array, shape = (n_sample,)
-            Cluster labels for each data point. Boundary points should be labelled by -1
+            Cluster labels for each data point. Boundary points should be labelled by -1 ***********************
         n_edge: int, default = 2
             Number of edges for each node (worst ones)
         """
@@ -159,12 +159,12 @@ class VGraph:
         
         return CLF(clf_type=self.clf_type, n_average=n_average, test_size=self.test_size_ratio, clf_args=clf_args).fit(Xsubset, ysubset)
     
-    def merge_until_robust(self, X_in, y_in, cv_robust, ratio_dict):
+    def merge_until_robust(self, X_in, cv_robust, ratio_dict):
         """
         Merges cluster based on certainty metric
 
         X_in : inliers features in the original space
-        y_in : inliers labels
+        
         ratio_dict : dict of cluster labels to list of boundary points for the cluster with info [majority_ratio_cluster_label, idx_in]
 
         --> why not just work with X_in instead ==> so you don't have to reinclude stuff ... !
@@ -253,7 +253,7 @@ class VGraph:
                 # info before the merge -> this score goes with these labels            
                 self.edge_score
 
-                self.history.append([score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list),(n1,n2, self.current_max_label),deepcopy(self.graph[(n1,n2)])])
+                self.history.append([score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list), (n1,n2, self.current_max_label), deepcopy(self.graph[(n1,n2)])])
                 
                 #self.reinclude_bounday(X ===> here)
 
@@ -283,7 +283,9 @@ class VGraph:
                 cond_2 = (idx_boundary[:,1] == i1) & (idx_boundary[:,0] == i2)
                 cond = cond_1 | cond_2
 
-                idx_in_boundary = idx_boundary[cond, 2]
+                idx_in_boundary = idx_boundary[cond, 2] # idx w.r.t. to .cluster_label
+                # bug here when merging with the boundary --> implies that 
+
                 tmp = idx_boundary[(cond == False)]# points that are merged with other clusters...
                 remaining_element[ii] = tmp
                 self.cluster_label[idx_in_boundary] = new_label # ok once this is done, need to update ratio dict as well ... for neighbors and remove cluster
