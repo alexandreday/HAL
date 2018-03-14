@@ -50,7 +50,7 @@ class VGraph:
         self.cluster_label = np.copy(y_pred)
 
         n_average_pre = 4 # don't bother with this now, we just want a rough idea of what is good and what is bad.
-        clf_args_pre = {'class_weight':'balanced', 'n_estimators': 30, 'max_features': 25}
+        clf_args_pre = {'class_weight':'balanced', 'n_estimators': 30, 'max_features': min([X.shape[1],200])}
         
         info = '[vgraph.py]    parameters:\t'+("n_average =%i"%n_average_pre)+'\t'+str(clf_args_pre)
         print(info)
