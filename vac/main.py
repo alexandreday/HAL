@@ -6,6 +6,7 @@ import pickle
 from collections import Counter
 
 class VAC:
+    """Validated agglomerative clustering"""
 
     def __init__(self, density_clf = None, outlier_ratio=0.2, nn_pure_ratio=0.9, min_size_cluster=20):
         """pass in a density classifier, need to be able to get labels and compute a density map
@@ -24,7 +25,6 @@ class VAC:
         # dict of cluster labels -> idx, cluster with largest overlap, ratio of overlap
 
     def get_pure_idx(self, X):
-
         """  Determines outliers and boundary points from X (low-dim points)
 
         self.idx_pure : idx of the pure points for the original array
@@ -106,6 +106,10 @@ class VAC:
     def get_purify_result(self):
         """ Returns idx_in, idx_boundary, idx_out """
         return self.idx_in, self.idx_boundary, self.idx_out
+    
+    def get_ypred_bound_and_clf(self):
+        """ Returns the label ypred for the clusters and -1 for the boundary. The labels are concatenated (pure_label, boundary_label) """
+        return np.hstack((self.cluster_pure_label,-1*np.ones(len(self.cluster_boundary_label),dtype=int)))
         
     def fit_raw_graph(self, X_inlier, y_inlier_pred, n_average = 10, n_edge = 2, clf_args = None):
         self.VGraph = VGraph(clf_type='rf', n_average = n_average, clf_args=clf_args, n_edge = n_edge)
