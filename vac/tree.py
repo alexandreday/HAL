@@ -106,11 +106,13 @@ class TREE:
             self.node_dict[idx_merge].add_child(c_node)
         
     def predict(self, X, cv=0.9):
+        print('Predicting on %i points'%len(X))
         #import time
         c_node = self.root
         ypred=-1*np.ones(len(X), dtype=int)
         for i, x in enumerate(X):
-            #print(i)
+            if (i+1) % 1000 == 0:
+                print(i)
             c_node = self.root
             score = c_node.scale
             while score > cv :
