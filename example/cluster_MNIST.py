@@ -18,13 +18,16 @@ ytrue = ytrue.astype(int).flatten()
 n_down_sample = 10000
 model = CLUSTER(n_down_sample=n_down_sample)
 
-tree = model.fit(X)
-#tree = pickle.load(open('myTree.pkl','rb'))
+#tree = model.fit(X)
+
+tree = pickle.load(open('myTree.pkl','rb'))
 
 Xtsne = pickle.load(open('tsne.pkl','rb'))
 plotting.cluster_w_label(Xtsne, ytrue[:n_down_sample])
 
-cv = 0.95
+plotting.select_data(Xtsne, ytrue[:n_down_sample], X[:n_down_sample], option='mnist',loop=True)
+exit()
+cv = 0.9
 
 ypred = tree.predict(StandardScaler().fit_transform(X[:n_down_sample]), cv=cv)
 np.savetxt('ypred_s=%.3f.txt'%cv, ypred)

@@ -63,7 +63,7 @@ class VAC:
         # Refit density model on remaining data points:
         self.density_clf.fit(X[self.idx_sets[('all','inliers')]])
         self.density_clf.eta = eta
-        self.density_clf.coarse_grain(np.linspace(0., eta, 10)) # soft merging is usually better 
+        self.density_clf.coarse_grain(np.linspace(0., eta, 20)) # soft merging is usually better 
         self.label_sets[('all','inliers')] = self.density_clf.cluster_label
         
         # Mark boundary point 
