@@ -124,15 +124,18 @@ class TREE:
         return ypred
 
     def feature_path_predict(self, x, cv=0.9):
+
         c_node = self.root
         feature_important = []
         c_node = self.root
         score = c_node.scale
+
         while score > cv :
             new_id = self.clf_dict[c_node.get_id()].predict([x], option='fast')
-            feature_important.append(self.clf_dict[c_node.get_id()].feature_importances_)
+            feature_important.append(self.clf_dict[c_node.get_id()].feature_importance())
             c_node = self.node_dict[new_id[0]]
             score = c_node.scale
+
         return c_node.parent.get_id(), feature_important
         
     def save(self, name=None):

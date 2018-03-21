@@ -6,38 +6,32 @@ from fdc import plotting
 from sklearn.decomposition import PCA
 import pickle
 
+# Link to your dataset
 p = "/Users/alexandreday/GitProject/tsne_visual/example/MNIST"
-
 X, ytrue = load_mnist(dataset="training", fmt="pandas", digits=np.arange(10), path=p)
-
-##Xtsne = pickle.load(open('tsne.pkl','rb'))
-#plotting.cluster_w_label(Xtsne, ytrue[:n_down_sample].astype(int).flatten())
-
 ytrue = ytrue.astype(int).flatten()
+# X is the data, y are the true labels
 
+# downsampling size
 n_down_sample = 10000
-model = CLUSTER(n_down_sample=n_down_sample)
 
-#tree = model.fit(X)
+model = CLUSTER(n_down_sample=n_down_sample, plot_inter=False)
+
+# don't forget to transform your data here. The clustering will only zscore it.
+tree = model.fit(X) # this will save your tree in myTree.pkl
 
 tree = pickle.load(open('myTree.pkl','rb'))
 
-Xtsne = pickle.load(open('tsne.pkl','rb'))
-plotting.cluster_w_label(Xtsne, ytrue[:n_down_sample])
+cv = 0.9 # choose your score
+ypred = tree.predict(StandardScaler().fit_transform(X[:n_down_sample]), cv=cv) # prediction on the samples used for training !
 
-plotting.select_data(Xtsne, ytrue[:n_down_sample], X[:n_down_sample], option='mnist',loop=True)
-exit()
-cv = 0.9
+np.savetxt('ypred_s=%.3f.txt'%cv, ypred) # save the labels
 
-ypred = tree.predict(StandardScaler().fit_transform(X[:n_down_sample]), cv=cv)
-np.savetxt('ypred_s=%.3f.txt'%cv, ypred)
+ypred = np.loadtxt('ypred_s=%.3f.txt'%cv) # load the labels
 
-ypred=np.loadtxt('ypred_s=%.3f.txt'%cv)
-from sklearn.metrics import normalized_mutual_info_score as NMI
-print('score: ', NMI(ypred, ytrue[:len(ypred)]))
+Xtsne = pickle.load(open('tsne.pkl','rb')) 
 
-plotting.cluster_w_label(Xtsne, ypred[:n_down_sample])
-
+plotting.cluster_w_label(Xtsne, ypred[:n_down_sample]) # plot the data
 
 
 
