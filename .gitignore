@@ -2,5 +2,6 @@ test/*
 *.pkl
 *.txt
 test
+example_BIO
 example
 
