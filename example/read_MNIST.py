@@ -26,6 +26,9 @@ def load_mnist(dataset="training", fmt="pandas",digits=np.arange(10), path="."):
     else:
         raise ValueError("dataset must be 'testing' or 'training'")
 
+    module_path = os.path.dirname(__file__)
+    print(module_path)
+
     flbl = open(fname_lbl, 'rb')
     magic_nr, size = struct.unpack(">II", flbl.read(8))
     lbl = pyarray("b", flbl.read())

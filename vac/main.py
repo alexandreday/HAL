@@ -37,7 +37,6 @@ class VAC:
 
         """
         self.printvac('Outlier ratio = %.3f'%self.outlier_ratio)
-
         self.idx_sets = {}
 
         n_sample = len(X)

@@ -20,6 +20,7 @@ model = CLUSTER(n_down_sample=n_down_sample, plot_inter=False)
 # don't forget to transform your data here. The clustering will only zscore it.
 tree = model.fit(X) # this will save your tree in myTree.pkl
 
+# d
 tree = pickle.load(open('myTree.pkl','rb'))
 
 cv = 0.9 # choose your score
