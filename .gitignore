@@ -5,3 +5,4 @@ test
 example_BIO
 example
 *.DS*
+vac/__pycache__*
