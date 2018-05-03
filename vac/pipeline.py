@@ -166,10 +166,9 @@ class CLUSTER():
 
         ######## Tree random forest classifer graph #############
         print(' == >> Fitting tree << == ')
-
         mytree = TREE(model_vac.VGraph.history, clf_args)
         mytree.fit(x_train)
-        pickle.dump(mytree, open(quick_name(root, 'tree', info_str),'wb'))
+        pickle.dump([mytree, ss], open(quick_name(root, 'tree', info_str),'wb'))
 
         # classifying tree, can predict on new data that is normalized beforehand
         # When running on new data, use mytree.predict(ss.transform(X)) to get labels !

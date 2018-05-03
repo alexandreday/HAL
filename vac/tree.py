@@ -92,7 +92,7 @@ class TREE:
         # building full tree here
         for nm in range(n_merge-2,0,-1): # already checked last "merge", 
             idx_1, idx_2, idx_merge = self.merge_and_clf[nm][3]
-            print(idx_1,idx_2, idx_merge)
+            #print(idx_1,idx_2, idx_merge)
             clf = self.merge_and_clf[nm][4]
             self.clf_dict[idx_merge] = clf
             self.node_dict[idx_merge].scale = clf.cv_score
@@ -112,7 +112,7 @@ class TREE:
         ypred=-1*np.ones(len(X), dtype=int)
         for i, x in enumerate(X):
             if (i+1) % 1000 == 0:
-                print(i)
+                print("[tree.py]   Prediction done on %i points"%(i+1))
             c_node = self.root
             score = c_node.scale
             while score > cv :
