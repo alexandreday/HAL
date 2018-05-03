@@ -11,6 +11,7 @@ from fdc import FDC, plotting
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from matplotlib import pyplot as plt
+import os
 
 def quick_name(root, object_name, para, ext=".pkl"):
     return root + object_name+"_"+para+".pkl"
@@ -96,17 +97,23 @@ class CLUSTER():
         if run_tSNE is True:
             model_tsne = TSNE(perplexity=param['perplexity'], n_iter=param['n_iteration_tsne'])
             X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X_zscore))
-            tsnefile = param['root'] + 'tsne_'+info_str+'.pkl'
+            tsnefile = param['root'] + 'tsne_perp=%i_niter=%i.pkl'%(param['perplexity'], param['n_iteration_tsne'])
+            #tsnefile = param['root'] + 'tsne_'+info_str+'.pkl'
             self.file_name['tsne'] = tsnefile
             print('t-SNE data saved in %s' % tsnefile)
             pickle.dump(X_tsne, open(tsnefile,'wb'))
-
         elif run_tSNE == 'auto':
-            tsnefile = param['root'] + 'tsne_'+info_str+'.pkl'
+            tsnefile = param['root'] + 'tsne_perp=%i_niter=%i.pkl'%(param['perplexity'], param['n_iteration_tsne'])
             self.file_name['tsne'] = tsnefile
-            X_tsne = pickle.load(open(tsnefile,'rb'))
+            if os.path.isfile(tsnefile):
+                X_tsne = pickle.load(open(tsnefile,'rb'))
+            else:
+                model_tsne = TSNE(perplexity=param['perplexity'], n_iter=param['n_iteration_tsne'])
+                X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X_zscore))
+                print('t-SNE data saved in %s' % tsnefile)
+                pickle.dump(X_tsne, open(tsnefile,'wb'))
         else:
-            X_tsne = pickle.load(open(self.run_tSNE,'rb'))
+            assert False
 
         ######################### Density clustering ###########################
 

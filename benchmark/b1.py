@@ -7,6 +7,10 @@ from fdc import plotting
 from collections import Counter
 from vac import metric
 
+
+########################## BENCHMARK ON easy artificial DATASET ################
+########################## Important for more involved examples ###############
+
 def main():
     root = '/Users/alexandreday/GitProject/VAC/benchmark/b1_results/'
     
@@ -16,7 +20,7 @@ def main():
     tree, scaler = model.fit(X)
 
     ypred = tree.predict(scaler.transform(X))
-    
+
     pickle.dump(ypred, open(root+'ypred.pkl','wb'))
     
     ypred = pickle.load(open(root+'ypred.pkl','rb'))
