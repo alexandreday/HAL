@@ -66,6 +66,8 @@ class CLUSTER():
         self.plot_inter = plot_inter 
         self.try_load = try_load
 
+        self.file_name = {}
+
     def fit(self, data, clf_args = None):
         """ Clustering and fitting random forest classifier ...
         Processing steps:
@@ -95,10 +97,13 @@ class CLUSTER():
             model_tsne = TSNE(perplexity=param['perplexity'], n_iter=param['n_iteration_tsne'])
             X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X_zscore))
             tsnefile = param['root'] + 'tsne_'+info_str+'.pkl'
+            self.file_name['tsne'] = tsnefile
             print('t-SNE data saved in %s' % tsnefile)
             pickle.dump(X_tsne, open(tsnefile,'wb'))
+
         elif run_tSNE == 'auto':
             tsnefile = param['root'] + 'tsne_'+info_str+'.pkl'
+            self.file_name['tsne'] = tsnefile
             X_tsne = pickle.load(open(tsnefile,'rb'))
         else:
             X_tsne = pickle.load(open(self.run_tSNE,'rb'))
@@ -165,12 +170,13 @@ class CLUSTER():
             model_vac.save(quick_name(root, 'robust', info_str))
 
         ######## Tree random forest classifer graph #############
-        print(' == >> Fitting tree << == ')
+        print('[pipeline.py]    == >> Fitting tree << == ')
         mytree = TREE(model_vac.VGraph.history, clf_args)
         mytree.fit(x_train)
-        pickle.dump([mytree, ss], open(quick_name(root, 'tree', info_str),'wb'))
+        tree_file_name = quick_name(root, 'tree', info_str)
+        self.file_name['tree'] = tree_file_name
+        pickle.dump([mytree, ss], open(tree_file_name,'wb'))
 
         # classifying tree, can predict on new data that is normalized beforehand
         # When running on new data, use mytree.predict(ss.transform(X)) to get labels !
-
         return mytree, ss 

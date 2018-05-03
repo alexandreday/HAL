@@ -28,7 +28,10 @@ def main():
     exit()
     summary(y, model.cluster_label)
 
-def summary(y_true, y_pred, fmt= ".4f"):
+def summary(y_true, y_pred, fmt= ".2f"):
+    from matplotlib import pyplot as plt
+    import seaborn as sns
+
     C = confusion_matrix(y_true, y_pred) # automatically padded to include zeros  -> match number of clusters and populations
     F = F_matrix(y_true, y_pred)
     
@@ -44,21 +47,26 @@ def summary(y_true, y_pred, fmt= ".4f"):
     plt.tight_layout()
     plt.show()
 
+def reindex(y):
+    yu = np.unique(y)
+    mapidx = dict(zip(yu,np.arange(len(yu))))
+    inv_mapidx = dict(zip(np.arange(len(yu)),yu))
+    return np.vectorize(mapidx.get)(y), mapidx, inv_mapidx
+
 def F_matrix(y_true, y_pred):
-    C = confusion_matrix(y_true, y_pred)
-    
+    C = confusion_matrix(y_true, y_pred) # works with actual indexing
     ntrue, npred = C.shape # ok, all good so far
-    sensitivity = np.vstack([C[i]/np.sum(C[i]) for i in range(ntrue)])
-    precision = np.vstack([C[:,j]/np.sum(C[:,j]) for j in range(npred)]).T
+    #print(C.shape)
+    sensitivity = np.vstack([C[i]/(np.sum(C[i])+1e-8) for i in range(ntrue)])
+    precision = np.vstack([C[:,j]/(np.sum(C[:,j])+1e-8) for j in range(npred)]).T
     return 2*np.reciprocal(1./(sensitivity+1e-8) + 1./(precision+1e-8))
 
 def FLOWCAP_score(y_true, y_pred):
     """F score is maximized individually for each population (true label)
     Caveat : Some clusters (pred. label) may be matched to multiple populations
     Also, the Fscore is computed via a weighted average w.r.t to the true label population size ratios"""
-
     F = F_matrix(y_true, y_pred)
-    y_u_true, counts = np.unique(y_true,return_counts = True)
+    y_u_true, counts = np.unique(y_true, return_counts = True)
     y_u_pred = np.unique(y_pred)
     weight = counts/len(y_true)
     match = {}

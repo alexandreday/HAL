@@ -5,6 +5,7 @@ import pickle
 from vac import CLUSTER
 from fdc import plotting
 from collections import Counter
+from vac import metric
 
 def main():
     root = '/Users/alexandreday/GitProject/VAC/benchmark/b1_results/'
@@ -15,17 +16,27 @@ def main():
     tree, scaler = model.fit(X)
 
     ypred = tree.predict(scaler.transform(X))
+    
     pickle.dump(ypred, open(root+'ypred.pkl','wb'))
+    
     ypred = pickle.load(open(root+'ypred.pkl','rb'))
-    
-    #xtsne = pickle.load(open(root+'tsne_perp=50_niter=1000_outratio=0.20_pureratio=0.99_minsize=0_nhsize=40_eta=1.50_testfdcsize=0.80.pkl','rb'))
-    
+    ytrue, _, _ = metric.reindex(ytrue)
+    ypred, _, _ = metric.reindex(ypred)
+
+    metric.summary(ytrue, ypred, fmt=".2f")
+
+    xtsne = pickle.load(open(model.file_name['tsne'],'rb'))
+
     print('True labels')
-    plotting.cluster_w_label(xtsne, ytrue)
+    plotting.cluster_w_label(xtsne, ytrue,title='True labels')
 
     print('Predicted labels')
-    plotting.cluster_w_label(xtsne, ypred)
+    HungS, match_Hung = metric.HUNG_score(ytrue,ypred)
+    FlowS, match_Flow = metric.FLOWCAP_score(ytrue,ypred)
+    print("Matching FlowScore:\t", match_Flow)
+    print("Matching HungScore:\t", match_Hung)
 
+    plotting.cluster_w_label(xtsne, ypred, title='Predicted labels, HungS=%.3f, FlowS=%.3f'%(HungS,FlowS))
 
 if __name__ == "__main__":
     main()

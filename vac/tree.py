@@ -115,12 +115,13 @@ class TREE:
                 print("[tree.py]   Prediction done on %i points"%(i+1))
             c_node = self.root
             score = c_node.scale
+        
             while score > cv :
                 new_id = self.clf_dict[c_node.get_id()].predict([x], option='fast')
                 c_node = self.node_dict[new_id[0]]
                 score = c_node.scale
-            ypred[i] = c_node.parent.get_id()
-
+            ypred[i] = c_node.get_id()
+        
         return ypred
 
     def feature_path_predict(self, x, cv=0.9):
