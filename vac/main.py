@@ -4,6 +4,7 @@ from .vgraph import VGraph
 from .tupledict import TupleDict
 import pickle
 from collections import Counter
+import os
 
 class VAC:
     """Validated agglomerative clustering"""
@@ -220,8 +221,6 @@ class VAC:
         fopen.close()
         
     def load(self, name=None):
-        if os.path.isfile(filepath)
-
         if name is None:
             name = self.make_file_name()
         if os.path.isfile(name):

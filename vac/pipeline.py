@@ -12,7 +12,7 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from matplotlib import pyplot as plt
 
-def quick_name(root, object_name, para, ext=".pkl):
+def quick_name(root, object_name, para, ext=".pkl"):
     return root + object_name+"_"+para+".pkl"
 
 class CLUSTER():
@@ -58,7 +58,7 @@ class CLUSTER():
         self.param['root'] = root
 
         # Density clustering parameters
-        self.param['nh_size'] = nh_size
+        self.param['nh_size'] = nh_size
         self.param['eta'] = eta
         self.param['test_ratio_size'] = test_ratio_size
 
@@ -92,7 +92,7 @@ class CLUSTER():
         ######################### dimensional reduction via t-SNE ###########################
 
         if run_tSNE is True:
-            model_tsne = TSNE(perplexity=param['perplexity'], n_iter=param['n_iter_tsne'])
+            model_tsne = TSNE(perplexity=param['perplexity'], n_iter=param['n_iteration_tsne'])
             X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X_zscore))
             tsnefile = param['root'] + 'tsne_'+info_str+'.pkl'
             print('t-SNE data saved in %s' % tsnefile)
@@ -122,11 +122,11 @@ class CLUSTER():
         idx_pure_big, idx_pure_small, idx_out, idx_boundary = model_vac.get_pure_idx(X_tsne)
 
         if plot_inter is True:
-            print('Plotting inliers and outliers')
+            print('[pipeline.py]   Plotting inliers and outliers')
             ytmp = -1*np.ones(len(X_tsne),dtype=int)
-            ytmp[vac.idx_sets[('all','inliers')]] = vac.density_clf.cluster_label
-            plotting.cluster_w_label(X_tsne, model_vac.label_sets[('pure','big')])
-            print('Plotting pure data and boundaries')
+            ytmp[model_vac.idx_sets[('all','inliers')]] = model_vac.density_clf.cluster_label
+            plotting.cluster_w_label(X_tsne, ytmp)
+            print('[pipeline.py]   Plotting pure data and boundaries')
             plotting.cluster_w_label(X_tsne[idx_pure_big], model_vac.label_sets[('pure','big')])
 
         idx_pure_big, idx_pure_small, idx_out, idx_boundary = model_vac.get_purify_result()
