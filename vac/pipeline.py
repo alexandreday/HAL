@@ -38,7 +38,8 @@ class CLUSTER():
         test_ratio_size = 0.8,
         run_tSNE = True, # if not True, put in a file name for reading
         plot_inter = True,
-        root = ''
+        root = '',
+        try_load = True
     ):
         self.param = {}
         
@@ -63,6 +64,7 @@ class CLUSTER():
 
         self.run_tSNE = run_tSNE 
         self.plot_inter = plot_inter 
+        self.try_load = try_load
 
 
     def fit(self, data, clf_args = None):
@@ -72,7 +74,6 @@ class CLUSTER():
         1. zscore data
         2. t-SNE data
         3. zscore t-SNE data
-
         """
 
         if clf_args is None:
@@ -90,6 +91,7 @@ class CLUSTER():
         info_str = make_file_name(param)
 
         ######################### dimensional reduction via t-SNE ###########################
+
         if run_tSNE is True:
             model_tsne = TSNE(perplexity=param['perplexity'], n_iter=param['n_iter_tsne'])
             X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X_zscore))
@@ -102,7 +104,8 @@ class CLUSTER():
         else:
             X_tsne = pickle.load(open(self.run_tSNE,'rb'))
 
-        ######################### density clustering ###########################
+        ######################### Density clustering ###########################
+
         model_fdc = FDC(
             nh_size=param['nh_size'],
             eta=param['eta'], 
@@ -118,7 +121,6 @@ class CLUSTER():
         )
 
         idx_pure_big, idx_pure_small, idx_out, idx_boundary = model_vac.get_pure_idx(X_tsne)
-
 
         if plot_inter is True:
             print('Plotting inliers and outliers')
@@ -145,6 +147,7 @@ class CLUSTER():
 
         print("---> Initial estimates")
 
+        ######## Raw graph #############
         loading_worked = False
         if self.try_load is True:
             loading_worked = model_vac.load(quick_name(root,'raw',info_str))
@@ -153,7 +156,7 @@ class CLUSTER():
             model_vac.fit_raw_graph(x_train, y_pred, n_average = 30, clf_args = clf_args, n_edge = 4)
             model_vac.save(quick_name(root,'raw',info_str))
         
-
+        ######## Coarse grained graph #############
         loading_worked = False
         if self.try_load is True:
             loading_worked = model_vac.load(quick_name(root,'robust', info_str))
@@ -162,10 +165,13 @@ class CLUSTER():
             model_vac.fit_robust_graph(x_train, cv_robust = 0.99)
             model_vac.save(quick_name(root, 'robust', info_str))
 
+        ######## Tree random forest classifer graph #############
         print('Fitting tree')
 
         mytree = TREE(model_vac.VGraph.history, clf_args)
         mytree.fit(x_train)
         pickle.dump(mytree, open(quick_name(root, 'tree', info_str),'wb'))
 
-        return mytree, ss # classifying tree, can predict on new data that is normalized beforehand
+         # classifying tree, can predict on new data that is normalized beforehand
+        # When running on new data, use mytree.predict(ss.transform(X)) to get labels !
+        return mytree, ss 

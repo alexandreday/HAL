@@ -220,10 +220,14 @@ class VAC:
         fopen.close()
         
     def load(self, name=None):
+        if os.path.isfile(filepath)
+
         if name is None:
             name = self.make_file_name()
-        self.__dict__.update(pickle.load(open(name,'rb')).__dict__)
-        return self
+        if os.path.isfile(name):
+            self.__dict__.update(pickle.load(open(name,'rb')).__dict__)
+            return True
+        return False
 
     def printvac(self, s):
         print('[vac.py]    %s'%s)
