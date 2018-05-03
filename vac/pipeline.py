@@ -98,11 +98,12 @@ class CLUSTER():
         X_zscore = StandardScaler().fit_transform(data)
         info_str = make_file_name(param)
 
+        ######################### dimensional reduction via t-SNE ###########################
         if run_tSNE is True:
             model_tsne = TSNE(perplexity=param['perplexity'], n_iter=param['n_iter_tsne'])
             X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X_zscore))
             tsnefile = param['root'] + 'tsne_'+info_str+'.pkl'
-            print('t-SNE data saved in %s'%tsnefile)
+            print('t-SNE data saved in %s' % tsnefile)
             pickle.dump(X_tsne, open(tsnefile,'wb'))
         elif run_tSNE == 'auto':
             tsnefile = param['root'] + 'tsne_'+info_str+'.pkl'
@@ -110,19 +111,35 @@ class CLUSTER():
         else:
             X_tsne = pickle.load(open(self.run_tSNE,'rb'))
 
-        
-        model_fdc = FDC(nh_size=nh_size, eta=eta, test_ratio_size=test_ratio_size, n_cluster_init=n_cluster_init)
-        
-        model_vac = VAC(density_clf = model_fdc, outlier_ratio=outlier_ratio, nn_pure_ratio=nn_pure_ratio, min_size_cluster=self.min_size_cluster) # need to fix this min_cluster !
+        ######################### density clustering ###########################
+        model_fdc = FDC(
+            nh_size=param['nh_size'],
+            eta=param['eta'], 
+            test_ratio_size=param['test_ratio_size'],
+            n_cluster_init=param['n_cluster_init']
+            )
+
+        model_vac = VAC(
+            density_clf = model_fdc,
+            outlier_ratio=param['outlier_ratio'],
+            nn_pure_ratio=param['nn_pure_ratio'],
+            min_size_cluster=param['min_size_cluster']
+        )
+
         idx_pure_big, idx_pure_small, idx_out, idx_boundary = model_vac.get_pure_idx(X_tsne)
 
-        model_vac.save(pre+'init.pkl')
+
         if plot_inter is True:
+            print('Plotting inliers and outliers')
+            ytmp = -1*np.ones(len(X_tsne),dtype=int)
+            ytmp[vac.idx_sets[('all','inliers')]] = vac.density_clf.cluster_label
+            plotting.cluster_w_label(X_tsne, model_vac.label_sets[('pure','big')])
+            print('Plotting pure data and boundaries')
             plotting.cluster_w_label(X_tsne[idx_pure_big], model_vac.label_sets[('pure','big')])
 
         idx_pure_big, idx_pure_small, idx_out, idx_boundary = model_vac.get_purify_result()
 
-        # OK this is a mess, but at least there's no bug, need to clean this up ...
+        # OK this is a mess, but at least there's no bug, need to clean this up ... 
         idx_train_pure = model_vac.idx_sets[('all','pure')][model_vac.idx_sets[('pure','big')]]
         idx_train_bound = model_vac.idx_sets[('all','boundary')]
         idx_train = np.sort(np.hstack([idx_train_pure, idx_train_bound]))
