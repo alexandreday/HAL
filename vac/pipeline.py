@@ -12,6 +12,9 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from matplotlib import pyplot as plt
 
+def quick_name(root, object_name, para, ext=".pkl):
+    return root + object_name+"_"+para+".pkl"
+
 class CLUSTER():
     """Validated agglomerative clustering [NEED A BETTER NAME]
         
@@ -70,32 +73,20 @@ class CLUSTER():
         2. t-SNE data
         3. zscore t-SNE data
 
-
         """
-
 
         if clf_args is None:
             clf_args = {'class_weight':'balanced','n_estimators': 50, 'max_features': min([data.shape[1],200])}
 
         param = self.param
         np.random.seed(param['seed'])
-
-        #outlier_ratio = self.outlier_ratio
-        #nn_pure_ratio =self.nn_pure_ratio
-        #perplexity = self.perplexity
-        #n_iteration_tsne =  self.n_iteration_tsne
-        #n_cluster_init = self.n_cluster_init
-        
-        #pre = self.file_prefix
-        nh_size = self.nh_size
-        eta = self.eta
-        test_ratio_size = self.test_ratio_size
-        outlier_ratio = self.outlier_ratio
-        nn_pure_ratio = self.nn_pure_ratio
+        root = param['root']
         run_tSNE = self.run_tSNE
         plot_inter = self.plot_inter
 
-        X_zscore = StandardScaler().fit_transform(data)
+        # zscoring data
+        ss = StandardScaler()
+        X_zscore = ss.fit_transform(data)
         info_str = make_file_name(param)
 
         ######################### dimensional reduction via t-SNE ###########################
@@ -139,31 +130,42 @@ class CLUSTER():
 
         idx_pure_big, idx_pure_small, idx_out, idx_boundary = model_vac.get_purify_result()
 
-        # OK this is a mess, but at least there's no bug, need to clean this up ... 
+        # OK this is a mess, but at least there are no bug, need to clean this up ... 
+
         idx_train_pure = model_vac.idx_sets[('all','pure')][model_vac.idx_sets[('pure','big')]]
         idx_train_bound = model_vac.idx_sets[('all','boundary')]
         idx_train = np.sort(np.hstack([idx_train_pure, idx_train_bound]))
         label_pure_big = model_vac.label_sets[('pure','big')]
         y_pred = -1*np.ones(len(idx_train), dtype=int)
+
         for i, e in enumerate(idx_train_pure):
             y_pred[np.where(idx_train == e)[0]] = label_pure_big[i]
 
-        x_train = X_down_sample[idx_train]
+        x_train = X_zscore[idx_train]
 
         print("---> Initial estimates")
 
-        model_vac.fit_raw_graph(x_train, y_pred, n_average = 30, clf_args = clf_args, n_edge = 4)
-        model_vac.save(pre+'raw.pkl')
+        loading_worked = False
+        if self.try_load is True:
+            loading_worked = model_vac.load(quick_name(root,'raw',info_str))
+        
+        if loading_worked is False:
+            model_vac.fit_raw_graph(x_train, y_pred, n_average = 30, clf_args = clf_args, n_edge = 4)
+            model_vac.save(quick_name(root,'raw',info_str))
+        
 
-        model_vac.load(pre+'raw.pkl')
-        model_vac.fit_robust_graph(x_train, cv_robust = 0.99) # >>> >>> puts in back the boundary
-        model_vac.save(pre+'robust.pkl')
+        loading_worked = False
+        if self.try_load is True:
+            loading_worked = model_vac.load(quick_name(root,'robust', info_str))
+        
+        if loading_worked is False:
+            model_vac.fit_robust_graph(x_train, cv_robust = 0.99)
+            model_vac.save(quick_name(root, 'robust', info_str))
 
-        model_vac.load(pre+'robust.pkl')
+        print('Fitting tree')
+
         mytree = TREE(model_vac.VGraph.history, clf_args)
-
         mytree.fit(x_train)
+        pickle.dump(mytree, open(quick_name(root, 'tree', info_str),'wb'))
 
-        pickle.dump(mytree,open(pre+'myTree.pkl','wb'))
-
-        return mytree # classifying tree, can predict on new data (must be normalized before hand !)
+        return mytree, ss # classifying tree, can predict on new data that is normalized beforehand
