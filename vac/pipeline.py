@@ -5,6 +5,7 @@ import pickle
 from collections import Counter
 from .main import VAC
 from .tree import TREE
+from .utility import make_file_name
 from tsne_visual import TSNE
 from fdc import FDC, plotting
 import numpy as np
@@ -12,7 +13,13 @@ from sklearn.preprocessing import StandardScaler
 from matplotlib import pyplot as plt
 
 class CLUSTER():
-    """Validated agglomerative clustering"""
+    """Validated agglomerative clustering [NEED A BETTER NAME]
+        
+    Parameters
+    -------------
+    [update coming soon]
+    
+    """
     # {'class_weight':'balanced','n_estimators': 50, 'max_features': min([X_down_sample.shape[1],200])}
 
     def __init__(self,
@@ -21,64 +28,89 @@ class CLUSTER():
         min_size_cluster=0,
         perplexity = 50,
         n_iteration_tsne =  1000,
-        n_down_sample = 5000,
         n_cluster_init = 30,
         seed = 0,
-        file_prefix = '',
         nh_size = 40,
         eta = 1.5,
         test_ratio_size = 0.8,
-        run_tSNE = True,
-        plot_inter = True
+        run_tSNE = True, # if not True, put in a file name for reading
+        plot_inter = True,
+        root = ''
     ):
-        """pass in a density classifier, need to be able to get labels and compute a density map
-        """
-        self.outlier_ratio = outlier_ratio
-        self.nn_pure_ratio = nn_pure_ratio
-        self.perplexity = perplexity
-        self.n_iteration_tsne = n_iteration_tsne
-        self.n_tSNE = n_down_sample
-        self.n_cluster_init = n_cluster_init
-        self.seed =seed 
-        self.file_prefix = file_prefix
-        self.nh_size = nh_size
-        self.eta = eta
-        self.test_ratio_size = test_ratio_size
-        self.run_tSNE = run_tSNE
-        self.plot_inter = plot_inter 
-        self.min_size_cluster = min_size_cluster
+        self.param = {}
+        
+        # t-SNE parameters
+        self.param['perplexity'] = perplexity
+        self.param['n_iteration_tsne'] = n_iteration_tsne
 
-        # dict of cluster labels -> idx, cluster with largest overlap, ratio of overlap
+        # Purification parameters 
+        self.param['outlier_ratio'] = outlier_ratio
+        self.param['nn_pure_ratio'] = nn_pure_ratio
+        self.param['min_size_cluster'] = min_size_cluster
+        
+        # 
+        self.param['n_cluster_init'] = n_cluster_init
+        self.param['seed'] = seed
+        self.param['root'] = root
+
+        # Density clustering parameters
+        self.param['nh_size'] = nh_size
+        self.param['eta'] = eta
+        self.param['test_ratio_size'] = test_ratio_size
+
+        self.run_tSNE = run_tSNE 
+        self.plot_inter = plot_inter 
+
 
     def fit(self, data, clf_args = None):
-        """ ---> """
+        """ Clustering and fitting random forest classifier ...
+        Processing steps:
+
+        1. zscore data
+        2. t-SNE data
+        3. zscore t-SNE data
+
+
+        """
+
+
         if clf_args is None:
             clf_args = {'class_weight':'balanced','n_estimators': 50, 'max_features': min([data.shape[1],200])}
 
-        outlier_ratio = self.outlier_ratio
-        nn_pure_ratio =self.nn_pure_ratio
-        perplexity = self.perplexity
-        n_iteration_tsne =  self.n_iteration_tsne
-        n_tSNE = self.n_tSNE
-        n_cluster_init = self.n_cluster_init
-        np.random.seed(self.seed)
-        pre = self.file_prefix
+        param = self.param
+        np.random.seed(param['seed'])
+
+        #outlier_ratio = self.outlier_ratio
+        #nn_pure_ratio =self.nn_pure_ratio
+        #perplexity = self.perplexity
+        #n_iteration_tsne =  self.n_iteration_tsne
+        #n_cluster_init = self.n_cluster_init
+        
+        #pre = self.file_prefix
         nh_size = self.nh_size
         eta = self.eta
         test_ratio_size = self.test_ratio_size
         outlier_ratio = self.outlier_ratio
         nn_pure_ratio = self.nn_pure_ratio
         run_tSNE = self.run_tSNE
-        plot_inter = self.plot_inter 
+        plot_inter = self.plot_inter
 
-        X_down_sample = StandardScaler().fit_transform(data)[:n_tSNE]
+        X_zscore = StandardScaler().fit_transform(data)
+        info_str = make_file_name(param)
 
         if run_tSNE is True:
-            X_tsne =  StandardScaler().fit_transform(TSNE(perplexity=perplexity, n_iter=n_iteration_tsne).fit_transform(X_down_sample))
-            pickle.dump(X_tsne,open(pre+'tsne.pkl','wb'))
+            model_tsne = TSNE(perplexity=param['perplexity'], n_iter=param['n_iter_tsne'])
+            X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X_zscore))
+            tsnefile = param['root'] + 'tsne_'+info_str+'.pkl'
+            print('t-SNE data saved in %s'%tsnefile)
+            pickle.dump(X_tsne, open(tsnefile,'wb'))
+        elif run_tSNE == 'auto':
+            tsnefile = param['root'] + 'tsne_'+info_str+'.pkl'
+            X_tsne = pickle.load(open(tsnefile,'rb'))
         else:
-            X_tsne = pickle.load(open(pre+'tsne.pkl','rb'))
+            X_tsne = pickle.load(open(self.run_tSNE,'rb'))
 
+        
         model_fdc = FDC(nh_size=nh_size, eta=eta, test_ratio_size=test_ratio_size, n_cluster_init=n_cluster_init)
         
         model_vac = VAC(density_clf = model_fdc, outlier_ratio=outlier_ratio, nn_pure_ratio=nn_pure_ratio, min_size_cluster=self.min_size_cluster) # need to fix this min_cluster !

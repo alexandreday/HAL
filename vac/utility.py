@@ -10,3 +10,6 @@ class FOUT:
         fout = open(self.fname,'a')
         fout.write(mystring+'\n')
         fout.close()
+    
+def make_file_name(param):
+    return "hi"
