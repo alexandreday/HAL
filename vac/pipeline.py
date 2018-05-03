@@ -38,7 +38,7 @@ class CLUSTER():
         test_ratio_size = 0.8,
         run_tSNE = True, # if not True, put in a file name for reading
         plot_inter = True,
-        root = '',
+        root = "",
         try_load = True
     ):
         self.param = {}
@@ -65,7 +65,6 @@ class CLUSTER():
         self.run_tSNE = run_tSNE 
         self.plot_inter = plot_inter 
         self.try_load = try_load
-
 
     def fit(self, data, clf_args = None):
         """ Clustering and fitting random forest classifier ...
@@ -166,12 +165,13 @@ class CLUSTER():
             model_vac.save(quick_name(root, 'robust', info_str))
 
         ######## Tree random forest classifer graph #############
-        print('Fitting tree')
+        print(' == >> Fitting tree << == ')
 
         mytree = TREE(model_vac.VGraph.history, clf_args)
         mytree.fit(x_train)
         pickle.dump(mytree, open(quick_name(root, 'tree', info_str),'wb'))
 
-         # classifying tree, can predict on new data that is normalized beforehand
+        # classifying tree, can predict on new data that is normalized beforehand
         # When running on new data, use mytree.predict(ss.transform(X)) to get labels !
+
         return mytree, ss 
