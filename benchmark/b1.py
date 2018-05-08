@@ -29,14 +29,16 @@ def main():
 
     metric.summary(ytrue, ypred, fmt=".2f")
 
-    xtsne = pickle.load(open(model.file_name['tsne'],'rb'))
+    xtsne = pickle.load(open(model.file_name['tsne'],'rb')))
 
     print('True labels')
-    plotting.cluster_w_label(xtsne, ytrue,title='True labels')
+    plotting.cluster_w_label(xtsne, ytrue, title='True labels')
 
     print('Predicted labels')
+
     HungS, match_Hung = metric.HUNG_score(ytrue,ypred)
     FlowS, match_Flow = metric.FLOWCAP_score(ytrue,ypred)
+
     print("Matching FlowScore:\t", match_Flow)
     print("Matching HungScore:\t", match_Hung)
 
