@@ -29,7 +29,7 @@ def main():
 
     metric.summary(ytrue, ypred, fmt=".2f")
 
-    xtsne = pickle.load(open(model.file_name['tsne'],'rb')))
+    xtsne = pickle.load(open(model.file_name['tsne'],'rb'))
 
     print('True labels')
     plotting.cluster_w_label(xtsne, ytrue, title='True labels')

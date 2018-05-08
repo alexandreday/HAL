@@ -35,7 +35,7 @@ def load_submission(method=0, file_no=1):
     tmp = pd.read_csv(path)
     if method == 4:
         print('NA counts:\t', np.count_nonzero(np.isnan(tmp['component.of']) == True))
-        tmp[np.isnan(tmp['component.of']) == True] = -1 # NAN DATA ...
+        tmp[np.isnan(tmp['component.of']) == True] = -1 # >> NAN DATA ...
         tmp = tmp.astype(int)
 
     return tmp
@@ -48,8 +48,9 @@ def load_manual_gate(file_no=1):
     
 def main():
     # Loading manual gates, etc. 
+    # Resolve metric scoring ===> what is going on here ?
     method =4
-    file_no = 1
+    file_no = 3
 
     ytrue = load_manual_gate(file_no=file_no)
     ypred = load_submission(method=4, file_no=file_no)
