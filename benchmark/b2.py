@@ -38,11 +38,8 @@ def load_manualgate(file_no=1):
 
     root = '/Users/alexandreday/Dropbox/Work/Project_PHD/Immunology/Visit/FLOWCAP/Data/Labels/NDD/'
     path = root + fname
-
-    return np.loadtxt(path,dtype=int,skiprows=1)
+    return np.loadtxt(path, dtype=int, skiprows=1)
     
-
-#def load_data('
 def main():
     file_no = 1
 
