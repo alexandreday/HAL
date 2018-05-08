@@ -5,6 +5,7 @@ Here we just reproduce F1-score (flowCAP and Samusik score) for different FLOWCA
 import fcsparser
 import numpy as np
 import pandas as pd
+from vac import metric
 
 
 def load_raw_data(file_no=1):
@@ -27,26 +28,50 @@ def load_submission(method=0, file_no=1):
         4: "SamSPECTRAL/",
         5: "SWIFT/"
     }
+    print(method_d[method])
     root = '/Users/alexandreday/Dropbox/Work/Project_PHD/Immunology/Visit/FLOWCAP/Data/Submissions/CH1/'
     path = root+method_d[method]+"NDD/"+fname
-    #print(path)
-    #exit()
-    return np.loadtxt(path,dtype=int,skiprows=1)
+    
+    tmp = pd.read_csv(path)
+    if method == 4:
+        tmp[np.isnan(tmp['component.of']) == True] = -1
+        tmp = tmp.astype(int)
+
+    return tmp
 
 def load_manual_gate(file_no=1):
     fname = "{:0>3}.csv".format(file_no)
-
     root = '/Users/alexandreday/Dropbox/Work/Project_PHD/Immunology/Visit/FLOWCAP/Data/Labels/NDD/'
     path = root + fname
     return np.loadtxt(path, dtype=int, skiprows=1)
     
 def main():
     # Loading manual gates, etc. 
+    method =4
     file_no = 1
     ytrue = load_manual_gate(file_no=file_no)
-    ypred = load_submission(file_no=file_no)
+    ypred = load_submission(method=4, file_no=file_no)
+    #print(ypred)
+    print(ypred.iloc[158:165])
+    exit()
+    print(ypred['component.of'].iloc[160:165])
+    exit()
+    print(ypred[ypred['component.of'] != 'NA'])
+    data.loc[data['label'] != np.nan]
+    exit()
+    print(ypred[ypred == 1.0])
+   # print(ypred)
+    exit()
 
+    # remove ungated cells
+    pos = (ytrue != 0)
+    ytrue = ytrue[pos]
+    ypred = ypred[pos]
 
+    fs = metric.FLOWCAP_score(ytrue, ypred)
+    hs = metric.HUNG_score(ytrue, ypred)
+    print(fs)
+    print(hs)
 
 
     #print(load_raw_data(10).describe())
