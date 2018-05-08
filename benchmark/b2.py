@@ -33,7 +33,7 @@ def load_submission(method=0, file_no=1):
     #exit()
     return np.loadtxt(path,dtype=int,skiprows=1)
 
-def load_manualgate(file_no=1):
+def load_manual_gate(file_no=1):
     fname = "{:0>3}.csv".format(file_no)
 
     root = '/Users/alexandreday/Dropbox/Work/Project_PHD/Immunology/Visit/FLOWCAP/Data/Labels/NDD/'
@@ -41,9 +41,9 @@ def load_manualgate(file_no=1):
     return np.loadtxt(path, dtype=int, skiprows=1)
     
 def main():
+    # Loading manual gates, etc. 
     file_no = 1
-
-    ytrue = 
+    ytrue = load_manual_gate(file_no=file_no)
     ypred = load_submission(file_no=file_no)
 
 
