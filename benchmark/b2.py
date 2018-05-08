@@ -31,10 +31,11 @@ def load_submission(method=0, file_no=1):
     print(method_d[method])
     root = '/Users/alexandreday/Dropbox/Work/Project_PHD/Immunology/Visit/FLOWCAP/Data/Submissions/CH1/'
     path = root+method_d[method]+"NDD/"+fname
-    
+
     tmp = pd.read_csv(path)
     if method == 4:
-        tmp[np.isnan(tmp['component.of']) == True] = -1
+        print('NA counts:\t', np.count_nonzero(np.isnan(tmp['component.of']) == True))
+        tmp[np.isnan(tmp['component.of']) == True] = -1 # NAN DATA ...
         tmp = tmp.astype(int)
 
     return tmp
@@ -49,21 +50,24 @@ def main():
     # Loading manual gates, etc. 
     method =4
     file_no = 1
+
     ytrue = load_manual_gate(file_no=file_no)
     ypred = load_submission(method=4, file_no=file_no)
+
     #print(ypred)
-    print(ypred.iloc[158:165])
-    exit()
-    print(ypred['component.of'].iloc[160:165])
-    exit()
-    print(ypred[ypred['component.of'] != 'NA'])
-    data.loc[data['label'] != np.nan]
-    exit()
-    print(ypred[ypred == 1.0])
-   # print(ypred)
-    exit()
+    #print(ypred.iloc[158:165])
+    #exit()
+    #print(ypred['component.of'].iloc[160:165])
+    #exit()
+    #print(ypred[ypred['component.of'] != 'NA'])
+    #data.loc[data['label'] != np.nan]
+    #exit()
+    #print(ypred[ypred == 1.0])
+    #print(ypred)
+    #exit()
 
     # remove ungated cells
+
     pos = (ytrue != 0)
     ytrue = ytrue[pos]
     ypred = ypred[pos]
