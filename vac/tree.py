@@ -74,7 +74,7 @@ class TREE:
         ypred = self.merge_and_clf[-1][1]
         n_merge = len(self.merge_and_clf)
 
-        clf_top =  CLF(clf_type='rf', n_average=5, test_size=self.test_size_ratio, clf_args=self.clf_args).fit(X, ypred)
+        clf_top =  CLF(clf_type='rf', n_average=5, test_size=self.test_size_ratio, clf_args=self.clf_args).fit(X, ypred)    
         y_unique = np.unique(ypred)
 
         self.node_dict = OD()

@@ -16,7 +16,7 @@ def main():
     
     np.random.seed(0)
     X, ytrue = make_blobs(n_samples=5000, n_features=30, centers=10)
-    model = CLUSTER(root='b1_results/', run_tSNE='auto', plot_inter=False)
+    model = CLUSTER(root='b1_results/')#run_tSNE='auto', plot_inter=False)
     tree, scaler = model.fit(X)
 
     ypred = tree.predict(scaler.transform(X))
