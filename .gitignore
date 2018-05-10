@@ -1,6 +1,8 @@
 test/*
 *.pkl
 *.txt
+*.pdf
+*.html
 test
 example_BIO
 example

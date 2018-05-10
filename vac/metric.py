@@ -3,6 +3,7 @@ from collections import OrderedDict
 from sklearn.metrics import confusion_matrix
 from scipy.optimize import linear_sum_assignment as LSA
 import pandas as pd
+import subprocess
 
 def main():
     from matplotlib import pyplot as plt
@@ -29,21 +30,22 @@ def main():
     exit()
     summary(y, model.cluster_label)
 
-def summary(y_true, y_pred, fmt= ".2f"):
+def summary(y_true, y_pred, fmt= ".2f", fontsize=10):
+    
     from matplotlib import pyplot as plt
     import seaborn as sns
 
     C = confusion_matrix(y_true, y_pred) # automatically padded to include zeros  -> match number of clusters and populations
     F = F_matrix(y_true, y_pred)
-    
-    fig, ax_ori = plt.subplots(nrows=1, ncols=2, figsize=(10,5))
-    ax = sns.heatmap(C, annot=True, fmt="d", ax = ax_ori[0])
-    ax.set_xlabel('Predicted')
-    ax.set_ylabel('True')
+    fig, ax_ori = plt.subplots(nrows=1, ncols=2, figsize=(12,5))
+    ax = sns.heatmap(C.T, annot=True, fmt="d", ax = ax_ori[0], annot_kws={'fontsize':fontsize})
+    ax.set_ylabel('Predicted')
+    ax.set_xlabel('True')
     ax.set_title('Confusion')
-    ax = sns.heatmap(F, annot=True, fmt=fmt, ax = ax_ori[1])
-    ax.set_xlabel('Predicted')
-    ax.set_ylabel('True')
+
+    ax = sns.heatmap(F.T, annot=True, fmt=fmt, ax = ax_ori[1], annot_kws={'fontsize':fontsize})
+    ax.set_ylabel('Predicted')
+    ax.set_xlabel('True')
     ax.set_title('F1-measure')
     plt.tight_layout()
     plt.show()
@@ -61,7 +63,7 @@ def reindex(y):
     inv_mapidx = dict(zip(np.arange(len(yu)),yu))
     return np.vectorize(mapidx.get)(y), mapidx, inv_mapidx
 
-def F_matrix(y_true, y_pred, eps=1e-10.):
+def F_matrix(y_true, y_pred, eps=1e-10):
     """ From the confusion matrix, build the F-matrix
     -> The first index is the true clusters, the second index is the predicted cluster
     """
@@ -74,10 +76,17 @@ def F_matrix(y_true, y_pred, eps=1e-10.):
     return 2*np.reciprocal(1./(sensitivity+eps) + 1./(precision+eps))
 
 def FLOWCAP_score(y_true_, y_pred_):
-
     """F score is maximized individually for each population (true label)
     Caveat : Some clusters (pred. label) may be matched to multiple populations
-    Also, the Fscore is computed via a weighted average w.r.t to the true label population size ratios"""
+    Also, the Fscore is computed via a weighted average w.r.t to the true label population size ratios
+    
+    Returns
+    -------
+    Fscore, dataframe of matching
+    
+    """
+
+
     y_true, maptrue, invmaptrue = reindex(y_true_)
     y_pred, mappred, invmappred = reindex(y_pred_)
 
@@ -87,18 +96,35 @@ def FLOWCAP_score(y_true_, y_pred_):
     weight = counts/len(y_true) # weights of true populations
 
     match = []
+    match_F_score = []
+    match_weight = []
+    match_FlowScore = []
     Fscore = 0.
     
     for i, yu in enumerate(y_u_true):
         match.append(y_u_pred[np.argmax(F[i])]) # problem with this is that a population may be assigned to the same cluster twice ...
-        Fscore += np.max(F[i])*weight[i] # weigthed average !
+        match_F_score.append(np.max(F[i]))
+        match_weight.append(weight[i])
+        Fscore += match_F_score[-1]*match_weight[-1] # weigthed average !
 
-    df = pd.DataFrame('true':list(range(len(y_u_true))),'predict':match)
+    match_F_score=np.array(match_F_score)
+    match_weight=np.array(match_weight)
 
-    translateDF(df, maptrue, 'true')
-    translateDF(df, mappred, 'predict')
+    df = pd.DataFrame(OrderedDict({'true':list(range(len(y_u_true))),'predict':match, 'Fmeasure':match_F_score,'weight':match_weight,'FCscore':match_weight*match_F_score}))
+
+    translateDF(df, invmaptrue, 'true')
+    translateDF(df, invmappred, 'predict')
     return Fscore, df
-l
+
+def plot_table(df, dpi=500, fname='table.pdf'):
+    import subprocess
+    df.to_html('table.html')
+    subprocess.call('wkhtmltopdf --dpi %i table.html table.pdf'%dpi, shell=True)
+    subprocess.call('pdfcrop table.pdf', shell=True)
+    subprocess.call('rm table.pdf', shell=True)
+    subprocess.call('rm table.html', shell=True)
+    subprocess.call('mv table-crop.pdf %s'%fname, shell=True)
+
 def HUNG_score(y_true, y_pred):
     """F score is computed via the Hungarian algorithm which
     determined the optimal match of populations to clusters

@@ -6,6 +6,7 @@ from vac import CLUSTER
 from fdc import plotting
 from collections import Counter
 from vac import metric
+import subprocess
 
 
 ########################## BENCHMARK ON easy artificial DATASET ################
@@ -56,8 +57,10 @@ def test_Kmean(X, Xtsne, ytrue):
     model = KMeans(n_clusters=k)
     model.fit(Xss)
     ypred = model.labels_
+    
     fscore, match = metric.FLOWCAP_score(ytrue, ypred)
-
+    metric.plot_table(match)
+    
     xcenter = []
     for i in range(k):
         xcenter.append(Xtsne[np.argmin(np.linalg.norm(Xss-model.cluster_centers_[i],axis=1))])
