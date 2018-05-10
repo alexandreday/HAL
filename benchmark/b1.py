@@ -52,12 +52,12 @@ def main():
 def test_Kmean(X, Xtsne, ytrue):
     from sklearn.preprocessing import StandardScaler as scaler
     Xss = scaler().fit_transform(X)
-    k=5
+    k=15
     from sklearn.cluster import KMeans
     model = KMeans(n_clusters=k)
     model.fit(Xss)
     ypred = model.labels_
-    
+
     fscore, match = metric.FLOWCAP_score(ytrue, ypred)
     metric.plot_table(match)
     

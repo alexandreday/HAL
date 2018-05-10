@@ -125,19 +125,32 @@ def plot_table(df, dpi=500, fname='table.pdf'):
     subprocess.call('rm table.html', shell=True)
     subprocess.call('mv table-crop.pdf %s'%fname, shell=True)
 
-def HUNG_score(y_true, y_pred):
+def HUNG_score(y_true_, y_pred_):
     """F score is computed via the Hungarian algorithm which
     determined the optimal match of populations to clusters
     If there are more clusters than populations, then some clusters are left unassigned
     If there are more populations than clusters, than some populations are unassigned ... (problem !?)  
     """
+    y_true, maptrue, invmaptrue = reindex(y_true_)
+    y_pred, mappred, invmappred = reindex(y_pred_)
+
+    y_u_true = np.unique(y_true_)
 
     F = F_matrix(y_true, y_pred)
     C = 1 - F
-    r, c = LSA(C)
-    match = {r[i] : c[i] for i in range(len(r))}
-    Fscore = np.mean(1.-C[r, c]) # equally weighted average
-    return Fscore, match
+    t, p = LSA(C) # match -> two arrays true - pred
+
+    match_weight  = 1./len(y_u_true)*np.ones(len(y_u_true),dtype=float)
+
+    df = pd.DataFrame(OrderedDict({'true':t[:len(y_u_true)], 'predict':p[:len(y_u_true)], 'Fmeasure':(1.-C[t, p])[:len(y_u_true)],'weight':match_weight}))
+
+    translateDF(df, invmaptrue, 'true')
+    translateDF(df, invmappred, 'predict')
+    
+    print((1.-C[t, p]))
+
+    Fscore = np.mean(df['Fmeasure'])
+    return Fscore, df
 
 def translateDF(df, mymap, col='true'):
 
