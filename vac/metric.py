@@ -2,6 +2,7 @@ import numpy as np
 from collections import OrderedDict
 from sklearn.metrics import confusion_matrix
 from scipy.optimize import linear_sum_assignment as LSA
+import pandas as pd
 
 def main():
     from matplotlib import pyplot as plt
@@ -48,35 +49,56 @@ def summary(y_true, y_pred, fmt= ".2f"):
     plt.show()
 
 def reindex(y):
-    yu = np.unique(y)
-    mapidx = dict(zip(yu,np.arange(len(yu))))
+    """ Array of labels (arbitrary integer labels)
+    These are reindexed starting from 0
+
+    Returns
+    -------
+    new vector of labels, dictionary map (from old to new labels), inverse map
+    """
+    yu = np.unique(y) # 
+    mapidx = dict(zip(yu, np.arange(len(yu))))
     inv_mapidx = dict(zip(np.arange(len(yu)),yu))
     return np.vectorize(mapidx.get)(y), mapidx, inv_mapidx
 
-def F_matrix(y_true, y_pred):
-    C = confusion_matrix(y_true, y_pred) # works with actual indexing
-    ntrue, npred = C.shape # ok, all good so far
-    #print(C.shape)
-    sensitivity = np.vstack([C[i]/(np.sum(C[i])+1e-8) for i in range(ntrue)])
-    precision = np.vstack([C[:,j]/(np.sum(C[:,j])+1e-8) for j in range(npred)]).T
-    return 2*np.reciprocal(1./(sensitivity+1e-8) + 1./(precision+1e-8))
+def F_matrix(y_true, y_pred, eps=1e-10.):
+    """ From the confusion matrix, build the F-matrix
+    -> The first index is the true clusters, the second index is the predicted cluster
+    """
+    C = confusion_matrix(y_true, y_pred) # works with actual indexing, will make it a sq. matrix if n_class aren't the same
+    ntrue, npred = C.shape # ok, all good so far -> this should make it squared
 
-def FLOWCAP_score(y_true, y_pred):
+    sensitivity = np.vstack([C[i]/(np.sum(C[i])+eps) for i in range(ntrue)])
+    precision = np.vstack([C[:,j]/(np.sum(C[:,j])+eps) for j in range(npred)]).T
+
+    return 2*np.reciprocal(1./(sensitivity+eps) + 1./(precision+eps))
+
+def FLOWCAP_score(y_true_, y_pred_):
+
     """F score is maximized individually for each population (true label)
     Caveat : Some clusters (pred. label) may be matched to multiple populations
     Also, the Fscore is computed via a weighted average w.r.t to the true label population size ratios"""
-    F = F_matrix(y_true, y_pred)
+    y_true, maptrue, invmaptrue = reindex(y_true_)
+    y_pred, mappred, invmappred = reindex(y_pred_)
+
+    F = F_matrix(y_true, y_pred) # will pad for missing classes
     y_u_true, counts = np.unique(y_true, return_counts = True)
     y_u_pred = np.unique(y_pred)
-    weight = counts/len(y_true)
-    match = {}
+    weight = counts/len(y_true) # weights of true populations
 
+    match = []
     Fscore = 0.
+    
     for i, yu in enumerate(y_u_true):
-        match[yu] = y_u_pred[np.argmax(F[i])] # problem with this is that a population may be assigned to the same cluster twice ...
+        match.append(y_u_pred[np.argmax(F[i])]) # problem with this is that a population may be assigned to the same cluster twice ...
         Fscore += np.max(F[i])*weight[i] # weigthed average !
-    return Fscore, match 
 
+    df = pd.DataFrame('true':list(range(len(y_u_true))),'predict':match)
+
+    translateDF(df, maptrue, 'true')
+    translateDF(df, mappred, 'predict')
+    return Fscore, df
+l
 def HUNG_score(y_true, y_pred):
     """F score is computed via the Hungarian algorithm which
     determined the optimal match of populations to clusters
@@ -90,6 +112,16 @@ def HUNG_score(y_true, y_pred):
     match = {r[i] : c[i] for i in range(len(r))}
     Fscore = np.mean(1.-C[r, c]) # equally weighted average
     return Fscore, match
+
+def translateDF(df, mymap, col='true'):
+
+    translation = []
+    for i, element in enumerate(df[col]):
+        if element in mymap.keys():
+            translation.append(mymap[element])
+        else:
+            translation.append(-1)
+    df[col] = np.array(translation, dtype=int)
 
 def clustering(y):
     yu = np.sort(np.unique(y))

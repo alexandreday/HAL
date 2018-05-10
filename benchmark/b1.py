@@ -16,11 +16,14 @@ def main():
     
     np.random.seed(0)
     X, ytrue = make_blobs(n_samples=5000, n_features=30, centers=10)
+    ytrue+=1 # shifting by 1 !! :O
+    test_Kmean(X, ytrue)
+    exit()
+
     model = CLUSTER(root='b1_results/')#run_tSNE='auto', plot_inter=False)
     tree, scaler = model.fit(X)
 
     ypred = tree.predict(scaler.transform(X))
-
     pickle.dump(ypred, open(root+'ypred.pkl','wb'))
     
     ypred = pickle.load(open(root+'ypred.pkl','rb'))
@@ -43,6 +46,18 @@ def main():
     print("Matching HungScore:\t", match_Hung)
 
     plotting.cluster_w_label(xtsne, ypred, title='Predicted labels, HungS=%.3f, FlowS=%.3f'%(HungS,FlowS))
+
+def test_Kmean(X, ytrue):
+    k=5
+    from sklearn.cluster import KMeans
+    model = KMeans(n_clusters=k)
+
+
+
+
+
+
+
 
 if __name__ == "__main__":
     main()
