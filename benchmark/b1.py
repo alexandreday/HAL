@@ -5,9 +5,7 @@ from tsne_visual import TSNE
 import pickle
 from vac import CLUSTER
 from fdc import plotting
-from collections import Counter
 from vac import metric
-import subprocess
 
 
 ########################## BENCHMARK ON easy artificial DATASET ################
@@ -18,12 +16,12 @@ def main():
     
     np.random.seed(0)
     X, ytrue = make_blobs(n_samples=10000, n_features=30, centers=15)
+
+    
     #Xtsne = TSNE(perplexity=40).fit_transform(X)
     #pickle.dump(Xtsne, open('b1_results/xtsne.pkl','wb'))
-    Xtsne = pickle.load(open('b1_results/xtsne.pkl','rb'))
-    #plotting.cluster_w_label(Xtsne, ytrue)
-    test_Kmean(X, Xtsne, ytrue)
-    exit()
+    #Xtsne = pickle.load(open('b1_results/xtsne.pkl','rb'))
+    #exit()
 
     model = CLUSTER(root='b1_results/')#run_tSNE='auto', plot_inter=False)
     tree, scaler = model.fit(X)
@@ -66,11 +64,15 @@ def test_Kmean(X, Xtsne, ytrue):
     kcheck = [5,15,25]
 
     for k in range(1, nk):
-        model = KMeans(n_clusters=k)
-        model.fit(Xss)
-        ypred = model.labels_
-        fcscore, matchfc = metric.FLOWCAP_score(ytrue, ypred)
-        hgscore, matchhg = metric.HUNG_score(ytrue, ypred)
+        
+        # Analysis code
+        model = KMeans(n_clusters=k) # model
+        model.fit(Xss) # fit
+        ypred = model.labels_ # predicted
+        fcscore, matchfc = metric.FLOWCAP_score(ytrue, ypred) # scores and matching (FLOWCAP)
+        hgscore, matchhg = metric.HUNG_score(ytrue, ypred) # scores and matching (HUNGARIAN algorith, Samusik et al. 2016 matching)
+
+
         #print(hgscore)
         fcscore_ls.append(fcscore)
         hgscore_ls.append(hgscore)
@@ -81,13 +83,9 @@ def test_Kmean(X, Xtsne, ytrue):
             for i in range(k):
                 xcenter.append(Xtsne[np.argmin(np.linalg.norm(Xss-model.cluster_centers_[i],axis=1))])
 
-            metric.plot_table(matchhg, fname = 'b1_results/table_k=%i.pdf'%k)
-            #plotting.cluster_w_label(Xtsne, ytrue, title='$F=%.3f$'%fscore, savefile='b1_results/true_k=%i.pdf'%k,show=False)
-            
+            metric.plot_table(matchhg, fname = 'b1_results/table_k=%i.pdf'%k)            
             plotting.cluster_w_label(Xtsne, ypred, xcenter,title="$FC=%.3f,HG=%.3f$"%(fcscore,hgscore), savefile='b1_results/pred_k=%i.pdf'%k, show=False)
-            plt.close()
             metric.summary(ytrue, ypred, fontsize=6,savefile='b1_results/summary_k=%i.pdf'%k, show=False)
-            plt.close()
 
     plt.scatter(np.arange(1,nk),fcscore_ls,label='flowCAP')
     plt.scatter(np.arange(1,nk),hgscore_ls,label='Hung')
