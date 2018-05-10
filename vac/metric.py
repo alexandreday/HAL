@@ -30,25 +30,43 @@ def main():
     exit()
     summary(y, model.cluster_label)
 
-def summary(y_true, y_pred, fmt= ".2f", fontsize=10):
+def summary(y_true, y_pred, fmt= ".2f", fontsize=10, savefile=None, show=True):
+    """
+    Computes the confusion and F-measure matrix and outputs both in a nice summary figure
+    """
     
     from matplotlib import pyplot as plt
     import seaborn as sns
+    label_true = np.unique(y_true)
+    label_pred = np.unique(y_pred)
+    n_true = len(label_true)
 
     C = confusion_matrix(y_true, y_pred) # automatically padded to include zeros  -> match number of clusters and populations
     F = F_matrix(y_true, y_pred)
     fig, ax_ori = plt.subplots(nrows=1, ncols=2, figsize=(12,5))
-    ax = sns.heatmap(C.T, annot=True, fmt="d", ax = ax_ori[0], annot_kws={'fontsize':fontsize})
+    ax = sns.heatmap(C.T[:,:n_true], 
+    xticklabels=label_true,
+    yticklabels=label_pred,
+    annot=True, fmt="d", ax = ax_ori[0], annot_kws={'fontsize':fontsize})
+
     ax.set_ylabel('Predicted')
     ax.set_xlabel('True')
     ax.set_title('Confusion')
 
-    ax = sns.heatmap(F.T, annot=True, fmt=fmt, ax = ax_ori[1], annot_kws={'fontsize':fontsize})
+    ax = sns.heatmap(F.T[:,:n_true], 
+    xticklabels=label_true,
+    yticklabels=label_pred,
+    annot=True, fmt=fmt, ax = ax_ori[1], annot_kws={'fontsize':fontsize})
     ax.set_ylabel('Predicted')
     ax.set_xlabel('True')
     ax.set_title('F1-measure')
     plt.tight_layout()
-    plt.show()
+    if savefile is not None:
+        plt.savefig(savefile)
+    if show is True:
+        plt.show()
+    
+    plt.close()
 
 def reindex(y):
     """ Array of labels (arbitrary integer labels)
@@ -72,8 +90,9 @@ def F_matrix(y_true, y_pred, eps=1e-10):
 
     sensitivity = np.vstack([C[i]/(np.sum(C[i])+eps) for i in range(ntrue)])
     precision = np.vstack([C[:,j]/(np.sum(C[:,j])+eps) for j in range(npred)]).T
-
-    return 2*np.reciprocal(1./(sensitivity+eps) + 1./(precision+eps))
+    res = 2*np.reciprocal(1./(sensitivity+eps) + 1./(precision+eps))
+    res[res < 10*eps] = 0.
+    return res
 
 def FLOWCAP_score(y_true_, y_pred_):
     """F score is maximized individually for each population (true label)
@@ -135,21 +154,21 @@ def HUNG_score(y_true_, y_pred_):
     y_pred, mappred, invmappred = reindex(y_pred_)
 
     y_u_true = np.unique(y_true_)
+    #y_u_pred = np.unique(y_pred_)
 
     F = F_matrix(y_true, y_pred)
     C = 1 - F
     t, p = LSA(C) # match -> two arrays true - pred
 
-    match_weight  = 1./len(y_u_true)*np.ones(len(y_u_true),dtype=float)
+    match_weight  = 1./C.shape[0]*np.ones(len(y_u_true),dtype=float)
 
     df = pd.DataFrame(OrderedDict({'true':t[:len(y_u_true)], 'predict':p[:len(y_u_true)], 'Fmeasure':(1.-C[t, p])[:len(y_u_true)],'weight':match_weight}))
 
     translateDF(df, invmaptrue, 'true')
     translateDF(df, invmappred, 'predict')
     
-    print((1.-C[t, p]))
-
-    Fscore = np.mean(df['Fmeasure'])
+    #print((1.-C[t, p]))
+    Fscore = np.mean((1.-C[t, p]))
     return Fscore, df
 
 def translateDF(df, mymap, col='true'):
