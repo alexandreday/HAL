@@ -17,7 +17,8 @@ def main():
     np.random.seed(0)
     X, ytrue = make_blobs(n_samples=5000, n_features=30, centers=10)
     ytrue+=1 # shifting by 1 !! :O
-    test_Kmean(X, ytrue)
+    Xtsne = pickle.load(open('b1_results/tsne_perp=50_niter=1000_outratio=0.20_pureratio=0.99_minsize=0_nhsize=40_eta=1.50_testfdcsize=0.80.pkl','rb'))
+    test_Kmean(X, Xtsne, ytrue)
     exit()
 
     model = CLUSTER(root='b1_results/')#run_tSNE='auto', plot_inter=False)
@@ -47,16 +48,24 @@ def main():
 
     plotting.cluster_w_label(xtsne, ypred, title='Predicted labels, HungS=%.3f, FlowS=%.3f'%(HungS,FlowS))
 
-def test_Kmean(X, ytrue):
+def test_Kmean(X, Xtsne, ytrue):
+    from sklearn.preprocessing import StandardScaler as scaler
+    Xss = scaler().fit_transform(X)
     k=5
     from sklearn.cluster import KMeans
     model = KMeans(n_clusters=k)
+    model.fit(Xss)
+    ypred = model.labels_
+    fscore, match = metric.FLOWCAP_score(ytrue, ypred)
 
-
-
-
-
-
+    xcenter = []
+    for i in range(k):
+        xcenter.append(Xtsne[np.argmin(np.linalg.norm(Xss-model.cluster_centers_[i],axis=1))])
+    
+    print("MATCH:\n",match)
+    plotting.cluster_w_label(Xtsne, ytrue, title='$F=%.3f$'%fscore, savefile='b1_results/true.pdf')
+    plotting.cluster_w_label(Xtsne, ypred, xcenter,title='$F=%.3f$'%fscore, savefile='b1_results/pred.pdf')
+    metric.summary(ytrue, ypred, fontsize=8)
 
 
 if __name__ == "__main__":
