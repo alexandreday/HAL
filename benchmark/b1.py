@@ -17,7 +17,6 @@ def main():
     np.random.seed(0)
     X, ytrue = make_blobs(n_samples=10000, n_features=30, centers=15)
 
-    
     #Xtsne = TSNE(perplexity=40).fit_transform(X)
     #pickle.dump(Xtsne, open('b1_results/xtsne.pkl','wb'))
     #Xtsne = pickle.load(open('b1_results/xtsne.pkl','rb'))

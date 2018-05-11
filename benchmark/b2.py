@@ -38,7 +38,7 @@ def load_submission(method=0, file_no=1):
         tmp[np.isnan(tmp['component.of']) == True] = -1 # >> NAN DATA ...
         tmp = tmp.astype(int)
 
-    return tmp
+    return tmp.values
 
 def load_manual_gate(file_no=1):
     fname = "{:0>3}.csv".format(file_no)
@@ -48,12 +48,29 @@ def load_manual_gate(file_no=1):
     
 def main():
     # Loading manual gates, etc. 
-    # Resolve metric scoring ===> what is going on here ?
-    method =4
-    file_no = 3
+
+    method =5
+    file_no = 15
 
     ytrue = load_manual_gate(file_no=file_no)
-    ypred = load_submission(method=4, file_no=file_no)
+    ypred = load_submission(method=method, file_no=file_no)
+
+    pos = (ytrue != 0) # remove ungated cells
+
+    ytrue = ytrue[pos]
+    ypred = ypred[pos]
+    s1, m1 = metric.FLOWCAP_score(ytrue, ypred)
+    s2, m2 = metric.HUNG_score(ytrue, ypred)
+    print(s1,'\t', s2)
+
+
+    #metric.FLOWCAP_score(
+
+
+    exit()
+    #print(ytrue)
+    #print(np.unique(ypred))
+    #exit()
 
     #print(ypred)
     #print(ypred.iloc[158:165])
