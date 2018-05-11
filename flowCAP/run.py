@@ -30,13 +30,11 @@ def main():
     #X = Scaler().fit_transform(X)
 
     # Run vac clustering
-    model = CLUSTER(nh_size=20, n_cluster_init=20)
-    model.fit(X)
+    model = CLUSTER(nh_size=20, n_cluster_init=20, root='info/')
+    #model.fit(X)
+    model.load_clf()
     ypred = model.predict(X)
-
-
-
-
+    np.savetxt('ypred.txt',ypred,fmt='%i')
 
 
 if __name__ == "__main__":

@@ -68,6 +68,10 @@ class CLUSTER():
         self.try_load = try_load
 
         self.file_name = {}
+        info_str = make_file_name(self.param)
+        self.file_name['tree'] = quick_name(root, 'tree', info_str)
+        self.file_name['tsne'] = self.param['root'] + 'tsne_perp=%i_niter=%i.pkl'%(self.param['perplexity'], self.param['n_iteration_tsne'])
+        #print(self.file_name)
 
     def fit(self, data, clf_args = None):
         """ Clustering and fitting random forest classifier ...
@@ -96,28 +100,24 @@ class CLUSTER():
         # zscoring data
         self.ss = StandardScaler()
         X_zscore = self.ss.fit_transform(data)
-        info_str = make_file_name(param)
 
         ######################### dimensional reduction via t-SNE ###########################
 
         if run_tSNE is True:
             model_tsne = TSNE(perplexity=param['perplexity'], n_iter=param['n_iteration_tsne'])
             X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X_zscore))
-            tsnefile = param['root'] + 'tsne_perp=%i_niter=%i.pkl'%(param['perplexity'], param['n_iteration_tsne'])
-            #tsnefile = param['root'] + 'tsne_'+info_str+'.pkl'
-            self.file_name['tsne'] = tsnefile
-            print('t-SNE data saved in %s' % tsnefile)
-            pickle.dump(X_tsne, open(tsnefile,'wb'))
+            print('t-SNE data saved in %s' % self.file_name['tsne'])
+            pickle.dump(X_tsne, open(self.file_name['tsne'],'wb'))
+
         elif run_tSNE == 'auto':
-            tsnefile = param['root'] + 'tsne_perp=%i_niter=%i.pkl'%(param['perplexity'], param['n_iteration_tsne'])
-            self.file_name['tsne'] = tsnefile
+            tsnefile = self.file_name['tsne']
             if os.path.isfile(tsnefile):
                 X_tsne = pickle.load(open(tsnefile,'rb'))
             else:
                 model_tsne = TSNE(perplexity=param['perplexity'], n_iter=param['n_iteration_tsne'])
                 X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X_zscore))
                 print('t-SNE data saved in %s' % tsnefile)
-                pickle.dump(X_tsne, open(tsnefile,'wb'))
+                pickle.dump(X_tsne, open(self.file_name['tsne'],'wb'))
         else:
             assert False
 
@@ -184,15 +184,13 @@ class CLUSTER():
 
         ######## Tree random forest classifer graph #############
         print('[pipeline.py]    == >> Fitting tree << == ')
-        self.mytree = TREE(model_vac.VGraph.history, clf_args)
-        self.mytree.fit(x_train)
-        tree_file_name = quick_name(root, 'tree', info_str)
-        self.file_name['tree'] = tree_file_name
-        pickle.dump([self.mytree, self.ss], open(tree_file_name,'wb'))
+        self.tree = TREE(model_vac.VGraph.history, clf_args)
+        self.tree.fit(x_train)
+        pickle.dump([self.tree, self.ss], open(self.file_name['tree'],'wb'))
 
         # classifying tree, can predict on new data that is normalized beforehand
         # When running on new data, use mytree.predict(ss.transform(X)) to get labels !
-        return self.mytree, self.ss 
+        return self.tree, self.ss 
 
     def load_clf(self, fname=None):
         if fname is not None:
