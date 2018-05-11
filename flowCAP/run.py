@@ -27,13 +27,12 @@ def main():
     # Load and standardize data
     df = load_raw_data(file_no=1)
     X = df.values
-    X = Scaler().fit_transform(X)
+    #X = Scaler().fit_transform(X)
 
     # Run vac clustering
-    model = CLUSTER()
-    
-
-    print(df)
+    model = CLUSTER(nh_size=20, n_cluster_init=20)
+    model.fit(X)
+    ypred = model.predict(X)
 
 
 

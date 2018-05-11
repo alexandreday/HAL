@@ -78,7 +78,7 @@ class CLUSTER():
             4. Find pure clusters
             5. fit random forest, and coarse-grain, until desired level
             6. predict on data given cv score
-            
+
         Returns
         -------
         tree classifier, zscore scaler
@@ -94,8 +94,8 @@ class CLUSTER():
         plot_inter = self.plot_inter
 
         # zscoring data
-        ss = StandardScaler()
-        X_zscore = ss.fit_transform(data)
+        self.ss = StandardScaler()
+        X_zscore = self.ss.fit_transform(data)
         info_str = make_file_name(param)
 
         ######################### dimensional reduction via t-SNE ###########################
@@ -184,12 +184,24 @@ class CLUSTER():
 
         ######## Tree random forest classifer graph #############
         print('[pipeline.py]    == >> Fitting tree << == ')
-        mytree = TREE(model_vac.VGraph.history, clf_args)
-        mytree.fit(x_train)
+        self.mytree = TREE(model_vac.VGraph.history, clf_args)
+        self.mytree.fit(x_train)
         tree_file_name = quick_name(root, 'tree', info_str)
         self.file_name['tree'] = tree_file_name
-        pickle.dump([mytree, ss], open(tree_file_name,'wb'))
+        pickle.dump([self.mytree, self.ss], open(tree_file_name,'wb'))
 
         # classifying tree, can predict on new data that is normalized beforehand
         # When running on new data, use mytree.predict(ss.transform(X)) to get labels !
-        return mytree, ss 
+        return self.mytree, self.ss 
+
+    def load_clf(self, fname=None):
+        if fname is not None:
+            self.tree, self.ss = pickle.load(open(tree_file_name,'rb'))
+        else:
+            self.tree, self.ss = pickle.load(open(self.file_name['tree'],'rb'))
+    
+    def predict(self, X, cv=0.9):
+        """
+        Standardizes according to training set rescaling and then predicts given the cv-score specified
+        """
+        return self.tree.predict(self.ss.transform(X), cv=cv)
