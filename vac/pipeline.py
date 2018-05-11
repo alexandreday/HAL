@@ -72,10 +72,16 @@ class CLUSTER():
     def fit(self, data, clf_args = None):
         """ Clustering and fitting random forest classifier ...
         Processing steps:
-
-        1. zscore data
-        2. t-SNE data
-        3. zscore t-SNE data
+            1. zscore data
+            2. t-SNE data
+            3. zscore t-SNE data
+            4. Find pure clusters
+            5. fit random forest, and coarse-grain, until desired level
+            6. predict on data given cv score
+            
+        Returns
+        -------
+        tree classifier, zscore scaler
         """
 
         if clf_args is None:

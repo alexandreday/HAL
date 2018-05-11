@@ -49,7 +49,7 @@ def load_manual_gate(file_no=1):
 def main():
     # Loading manual gates, etc. 
 
-    method =5
+    method = 5
     file_no = 15
 
     ytrue = load_manual_gate(file_no=file_no)
@@ -62,10 +62,6 @@ def main():
     s1, m1 = metric.FLOWCAP_score(ytrue, ypred)
     s2, m2 = metric.HUNG_score(ytrue, ypred)
     print(s1,'\t', s2)
-
-
-    #metric.FLOWCAP_score(
-
 
     exit()
     #print(ytrue)
