@@ -66,6 +66,7 @@ class TREE:
         self.merge_and_clf = merge_and_clf
         self.clf_args = clf_args
         self.test_size_ratio = test_size_ratio
+        self.cv = 0.9
 
     def fit(self, X): 
         """ X is the original space (boundary + pure) 
@@ -105,8 +106,10 @@ class TREE:
             self.node_dict[c_node.get_id()] = c_node
             self.node_dict[idx_merge].add_child(c_node)
         
-    def predict(self, X, cv=0.9):
+    def predict(self, X):
         print('Predicting on %i points'%len(X))
+        # Would be nice if this were faster ...
+        cv = self.cv
         #import time
         c_node = self.root
         ypred=-1*np.ones(len(X), dtype=int)

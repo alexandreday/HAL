@@ -198,8 +198,17 @@ class CLUSTER():
         else:
             self.tree, self.ss = pickle.load(open(self.file_name['tree'],'rb'))
     
-    def predict(self, X, cv=0.9):
+    def predict(self, X, cv=0.9, njobs=1):
         """
         Standardizes according to training set rescaling and then predicts given the cv-score specified
         """
-        return self.tree.predict(self.ss.transform(X), cv=cv)
+        import multiprocessing
+        #n=int(sys.argv[1])
+        pool = multiprocessing.Pool(njobs)
+        self.tree.cv = cv
+        f = self.tree.predict
+        #out = pool.map(f, range(0, d))
+        return pool.map(f, self.ss.transform(X))
+
+    #
+    
