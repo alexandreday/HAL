@@ -6,7 +6,7 @@ import pickle
 from scipy.cluster.hierarchy import dendrogram as scipydendroed
 from scipy.cluster.hierarchy import to_tree
 #from .hierarchy import compute_linkage_matrix
-import copy
+import copy, time
 from collections import OrderedDict as OD
 from collections import Counter
 
@@ -66,7 +66,6 @@ class TREE:
         self.merge_and_clf = merge_and_clf
         self.clf_args = clf_args
         self.test_size_ratio = test_size_ratio
-        self.cv = 0.9
 
     def fit(self, X): 
         """ X is the original space (boundary + pure) 
@@ -106,25 +105,29 @@ class TREE:
             self.node_dict[c_node.get_id()] = c_node
             self.node_dict[idx_merge].add_child(c_node)
         
-    def predict(self, X):
+    def predict(self, X_, cv = 0.9, option='fast'):
+        """
+        Prediction on the original space data points
+        """
+
+        if X_.ndim == 1:
+            X = X_.reshape(-1,1)
+        else:
+            X = X_
+
         print('Predicting on %i points'%len(X))
-        # Would be nice if this were faster ...
-        cv = self.cv
-        #import time
-        c_node = self.root
-        ypred=-1*np.ones(len(X), dtype=int)
-        for i, x in enumerate(X):
-            if (i+1) % 1000 == 0:
-                print("[tree.py]   Prediction done on %i points"%(i+1))
-            c_node = self.root
-            score = c_node.scale
-            
-            while score > cv :
-                new_id = self.clf_dict[c_node.get_id()].predict([x], option='fast')
-                c_node = self.node_dict[new_id[0]]
-                score = c_node.scale
-            ypred[i] = c_node.get_id()
-        
+
+        stack = [self.root]
+        ypred = self.clf_dict[stack[0].get_id()].predict(X, option=option)
+        while stack:
+            child = self.node_dict[stack[0].get_id()].child # node list (not integers)
+            stack = stack[1:]
+            for c in child:
+                if c.scale > cv:
+                    stack.append(c)
+                    pos = (ypred == c.get_id())
+                    ypred[pos] = self.clf_dict[c.get_id()].predict(X[pos], option=option)
+
         return ypred
 
     def feature_path_predict(self, x, cv=0.9):
