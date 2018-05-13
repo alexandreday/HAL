@@ -123,6 +123,7 @@ class CLUSTER():
             min_size_cluster=param['min_size_cluster']
         )
 
+        # check this part now
         idx_pure_big, idx_pure_small, idx_out, idx_boundary = model_vac.get_pure_idx(X_tsne)
 
         if plot_inter is True:
@@ -146,7 +147,10 @@ class CLUSTER():
         for i, e in enumerate(idx_train_pure):
             y_pred[np.where(idx_train == e)[0]] = label_pure_big[i]
 
-        x_train = X_zscore[idx_train]
+        # ===================================================
+        # ===================================================
+
+        x_train = X_zscore[idx_train] # points to train on
 
         print("---> Initial estimates")
 
@@ -200,7 +204,7 @@ class CLUSTER():
         self.param['tsne']:
             - True : runs t-SNE
             - 'auto' : checks wether file exists, if not runs t-SNE
-            
+
         Returns
         -------
         X_tsne: array, shape = (-1,2)
