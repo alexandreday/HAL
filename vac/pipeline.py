@@ -6,7 +6,8 @@ from collections import Counter
 from .main import VAC
 from .tree import TREE
 from .utility import make_file_name
-from tsne_visual import TSNE
+#from tsne_visual import TSNE
+from MulticoreTSNE import MulticoreTSNE as TSNE
 from fdc import FDC, plotting
 import numpy as np
 from sklearn.preprocessing import StandardScaler
@@ -40,7 +41,8 @@ class CLUSTER():
         run_tSNE = True, # if not True, put in a file name for reading
         plot_inter = True,
         root = "",
-        try_load = True
+        try_load = True,
+        n_jobs = 1
     ):
         self.param = {}
         
@@ -57,6 +59,7 @@ class CLUSTER():
         self.param['n_cluster_init'] = n_cluster_init
         self.param['seed'] = seed
         self.param['root'] = root
+        self.param['n_jobs'] = n_jobs
 
         # Density clustering parameters
         self.param['nh_size'] = nh_size
@@ -99,27 +102,10 @@ class CLUSTER():
 
         # zscoring data
         self.ss = StandardScaler()
+
         X_zscore = self.ss.fit_transform(data)
 
-        ######################### dimensional reduction via t-SNE ###########################
-
-        if run_tSNE is True:
-            model_tsne = TSNE(perplexity=param['perplexity'], n_iter=param['n_iteration_tsne'])
-            X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X_zscore))
-            print('t-SNE data saved in %s' % self.file_name['tsne'])
-            pickle.dump(X_tsne, open(self.file_name['tsne'],'wb'))
-
-        elif run_tSNE == 'auto':
-            tsnefile = self.file_name['tsne']
-            if os.path.isfile(tsnefile):
-                X_tsne = pickle.load(open(tsnefile,'rb'))
-            else:
-                model_tsne = TSNE(perplexity=param['perplexity'], n_iter=param['n_iteration_tsne'])
-                X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X_zscore))
-                print('t-SNE data saved in %s' % tsnefile)
-                pickle.dump(X_tsne, open(self.file_name['tsne'],'wb'))
-        else:
-            assert False
+        X_tsne = self.run_tSNE()
 
         ######################### Density clustering ###########################
 
@@ -203,3 +189,44 @@ class CLUSTER():
         Standardizes according to training set rescaling and then predicts given the cv-score specified
         """
         return self.tree.predict(self.ss.transform(X), cv=cv, option=option)   
+
+    def run_tSNE(self, X):
+        """
+        Performs t-SNE dimensional reduction using a fast C-implementation [https://github.com/DmitryUlyanov/Multicore-TSNE]
+        Optionally, one can specificy number of paralell jobs to run from the :n_jobs: parameter in the constructor.
+        
+        Options
+        --------
+        self.param['tsne']:
+            - True : runs t-SNE
+            - 'auto' : checks wether file exists, if not runs t-SNE
+            
+        Returns
+        -------
+        X_tsne: array, shape = (-1,2)
+            t-SNE embedding
+
+        """
+
+        tsnefile = self.file_name['tsne']
+        if self.param['n_jobs'] > 1: # makes it easy to switch back to tsne_visual
+                model_tsne = TSNE(n_jobs=self.param['n_jobs'],perplexity=param['perplexity'], n_iter=param['n_iteration_tsne'], verbose=1)
+            else:
+                model_tsne = TSNE(perplexity=param['perplexity'], n_iter=param['n_iteration_tsne'], verbose=1)
+        
+        if self.param['tsne'] is True: # Run t-SNE embedding
+            X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X))
+            print('t-SNE data saved in %s' % tsnefile)
+            pickle.dump(X_tsne, open(tsnefile,'wb')) # Saving data in with useful name tag
+
+        elif self.param['tsne'] == 'auto': # if files exist, will read it.
+            if os.path.isfile(tsnefile):
+                X_tsne = pickle.load(open(tsnefile,'rb'))
+            else:
+                X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X))
+                print('t-SNE data saved in %s' % tsnefile)
+                pickle.dump(X_tsne, open(tsnefile,'wb'))
+        else:
+            assert False
+        
+        return X_tsne

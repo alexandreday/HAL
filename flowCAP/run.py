@@ -41,7 +41,7 @@ def run(model, X):
     #model.fit(X)
     model.load_clf()
     s =time.time()
-    ypred = model.predict(X,cv=0.985,option='fast')
+    ypred = model.predict(X, cv=0.985)
     print('Elapsed: \t', time.time() - s)
     np.savetxt('ypred.txt', ypred, fmt='%i')
 
