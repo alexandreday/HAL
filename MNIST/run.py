@@ -25,11 +25,17 @@ def main():
         run_tSNE='auto',
         root='/Users/alexandreday/GitProject/VAC/MNIST/info/'
     )
-
-    xtsne = pickle.load(open(model.file_name['tsne'],'rb'))
-    plotting.cluster_w_label(xtsne, y.flatten(), psize=5)
-    exit()
-
+    
+    #xtsne = model.run_tSNE(Scaler().fit_transform(Xpca))
+    #np.savetxt('tsne.txt',xtsne)
+    #xtsne=np.loadtxt('tsne.txt')
+    #plotting.select_data(xtsne, y.flatten(), X, option='mnist',loop=True)
+    #plotting.cluster_w_label(xtsne, y.flatten(), psize=5)
+    #exit()
+    #plot
+    #xtsne = pickle.load(open(model.file_name['tsne'],'rb'))
+    #plotting.cluster_w_label(xtsne, y.flatten(), psize=5)
+    #exit()
 
     np.random.seed(0)
     model.fit(Xpca)

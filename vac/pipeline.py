@@ -243,7 +243,9 @@ class CLUSTER():
 
         if self.param['tsne'] is True: # Run t-SNE embedding
             if self.param['tsne_type'] == 'fit':
-                X_tsne = StandardScaler().fit_transform(fitsne.FItSNE(np.ascontiguousarray(X.astype(np.float)), **kwargs_))
+                X_tsne = StandardScaler().fit_transform(fitsne.FItSNE(np.ascontiguousarray(X.astype(np.float)), **kwargs_,
+                start_late_exag_iter=900, late_exag_coeff=4.
+                ))
             else:
                 X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X))
 
