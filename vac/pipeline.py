@@ -51,7 +51,6 @@ class CLUSTER():
         self.param['perplexity'] = perplexity
         self.param['n_iteration_tsne'] = n_iteration_tsne
         self.param['angle'] = angle
-        self.param['random_seed']  = random_seed
         self.param['tsne_type'] = tsne_type
 
         # Purification parameters 
@@ -229,7 +228,7 @@ class CLUSTER():
                 'perplexity':self.param['perplexity'], 
                 'max_iter':self.param['n_iteration_tsne'], 
                 'theta':self.param['angle'],
-                'rand_seed': self.param['random_seed']
+                'rand_seed': self.param['seed']
             }
             if (kwargs_['rand_seed'] is None) : kwargs_['rand_seed'] = -1 
         else:
@@ -239,7 +238,7 @@ class CLUSTER():
                 n_iter=self.param['n_iteration_tsne'],
                 verbose=self.param['verbose'],
                 angle=self.param['angle'],
-                random_state=self.param['random_seed']
+                random_state=self.param['seed']
             )
 
         if self.param['tsne'] is True: # Run t-SNE embedding
