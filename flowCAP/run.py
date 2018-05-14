@@ -31,10 +31,26 @@ def main():
     X = df.values#[:,2:]
     #X = Scaler().fit_transform(X)
     # Run vac clustering
-    model = CLUSTER(nh_size=20, n_cluster_init=20, angle=0.5,root='/Users/alexandreday/GitProject/VAC/flowCAP/info/')
+
+    model = CLUSTER(
+        nh_size=20, 
+        n_cluster_init=20, 
+        n_iteration_tsne = 1000,
+        angle=0.5, 
+        plot_inter=False,
+        run_tSNE='auto',
+        root='/Users/alexandreday/GitProject/VAC/flowCAP/info/'
+        )
+
     np.random.seed(0)
-    run(model, X)
-    tmp(model)
+    model.load_clf()
+    ypred = model.predict(X, cv=0.97)#,option='best')
+    xtsne = pickle.load(open(model.file_name['tsne'],'rb'))
+    ytrue = load_manual_gate()
+    plotting.cluster_w_label(xtsne, ypred, psize=5)#, w_legend=True)
+
+    #run(model, X)
+    #tmp(model)
 
 
 def run(model, X):
@@ -42,7 +58,7 @@ def run(model, X):
     model.fit(X)
     exit()
     model.load_clf()
-    s =time.time()
+    s = time.time()
     ypred = model.predict(X, cv=0.985)
     print('Elapsed: \t', time.time() - s)
     np.savetxt('ypred.txt', ypred, fmt='%i')
@@ -52,7 +68,7 @@ def tmp(model:CLUSTER):
     xtsne = pickle.load(open(model.file_name['tsne'],'rb'))
     ypred = np.loadtxt('ypred.txt', dtype=int)
     ytrue = load_manual_gate()
-    plotting.cluster_w_label(xtsne, ytrue, psize=5,w_legend=True)
+    plotting.cluster_w_label(xtsne, ytrue, psize=5, w_legend=True)
 
 if __name__ == "__main__":
     main()

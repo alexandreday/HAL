@@ -32,6 +32,7 @@ class CLUSTER():
         perplexity = 50,
         n_iteration_tsne =  1000,
         angle = 0.5,
+        tsne_type = 'fit',
         n_cluster_init = 30,
         seed = 0,
         nh_size = 40,
@@ -51,6 +52,7 @@ class CLUSTER():
         self.param['n_iteration_tsne'] = n_iteration_tsne
         self.param['angle'] = angle
         self.param['random_seed']  = random_seed
+        self.param['tsne_type'] = tsne_type
 
         # Purification parameters 
         self.param['outlier_ratio'] = outlier_ratio
@@ -74,6 +76,8 @@ class CLUSTER():
 
         self.file_name = {}
         info_str = make_file_name(self.param)
+        self.file_name['raw'] = quick_name(root, 'raw', info_str)
+        self.file_name['robust'] = quick_name(root, 'robust', info_str)
         self.file_name['tree'] = quick_name(root, 'tree', info_str)
         self.file_name['tsne'] = self.param['root'] + 'tsne_perp=%i_niter=%i.pkl'%(self.param['perplexity'], self.param['n_iteration_tsne'])
         #print(self.file_name)
@@ -159,20 +163,20 @@ class CLUSTER():
         ######## Raw graph #############
         loading_worked = False
         if self.try_load is True:
-            loading_worked = model_vac.load(quick_name(root,'raw',info_str))
+            loading_worked = model_vac.load(self.file_name['raw'])
         
         if loading_worked is False:
             model_vac.fit_raw_graph(x_train, y_pred, n_average = 30, clf_args = clf_args, n_edge = 4)
-            model_vac.save(quick_name(root,'raw',info_str))
+            model_vac.save(self.file_name['raw'])
         
         ######## Coarse grained graph #############
         loading_worked = False
         if self.try_load is True:
-            loading_worked = model_vac.load(quick_name(root,'robust', info_str))
+            loading_worked = model_vac.load(self.file_name['robust'])
         
         if loading_worked is False:
             model_vac.fit_robust_graph(x_train, cv_robust = 0.99)
-            model_vac.save(quick_name(root, 'robust', info_str))
+            model_vac.save(self.file_name['robust'])
 
         ######## Tree random forest classifer graph #############
         print('[pipeline.py]    == >> Fitting tree << == ')
@@ -218,27 +222,27 @@ class CLUSTER():
 
         if self.param['tsne_type'] == 'fit': # makes it easy to switch back to tsne_visual
             import fitsne
-                kwargs_ = {
-                    'nthreads':self.param['n_jobs'],
-                    'perplexity':param['perplexity'], 
-                    'max_iter':param['n_iteration_tsne'], 
-                    'angle':self.param['angle'],
-                    'random_seed': self.param['random_seed']
-                }
-                kwargs_['random_seed'] = -1 if (kwargs_['random_seed'] is None)
+            kwargs_ = {
+                'nthreads':self.param['n_jobs'],
+                'perplexity':self.param['perplexity'], 
+                'max_iter':self.param['n_iteration_tsne'], 
+                'theta':self.param['angle'],
+                'rand_seed': self.param['random_seed']
+            }
+            if (kwargs_['rand_seed'] is None) : kwargs_['rand_seed'] = -1 
         else:
             from tsne_visual import TSNE
-                model_tsne = TSNE(
-                    perplexity=self.param['perplexity'],
-                    n_iter=self.param['n_iteration_tsne'],
-                    verbose=self.param['verbose'],
-                    angle=self.param['angle'],
-                    random_state=self.param['random_seed']
-                )
+            model_tsne = TSNE(
+                perplexity=self.param['perplexity'],
+                n_iter=self.param['n_iteration_tsne'],
+                verbose=self.param['verbose'],
+                angle=self.param['angle'],
+                random_state=self.param['random_seed']
+            )
 
         if self.param['tsne'] is True: # Run t-SNE embedding
             if self.param['tsne_type'] == 'fit':
-                X_tsne = StandardScaler().fit_transform(fitsne.FItSNE(np.ascontiguousarray(X), **kwargs_))
+                X_tsne = StandardScaler().fit_transform(fitsne.FItSNE(np.ascontiguousarray(X.astype(np.float)), **kwargs_))
             else:
                 X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X))
 
@@ -250,7 +254,7 @@ class CLUSTER():
                 X_tsne = pickle.load(open(tsnefile,'rb'))
             else:
                 if self.param['tsne_type'] == 'fit':
-                    X_tsne = StandardScaler().fit_transform(fitsne.FItSNE(np.ascontiguousarray(X), **kwargs_))
+                    X_tsne = StandardScaler().fit_transform(fitsne.FItSNE(np.ascontiguousarray(X.astype(np.float)), **kwargs_))
                 else:
                     X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X))
                 print('t-SNE data saved in %s' % tsnefile)

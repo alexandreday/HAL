@@ -189,7 +189,7 @@ class VGraph:
             score_list = []
             edge_list = []
             yunique = np.unique(self.cluster_label) # > how would you prepare this ?
-            yunique = yunique[yunique >=0] # remove boundary !
+            yunique = yunique[yunique >=0] # remove boundary <== <==
 
             score_dict = {yu:{} for yu in yunique}
 

@@ -119,15 +119,15 @@ class TREE:
 
         stack = [self.root]
         ypred = self.clf_dict[stack[0].get_id()].predict(X, option=option)
+
         while stack:
             child = self.node_dict[stack[0].get_id()].child # node list (not integers)
             stack = stack[1:]
             for c in child:
-                if c.scale > cv:
+                if c.scale > cv: # c.scale (unpropagated scores)
                     stack.append(c)
                     pos = (ypred == c.get_id())
                     ypred[pos] = self.clf_dict[c.get_id()].predict(X[pos], option=option)
-
         return ypred
 
     def feature_path_predict(self, x, cv=0.9):
