@@ -217,6 +217,7 @@ class CLUSTER():
             t-SNE embedding
 
         """
+        print('[pipeline.py]    Running t-SNE for X.shape = (%i,%i)'%X.shape)
     
         tsnefile = self.file_name['tsne']
 
