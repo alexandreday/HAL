@@ -6,8 +6,6 @@ from collections import Counter
 from .main import VAC
 from .tree import TREE
 from .utility import make_file_name
-#from tsne_visual import TSNE
-from MulticoreTSNE import MulticoreTSNE as TSNE
 from fdc import FDC, plotting
 import numpy as np
 from sklearn.preprocessing import StandardScaler
@@ -33,6 +31,7 @@ class CLUSTER():
         min_size_cluster=0,
         perplexity = 50,
         n_iteration_tsne =  1000,
+        angle = 0.5,
         n_cluster_init = 30,
         seed = 0,
         nh_size = 40,
@@ -42,13 +41,16 @@ class CLUSTER():
         plot_inter = True,
         root = "",
         try_load = True,
-        n_jobs = 1
+        n_jobs = 0, # All available processors will be used
+        random_seed = None
     ):
         self.param = {}
         
         # t-SNE parameters
         self.param['perplexity'] = perplexity
         self.param['n_iteration_tsne'] = n_iteration_tsne
+        self.param['angle'] = angle
+        self.param['random_seed']  = random_seed
 
         # Purification parameters 
         self.param['outlier_ratio'] = outlier_ratio
@@ -66,7 +68,7 @@ class CLUSTER():
         self.param['eta'] = eta
         self.param['test_ratio_size'] = test_ratio_size
 
-        self.run_tSNE = run_tSNE 
+        self.param['tsne'] = run_tSNE
         self.plot_inter = plot_inter 
         self.try_load = try_load
 
@@ -105,7 +107,7 @@ class CLUSTER():
 
         X_zscore = self.ss.fit_transform(data)
 
-        X_tsne = self.run_tSNE()
+        X_tsne = self.run_tSNE(X_zscore)
 
         ######################### Density clustering ###########################
 
@@ -196,7 +198,7 @@ class CLUSTER():
 
     def run_tSNE(self, X):
         """
-        Performs t-SNE dimensional reduction using a fast C-implementation [https://github.com/DmitryUlyanov/Multicore-TSNE]
+        Performs t-SNE dimensional reduction using a FFT based C-implementation of Barnes-Hut t-SNE (very fast)
         Optionally, one can specificy number of paralell jobs to run from the :n_jobs: parameter in the constructor.
         
         Options
@@ -211,15 +213,35 @@ class CLUSTER():
             t-SNE embedding
 
         """
-
+    
         tsnefile = self.file_name['tsne']
-        if self.param['n_jobs'] > 1: # makes it easy to switch back to tsne_visual
-                model_tsne = TSNE(n_jobs=self.param['n_jobs'],perplexity=param['perplexity'], n_iter=param['n_iteration_tsne'], verbose=1)
-            else:
-                model_tsne = TSNE(perplexity=param['perplexity'], n_iter=param['n_iteration_tsne'], verbose=1)
-        
+
+        if self.param['tsne_type'] == 'fit': # makes it easy to switch back to tsne_visual
+            import fitsne
+                kwargs_ = {
+                    'nthreads':self.param['n_jobs'],
+                    'perplexity':param['perplexity'], 
+                    'max_iter':param['n_iteration_tsne'], 
+                    'angle':self.param['angle'],
+                    'random_seed': self.param['random_seed']
+                }
+                kwargs_['random_seed'] = -1 if (kwargs_['random_seed'] is None)
+        else:
+            from tsne_visual import TSNE
+                model_tsne = TSNE(
+                    perplexity=self.param['perplexity'],
+                    n_iter=self.param['n_iteration_tsne'],
+                    verbose=self.param['verbose'],
+                    angle=self.param['angle'],
+                    random_state=self.param['random_seed']
+                )
+
         if self.param['tsne'] is True: # Run t-SNE embedding
-            X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X))
+            if self.param['tsne_type'] == 'fit':
+                X_tsne = StandardScaler().fit_transform(fitsne.FItSNE(np.ascontiguousarray(X), **kwargs_))
+            else:
+                X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X))
+
             print('t-SNE data saved in %s' % tsnefile)
             pickle.dump(X_tsne, open(tsnefile,'wb')) # Saving data in with useful name tag
 
@@ -227,7 +249,10 @@ class CLUSTER():
             if os.path.isfile(tsnefile):
                 X_tsne = pickle.load(open(tsnefile,'rb'))
             else:
-                X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X))
+                if self.param['tsne_type'] == 'fit':
+                    X_tsne = StandardScaler().fit_transform(fitsne.FItSNE(np.ascontiguousarray(X), **kwargs_))
+                else:
+                    X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X))
                 print('t-SNE data saved in %s' % tsnefile)
                 pickle.dump(X_tsne, open(tsnefile,'wb'))
         else:

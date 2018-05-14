@@ -31,14 +31,16 @@ def main():
     X = df.values#[:,2:]
     #X = Scaler().fit_transform(X)
     # Run vac clustering
-    model = CLUSTER(nh_size=20, n_cluster_init=20, root='/Users/alexandreday/GitProject/VAC/flowCAP/info/')
+    model = CLUSTER(nh_size=20, n_cluster_init=20, angle=0.5,root='/Users/alexandreday/GitProject/VAC/flowCAP/info/')
+    np.random.seed(0)
     run(model, X)
     tmp(model)
 
 
 def run(model, X):
     import time
-    #model.fit(X)
+    model.fit(X)
+    exit()
     model.load_clf()
     s =time.time()
     ypred = model.predict(X, cv=0.985)
