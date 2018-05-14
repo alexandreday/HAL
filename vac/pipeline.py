@@ -204,6 +204,7 @@ class CLUSTER():
         """
         Performs t-SNE dimensional reduction using a FFT based C-implementation of Barnes-Hut t-SNE (very fast)
         Optionally, one can specificy number of paralell jobs to run from the :n_jobs: parameter in the constructor.
+        Make sure X is normalized too !
         
         Options
         --------
