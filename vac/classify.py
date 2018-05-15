@@ -74,7 +74,6 @@ class CLF:
         n_sample = X.shape[0]
         idx = np.arange(n_sample)
         yu_pos = {yu : idx[(y == yu)] for yu in y_unique}
-        
         n_class = len(y_unique)
         
         for _ in range(n_average):
@@ -102,8 +101,7 @@ class CLF:
 
             clf_list.append(clf)
             xtrain_scaler_list.append([mu,inv_sigma])
-        print("TRAINING ONLY\t",dt)
-
+        
         self.scaler_list = xtrain_scaler_list # scaling transformations (zero mean, unit std)
         self.cv_score = np.mean(predict_score)
         self.cv_score_std = np.std(predict_score)  
