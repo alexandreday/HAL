@@ -33,12 +33,13 @@ def main():
     # Run vac clustering
 
     model = CLUSTER(
-        nh_size=20, 
+        nh_size=40, 
         n_cluster_init=20, 
         n_iteration_tsne = 1000,
         angle=0.5, 
         plot_inter=False,
         run_tSNE='auto',
+        try_load=False,
         root='/Users/alexandreday/GitProject/VAC/flowCAP/info/'
         )
 

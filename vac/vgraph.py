@@ -1,4 +1,4 @@
-from fdc.classify import CLF
+from .classify import CLF
 from fdc import FDC
 import numpy as np
 from copy import deepcopy
@@ -163,7 +163,7 @@ class VGraph:
         print(Xsubset.shape)
         print(np.unique(ysubset))
 
-        tmp = CLF(clf_type=self.clf_type, n_average=n_average, test_size=self.test_size_ratio, clf_args=clf_args).fit(Xsubset, ysubset)
+        tmp = CLF(clf_type=self.clf_type, n_average=n_average, test_size=self.test_size_ratio, clf_kwargs=clf_args).fit(Xsubset, ysubset)
         print("Second part:\t",time.time() - s)
         exit()
         return tmp

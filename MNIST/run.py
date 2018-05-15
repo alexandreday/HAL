@@ -19,10 +19,11 @@ def main():
     Xpca = PCA(n_components=40).fit_transform(X)
 
     model = CLUSTER(
-        nh_size=40, n_cluster_init=20, n_iteration_tsne = 1000,
+        nh_size=40, n_cluster_init=30, n_iteration_tsne = 1000,
         angle=0.5, 
-        plot_inter=True,
+        plot_inter=False,
         run_tSNE='auto',
+        try_load = True,
         root='/Users/alexandreday/GitProject/VAC/MNIST/info/'
     )
     

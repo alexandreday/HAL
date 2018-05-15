@@ -9,7 +9,6 @@ from .utility import make_file_name
 from fdc import FDC, plotting
 import numpy as np
 from sklearn.preprocessing import StandardScaler
-from matplotlib import pyplot as plt
 import os
 
 def quick_name(root, object_name, para, ext=".pkl"):
