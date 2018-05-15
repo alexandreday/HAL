@@ -1,5 +1,6 @@
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.naive_bayes import GaussianNB
 from sklearn.model_selection import train_test_split
 import numpy as np
 from collections import Counter
@@ -58,6 +59,11 @@ class CLF:
                 clf = SVC(**self.clf_kwargs)
         elif self.clf_type == 'rf':
                 clf = RandomForestClassifier(**self.clf_kwargs)
+        elif self.clf_type == 'nb':
+                clf = GaussianNB(**self.clf_kwargs)
+        else:
+            assert False
+
         n_average = self.n_average
     
         predict_score = []

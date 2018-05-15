@@ -135,7 +135,7 @@ class VAC:
         return np.hstack((self.cluster_pure_label,-1*np.ones(len(self.cluster_boundary_label),dtype=int)))
         
     def fit_raw_graph(self, X_inlier, y_inlier_pred, n_average = 10, n_edge = 2, clf_args = None):
-        self.VGraph = VGraph(clf_type='rf', n_average = n_average, clf_args=clf_args, n_edge = n_edge)
+        self.VGraph = VGraph(clf_type='svm', n_average = n_average, clf_args=clf_args, n_edge = n_edge)
         self.VGraph.fit(X_inlier, y_inlier_pred)
         
     def fit_robust_graph(self, X_inlier, cv_robust = 0.99):
