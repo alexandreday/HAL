@@ -76,6 +76,7 @@ class CLUSTER():
         self.file_name = {}
         info_str = make_file_name(self.param)
         self.file_name['raw'] = quick_name(root, 'raw', info_str)
+        self.file_name['fdc'] = quick_name(root, 'fdc', info_str)
         self.file_name['robust'] = quick_name(root, 'robust', info_str)
         self.file_name['tree'] = quick_name(root, 'tree', info_str)
         self.file_name['tsne'] = self.param['root'] + 'tsne_perp=%i_niter=%i.pkl'%(self.param['perplexity'], self.param['n_iteration_tsne'])
@@ -118,8 +119,9 @@ class CLUSTER():
             nh_size=param['nh_size'],
             eta=param['eta'], 
             test_ratio_size=param['test_ratio_size'],
-            n_cluster_init=param['n_cluster_init']
-            )
+            n_cluster_init=param['n_cluster_init'],
+            search_size=10
+        )
 
         model_vac = VAC(
             density_clf = model_fdc,
@@ -128,8 +130,16 @@ class CLUSTER():
             min_size_cluster=param['min_size_cluster']
         )
 
-        # check this part now
-        idx_pure_big, idx_pure_small, idx_out, idx_boundary = model_vac.get_pure_idx(X_tsne)
+        # Check this part now
+        if self.try_load is True:
+            if model_vac.load(self.file_name['fdc']) is False:
+                idx_pure_big, idx_pure_small, idx_out, idx_boundary = model_vac.get_pure_idx(X_tsne)
+                model_vac.save(name = self.file_name['fdc'])
+            else:
+                idx_pure_big, idx_pure_small, idx_out, idx_boundary = model_vac.get_purify_result()
+        else:
+            idx_pure_big, idx_pure_small, idx_out, idx_boundary = model_vac.get_pure_idx(X_tsne)
+            model_vac.save(name = self.file_name['fdc'])
 
         if plot_inter is True:
             print('[pipeline.py]   Plotting inliers and outliers')
@@ -138,9 +148,8 @@ class CLUSTER():
             plotting.cluster_w_label(X_tsne, ytmp)
             print('[pipeline.py]   Plotting pure data and boundaries')
             plotting.cluster_w_label(X_tsne[idx_pure_big], model_vac.label_sets[('pure','big')])
-
-        idx_pure_big, idx_pure_small, idx_out, idx_boundary = model_vac.get_purify_result()
-
+    
+    
         # OK this is a mess, but at least there are no bug, need to clean this up ... 
 
         idx_train_pure = model_vac.idx_sets[('all','pure')][model_vac.idx_sets[('pure','big')]]
@@ -160,23 +169,23 @@ class CLUSTER():
         print("---> Initial estimates")
 
         ######## Raw graph #############
-        loading_worked = False
         if self.try_load is True:
-            loading_worked = model_vac.load(self.file_name['raw'])
-        
-        if loading_worked is False:
+            if model_vac.load(self.file_name['raw']) is False:    
+                model_vac.fit_raw_graph(x_train, y_pred, n_average = 30, clf_args = clf_args, n_edge = 4)
+                model_vac.save(self.file_name['raw'])
+        else:
             model_vac.fit_raw_graph(x_train, y_pred, n_average = 30, clf_args = clf_args, n_edge = 4)
             model_vac.save(self.file_name['raw'])
         
         ######## Coarse grained graph #############
-        loading_worked = False
         if self.try_load is True:
-            loading_worked = model_vac.load(self.file_name['robust'])
-        
-        if loading_worked is False:
+            if model_vac.load(self.file_name['robust']) is False:   
+                model_vac.fit_robust_graph(x_train, cv_robust = 0.99)
+                model_vac.save(self.file_name['robust'])
+        else:
             model_vac.fit_robust_graph(x_train, cv_robust = 0.99)
             model_vac.save(self.file_name['robust'])
-
+        
         ######## Tree random forest classifer graph #############
         print('[pipeline.py]    == >> Fitting tree << == ')
         self.tree = TREE(model_vac.VGraph.history, clf_args)

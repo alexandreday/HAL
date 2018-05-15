@@ -137,6 +137,8 @@ class VGraph:
         CLF object (from classify.py). Object has similar syntax to sklearn's classifier syntax
 
         """
+        import time
+        s = time.time()
         ## ok need to down sample somewhere here
         test_size_ratio = self.test_size_ratio
 
@@ -149,15 +151,22 @@ class VGraph:
         n_sample = len(ysubset)
 
         if quick_estimate is not None:
-            n_sub = quick_estimate # should be an integer
             pos_0 = np.where(ysubset == edge_tuple[0])[0]
             pos_1 = np.where(ysubset == edge_tuple[1])[0]
             np.random.shuffle(pos_0)
             np.random.shuffle(pos_1)
             Xsubset = np.vstack((Xsubset[pos_0[:quick_estimate]], Xsubset[pos_1[:quick_estimate]]))
             ysubset = np.hstack((ysubset[pos_0[:quick_estimate]], ysubset[pos_1[:quick_estimate]]))
+        print("First part:\t",time.time() - s)    
         
-        return CLF(clf_type=self.clf_type, n_average=n_average, test_size=self.test_size_ratio, clf_args=clf_args).fit(Xsubset, ysubset)
+        s= time.time()
+        print(Xsubset.shape)
+        print(np.unique(ysubset))
+
+        tmp = CLF(clf_type=self.clf_type, n_average=n_average, test_size=self.test_size_ratio, clf_args=clf_args).fit(Xsubset, ysubset)
+        print("Second part:\t",time.time() - s)
+        exit()
+        return tmp
     
     def merge_until_robust(self, X_in, cv_robust, ratio_dict):
         """
