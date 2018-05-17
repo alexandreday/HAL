@@ -6,5 +6,6 @@ from .utility import *
 from .pipeline import CLUSTER
 from .metric import *
 from .classify import CLF
+from .purify import DENSITY_PROFILER
 
 __all__ = ['VGraph', 'VAC', 'TupleDict','TREE','CLF']
