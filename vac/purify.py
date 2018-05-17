@@ -16,8 +16,8 @@ class DENSITY_PROFILER:
         self.min_size_cluster= min_size_cluster
 
     def fit(self, X):
-        y, idx_lowD = self.mark_density_profile(X)
-        
+        self.y, self.idx_lowD = self.mark_density_profile(X)
+
     def mark_lowdensity_points(self, X):
         """
         X : array, shape = (-1, 2) 
@@ -36,10 +36,22 @@ class DENSITY_PROFILER:
         
         return y, idx_lowD
 
-    def mark_murky_points(self, X, y):
+    def mark_murky_points(self, y):
 
         self.density_model.nn_list
-        np.count_non
+        counts = np.empty(len(y), dtype=float)
+
+        counts = np.count_nonzero(self.density_model.nn_list == y, axis=1)
+        counts /= len(self.density_model.nh_size) # between [0, 1]
+
+        idx_murky = np.where(counts < self.nn_pure_ratio)[0]
+        self.y[idx_murky] = -2
+        self.y[idx_lowD] = -1
+        
+        # ====
+        
+
+        
         # Run of all points, che
 
 
