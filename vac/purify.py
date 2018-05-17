@@ -21,6 +21,7 @@ class DENSITY_PROFILER:
 
     def fit(self, X):
         self.mark_lowdensity_points(X).mark_murky_points().mark_small_cluster()
+        print("[purify.py]    # of clusters after purification : %i"%np.count_nonzero(np.unique(self.y) > -1))
         return self
 
     def get_cluster_label():
@@ -34,7 +35,12 @@ class DENSITY_PROFILER:
         assert X.shape[1] < 5, "Working only for low-dimensional arrays"
 
         n_sample = len(X)
+        eta = self.density_model.eta
+        
+        self.density_model.eta = 0.
         rho = self.density_model.fit(X).rho # finds density based clusters
+        self.density_model.coarse_grain(np.linspace(0, eta, 30)) # stops when max number of clusters is reached 
+
         self.y = np.copy(self.density_model.cluster_label)
         rho_argsort = np.argsort(rho)
         self.idx_lowD = rho_argsort[:int(self.outlier_ratio*n_sample)]
@@ -53,7 +59,11 @@ class DENSITY_PROFILER:
         for i in range(n_sample): # could cythonize this ... but no need for that now
             y_tmp =np.copy(self.y[self.density_model.nn_list[i]])
             y_tmp = y_tmp[(y_tmp != -1)]
-            counts[i] = np.count_nonzero(y_tmp == self.y[i])/len(y_tmp)
+            if len(y_tmp) == 0:
+                counts[i] = 10. # not murky, just outlier
+            else:
+                counts[i] = np.count_nonzero(y_tmp == self.y[i])/len(y_tmp)
+
         
         self.idx_murky = np.where(counts < self.nn_pure_ratio)[0]
         self.y[self.idx_murky] = -2 # assign murky
@@ -78,6 +88,8 @@ class DENSITY_PROFILER:
             self.y[self.idx_small] = -3
         
         return self
+
+    ################# INFORMATIVE FUNCTIONS #######################
     
     def describe(self):
         from collections import OrderedDict
@@ -87,3 +99,32 @@ class DENSITY_PROFILER:
             c = np.count_nonzero(self.y == yu)
             des[yu] = [c, c/len(self.y)]
         print(des)
+
+    def check_purity(self, ytrue, plot=True): # Only if you have access to the true labels
+        from collections import OrderedDict
+        y_unique = np.unique(self.y)
+        y_unique = y_unique[y_unique > -1]
+        n_unique = len(y_unique)
+        cluster_entropy = OrderedDict()
+        for yu in y_unique: # want to check entropy of the distribution 
+            ytrue_sub = ytrue[self.y == yu]
+            y_unique_sub, counts = np.unique(ytrue_sub, return_counts=True)
+            pc = counts/len(ytrue_sub)
+            S = -1*np.sum(pc*np.log(pc)) # entropy
+            cluster_entropy[yu] = S
+
+        if plot is True:
+            from matplotlib import pyplot as plt
+            plt.bar(np.arange(n_unique), cluster_entropy.values(), width=0.4)
+            plt.xticks(np.arange(n_unique), y_unique, rotation=45, fontsize=8)
+            plt.ylabel('Entropy')
+            plt.xlabel('Cluster label')
+            cS_value = np.array(list(cluster_entropy.values()))
+            plt.title('Total purity = %.3f, nCluster=%i'%(np.sum(cS_value),n_unique))
+            plt.tight_layout()
+            plt.show()
+        
+        return np.sum(cS_value), cluster_entropy
+
+        
+        
