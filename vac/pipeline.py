@@ -81,7 +81,7 @@ class CLUSTER():
         self.file_name['tsne'] = self.param['root'] + 'tsne_perp=%i_niter=%i.pkl'%(self.param['perplexity'], self.param['n_iteration_tsne'])
         #print(self.file_name)
 
-    def fit(self, data, clf_args = None):
+    def fit(self, data, clf_type = 'svm', clf_args = None):
         """ Clustering and fitting random forest classifier ...
         Processing steps:
             1. zscore data
@@ -98,7 +98,8 @@ class CLUSTER():
 
         if clf_args is None:
             clf_args = {'class_weight':'balanced','n_estimators': 50, 'max_features': min([data.shape[1],200])}
-
+        
+        #print(self.__dict__)
         param = self.param
         np.random.seed(param['seed'])
         root = param['root']
@@ -126,7 +127,8 @@ class CLUSTER():
             density_clf = model_fdc,
             outlier_ratio=param['outlier_ratio'],
             nn_pure_ratio=param['nn_pure_ratio'],
-            min_size_cluster=param['min_size_cluster']
+            min_size_cluster=param['min_size_cluster'],
+            clf_type = clf_type
         )
 
         # Check this part now
@@ -167,7 +169,7 @@ class CLUSTER():
 
         print("---> Initial estimates")
 
-        ######## Raw graph #############
+        ################ Raw graph #############
         if self.try_load is True:
             if model_vac.load(self.file_name['raw']) is False:    
                 model_vac.fit_raw_graph(x_train, y_pred, n_average = 30, clf_args = clf_args, n_edge = 4)
@@ -176,7 +178,7 @@ class CLUSTER():
             model_vac.fit_raw_graph(x_train, y_pred, n_average = 30, clf_args = clf_args, n_edge = 4)
             model_vac.save(self.file_name['raw'])
         
-        ######## Coarse grained graph #############
+        ################ Coarse grained graph #############
         if self.try_load is True:
             if model_vac.load(self.file_name['robust']) is False:   
                 model_vac.fit_robust_graph(x_train, cv_robust = 0.99)
@@ -187,7 +189,7 @@ class CLUSTER():
         
         ######## Tree random forest classifer graph #############
         print('[pipeline.py]    == >> Fitting tree << == ')
-        self.tree = TREE(model_vac.VGraph.history, clf_args)
+        self.tree = TREE(model_vac.VGraph.history, {'class_weight':'balanced','n_estimators':30, 'max_features':min([100,x_train.shape[1]])})
         self.tree.fit(x_train)
         pickle.dump([self.tree, self.ss], open(self.file_name['tree'],'wb'))
 
@@ -265,7 +267,9 @@ class CLUSTER():
                 X_tsne = pickle.load(open(tsnefile,'rb'))
             else:
                 if self.param['tsne_type'] == 'fit':
-                    X_tsne = StandardScaler().fit_transform(fitsne.FItSNE(np.ascontiguousarray(X.astype(np.float)), **kwargs_))
+                    X_tsne = StandardScaler().fit_transform(fitsne.FItSNE(np.ascontiguousarray(X.astype(np.float)), **kwargs_,
+                    start_late_exag_iter=900, late_exag_coeff=4.
+                    ))
                 else:
                     X_tsne =  StandardScaler().fit_transform(model_tsne.fit_transform(X))
                 print('t-SNE data saved in %s' % tsnefile)

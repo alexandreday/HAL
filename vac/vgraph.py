@@ -20,9 +20,9 @@ class VGraph:
         self.clf_args = clf_args
         self.cluster_label = None
         self.edge_score = OrderedDict()
-        self.quick_estimate = 50 # should we replace this
         self.fout = FOUT('out.txt')
         self.n_edge = n_edge
+        print(self.__dict__)
 
     def fit(self, X, y_pred):  
         """ Constructs a low connectivity graph by joining clusters that have low edge scores.
@@ -49,10 +49,15 @@ class VGraph:
         print('[vgraph.py]    Performing classification sweep over %i pairs of clusters'%n_iteration)
         self.cluster_label = np.copy(y_pred)
 
-        n_average_pre = 4 # don't bother with this now, we just want a rough idea of what is good and what is bad.
-        clf_args_pre = {'class_weight':'balanced', 'n_estimators': 30, 'max_features': min([X.shape[1],200])}
         
+        if self.clf_type == 'rf':
+            clf_args_pre = {'class_weight':'balanced', 'n_estimators': 30, 'max_features': min([X.shape[1],200])}
+        elif self.clf_type == 'svm':
+            clf_args_pre = {'class_weight':'balanced', 'kernel': 'linear'}
+        
+        n_average_pre = 4 # don't bother with this now, we just want a rough idea of what is good and what is bad.
         info = '[vgraph.py]    parameters:\t'+("n_average =%i"%n_average_pre)+'\t'+str(clf_args_pre)
+        
         print(info)
         self.fout.write(info)
         score = {yu:{} for yu in y_unique} # dict of dict score[i][j] returns score for that edge
@@ -60,13 +65,13 @@ class VGraph:
         # This is O(N^2) complexity in the number of clusters ...
         for i, yu1 in enumerate(y_unique): 
             for j, yu2 in enumerate(y_unique):
-                if i<j:
+                if i < j:
                     idx_tuple = (yu1, yu2)
-                    clf = self.classify_edge(idx_tuple, X, clf_args=clf_args_pre, n_average=n_average_pre)# quick_estimate = self.quick_estimate), can shortcut this ?
+                    clf = self.classify_edge(idx_tuple, X, clf_args=clf_args_pre, n_average=n_average_pre)
                     edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
                     score[yu1][yu2] = clf.cv_score # since n_average is small, just use mean, no variance for now !
                     score[yu2][yu1] = clf.cv_score
-        
+        #exit()
         edge_list = []
         score_list = []
         for cluster_idx in y_unique:
@@ -119,7 +124,7 @@ class VGraph:
             
         return self
         
-    def classify_edge(self, edge_tuple, X, quick_estimate = None, n_average=3, clf_args = None):
+    def classify_edge(self, edge_tuple, X, n_average=3, clf_args = None):
         """ Trains a classifier on the childs of "root" and returns a classifier for these types.
 
         Important attributes are (for CLF object):
@@ -137,36 +142,10 @@ class VGraph:
         CLF object (from classify.py). Object has similar syntax to sklearn's classifier syntax
 
         """
-        import time
-        s = time.time()
-        ## ok need to down sample somewhere here
-        test_size_ratio = self.test_size_ratio
-
-        y = np.copy(self.cluster_label)
-        y[(y != edge_tuple[0]) & (y != edge_tuple[1])] = -1
-
-        pos_subset =  (y != -1)
+        pos_subset = np.where((self.cluster_label == edge_tuple[0]) | (self.cluster_label == edge_tuple[1]))
         Xsubset = X[pos_subset] # original space coordinates
         ysubset = y[pos_subset] # labels
-        n_sample = len(ysubset)
-
-        if quick_estimate is not None:
-            pos_0 = np.where(ysubset == edge_tuple[0])[0]
-            pos_1 = np.where(ysubset == edge_tuple[1])[0]
-            np.random.shuffle(pos_0)
-            np.random.shuffle(pos_1)
-            Xsubset = np.vstack((Xsubset[pos_0[:quick_estimate]], Xsubset[pos_1[:quick_estimate]]))
-            ysubset = np.hstack((ysubset[pos_0[:quick_estimate]], ysubset[pos_1[:quick_estimate]]))
-        print("First part:\t",time.time() - s)    
-        
-        s= time.time()
-        print(Xsubset.shape)
-        print(np.unique(ysubset))
-
-        tmp = CLF(clf_type=self.clf_type, n_average=n_average, test_size=self.test_size_ratio, clf_kwargs=clf_args).fit(Xsubset, ysubset)
-        print("Second part:\t",time.time() - s)
-        exit()
-        return tmp
+        return CLF(clf_type=self.clf_type, n_average=n_average, test_size=self.test_size_ratio, clf_kwargs=clf_args).fit(Xsubset, ysubset)
     
     def merge_until_robust(self, X_in, cv_robust, ratio_dict):
         """
@@ -191,7 +170,7 @@ class VGraph:
         while True:
             all_robust = True
             if n_cluster == 1:
-                self.history.append([-1, np.copy(self.cluster_label), deepcopy(self.nn_list),-1,-1])
+                self.history.append([-1, np.copy(self.cluster_label), deepcopy(self.nn_list), -1, -1])
                 break
             worst_effect_cv = 10
             worst_edge = -1
@@ -212,11 +191,11 @@ class VGraph:
                     worst_effect_cv = effect_score
                     worst_edge = (edge[0], edge[1])
             
-            for n1, v in score_dict.items():
+            """ for n1, v in score_dict.items():
                 for n2, score_value in v.items():
                     print((n1, n2),' = %.4f '%score_value, end='')
                     print('    ', end='')
-                print('\n', end='')
+                print('\n', end='') """
 
             certainty_node = {}
             # for each node just assign a score, and mark the other node that it should be merged with
@@ -277,7 +256,6 @@ class VGraph:
 
     def update_ratio_dict(self, edge_tuple, new_label):
         # edge_tuple : edge being merged
-
         # >>>> First updating cluster labels :
 
         i1, i2 = edge_tuple

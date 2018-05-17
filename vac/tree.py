@@ -69,7 +69,7 @@ class TREE:
         ypred = self.merge_and_clf[-1][1]
         n_merge = len(self.merge_and_clf)
 
-        clf_top =  CLF(clf_type='rf', n_average=5, test_size=self.test_size_ratio, clf_kwargs=self.clf_args).fit(X, ypred)    
+        clf_top =  CLF(clf_type='rf', n_average=5, test_size=self.test_size_ratio,clf_kwargs=self.clf_args).fit(X, ypred)    
         y_unique = np.unique(ypred)
 
         self.node_dict = OD()
@@ -88,7 +88,7 @@ class TREE:
         for nm in range(n_merge-2,0,-1): # already checked last "merge", 
             idx_1, idx_2, idx_merge = self.merge_and_clf[nm][3]
             #print(idx_1,idx_2, idx_merge)
-            clf = self.merge_and_clf[nm][4]
+            clf = self.merge_and_clf[nm][4] 
             self.clf_dict[idx_merge] = clf
             self.node_dict[idx_merge].scale = clf.cv_score
 

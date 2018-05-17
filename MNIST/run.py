@@ -15,15 +15,14 @@ from sklearn.decomposition import PCA
 
 def main():
 
-    X, y = dataset.load_mnist()
-    Xpca = PCA(n_components=40).fit_transform(X)
+    #X, y = dataset.load_mnist()
+    #Xpca = PCA(n_components=40).fit_transform(X)
 
     model = CLUSTER(
-        nh_size=40, n_cluster_init=30, n_iteration_tsne = 1000,
-        angle=0.5, 
+        nh_size=40, n_cluster_init=30, n_iteration_tsne = 1000, angle=0.5, 
         plot_inter=False,
         run_tSNE='auto',
-        try_load = True,
+        try_load = False,
         root='/Users/alexandreday/GitProject/VAC/MNIST/info/'
     )
     
@@ -39,9 +38,13 @@ def main():
     #exit()
 
     np.random.seed(0)
-    model.fit(Xpca)
-    ypred = model.predict(Xpca, cv=0.97)
+    #model.fit(Xpca, clf_type='rf', clf_args = {'class_weight':'balanced','n_estimators': 30})
+    #pickle.dump(Xpca, open('tmp.pkl','wb'))
+    Xpca = pickle.load(open('tmp.pkl','rb'))
 
+    model.load_clf()
+    #model.fit(Xpca, clf_type='rf')#, clf_args = {'class_weight':'balanced','kernel':'linear'})
+    ypred = model.predict(Xpca, cv=0.999)
     xtsne = pickle.load(open(model.file_name['tsne'],'rb'))
     plotting.cluster_w_label(xtsne, ypred, psize=5)
 

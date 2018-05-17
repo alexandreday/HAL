@@ -4,6 +4,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.model_selection import train_test_split
 import numpy as np
 from collections import Counter
+import time
 
 def most_common(lst):
     return max(set(lst), key=lst.count)
@@ -18,13 +19,17 @@ class CLF:
     clf_kwargs : optional keyword arguments for the classifier    
     """
 
-    def __init__(self, clf_type='svm', n_average=10, test_size = 0.8, clf_kwargs=None):
+    def __init__(self, clf_type='svm', n_average=10, test_size = 0.8, n_sample_max = 1000, clf_kwargs=None):
         self.clf_type = clf_type
         self.n_average = n_average
+        self.n_sample_max = n_sample_max
         self.test_size = test_size
         self.clf_kwargs = {} if clf_kwargs is None else clf_kwargs
         self.trained = False
         self.cv_score = 1.0
+        self.y_unique = None
+        self.class_count = None
+        self.idx_pos = {}
 
     def fit(self, X, y):
         """ Fit clf to data.
@@ -53,6 +58,10 @@ class CLF:
         #### ----------
         #         #### ----------
 
+        print('Training %s with n_average=%i, with nsample=%i'%(self.clf_type, self.n_average, len(X)))
+
+        s=time.time()
+
         self.trained = True
         
         if self.clf_type == 'svm':
@@ -64,31 +73,16 @@ class CLF:
         else:
             assert False
 
-        n_average = self.n_average
-    
-        predict_score = []
-        training_score = []
-        clf_list = []
-        xtrain_scaler_list = []
-
-        n_sample = X.shape[0]
+        predict_score = []; training_score = []; clf_list = []; xtrain_scaler_list = [];
         zero_eps = 1e-6
 
-        y_unique = np.unique(y) # different labels
-        assert len(y_unique)>1, "Cluster provided only has a unique label, can't classify !"
-
-        n_sample = X.shape[0]
-        idx = np.arange(n_sample)
-        yu_pos = {yu : idx[(y == yu)] for yu in y_unique}
-        n_class = len(y_unique)
+        self.y_unique = np.unique(y) # different labels
+        assert len(self.y_unique) > 1, "Cluster provided only has a unique label, can't classify !"
         
-        for _ in range(n_average):
-            while True:
-                ytrain, ytest, xtrain, xtest = train_test_split(y, X, test_size=self.test_size)
-                if len(np.unique(ytrain)) > 1: # could create a bug otherwise
-                    break
+        dt = 0
+        for _ in range(self.n_average):
 
-            #print("train size, test size:", len(ytrain),len(ytest),sep='\t')
+            xtrain, xtest, ytrain, ytest = self.train_test_split(X, y)
             
             std = np.std(xtrain, axis = 0)    
             std[std < zero_eps] = 1.0 # get rid of zero variance data.
@@ -96,17 +90,20 @@ class CLF:
 
             xtrain = (xtrain - mu)*inv_sigma # zscoring the data 
             xtest = (xtest - mu)*inv_sigma
+            s2 = time.time()
             clf.fit(xtrain, ytrain)
-
-            t_score = clf.score(xtrain, ytrain) # predict on test set
+            dt += (time.time() - s2)
+    
+            # predict on train set
+            t_score = clf.score(xtrain, ytrain) 
             training_score.append(t_score)
-        
-            p_score = clf.score(xtest, ytest) # predict on test set
-            #print(t_score,'\t',p_score)
+
+            # predict on test set
+            p_score = clf.score(xtest, ytest) 
             predict_score.append(p_score)
 
             clf_list.append(clf)
-            xtrain_scaler_list.append([mu,inv_sigma])
+            xtrain_scaler_list.append([mu, inv_sigma])
         
         self.scaler_list = xtrain_scaler_list # scaling transformations (zero mean, unit std)
         self.cv_score = np.mean(predict_score)
@@ -114,8 +111,10 @@ class CLF:
         self.mean_train_score = np.mean(training_score)
         self.std_train_score = np.std(training_score)
         self.clf_list = clf_list # classifier list for majority voting !
-        self._n_sample = len(y)
+        self.n_sample_ = len(y)
+        self.idx_pos.clear()
 
+        print('Done ALL in %.4f with training of %.4f '%(time.time()-s, dt))
         return self
 
 
@@ -154,3 +153,45 @@ class CLF:
     def score(self, X, y):
         y_pred = self.predict(X).flatten()
         return np.count_nonzero(y_pred == y)/len(y)
+    
+    def train_test_split(self, X, y):
+        if self.y_unique is None:
+            self.y_unique = np.unique(y)
+        if len(self.idx_pos) ==0:
+            for yu in self.y_unique:
+                self.idx_pos[yu] = np.where(y==yu)[0]
+        
+        self.n_class = len(self.y_unique)
+        if self.class_count is None:
+            self.class_count = {yu:len(self.idx_pos[yu]) for yu in self.y_unique}
+        
+        idx_train=[]; idx_test = [];
+        train_ratio = 1.-self.test_size
+        n_max = self.n_sample_max
+
+        for yc in self.y_unique: # ===
+            
+            n_yc = self.class_count[yc]
+            np.random.shuffle(self.idx_pos[yc])
+
+            if n_yc > n_max:
+                idx_train.append(self.idx_pos[yc][:int(train_ratio*n_max)])
+                idx_test.append(self.idx_pos[yc][int(train_ratio*n_max):n_max])
+            else:
+                idx_train.append(self.idx_pos[yc][:int(train_ratio*n_yc)])
+                idx_test.append(self.idx_pos[yc][int(train_ratio*n_yc):n_yc])
+        
+        idx_train = np.hstack(idx_train)
+        idx_test = np.hstack(idx_test)
+
+        return X[idx_train],X[idx_test],y[idx_train],y[idx_test]
+
+
+
+
+
+        
+        
+
+
+

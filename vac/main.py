@@ -9,7 +9,7 @@ import os
 class VAC:
     """Validated agglomerative clustering"""
 
-    def __init__(self, density_clf = None, outlier_ratio=0.2, nn_pure_ratio=0.9, min_size_cluster=20):
+    def __init__(self, density_clf = None, outlier_ratio=0.2, nn_pure_ratio=0.9, min_size_cluster=20, clf_type='svm'):
         """pass in a density classifier, need to be able to get labels and compute a density map
         """
         
@@ -21,8 +21,10 @@ class VAC:
         self.nn_pure_ratio = nn_pure_ratio
         self.cluster_label = None
         self.idx_centers = None
+        self.clf_type = clf_type
         self.min_size_cluster = min_size_cluster
         self.boundary_ratio = {} # dict of idx (w.r.t to inliers) to dict of ratios.
+        print(self.__dict__)
         # dict of cluster labels -> idx, cluster with largest overlap, ratio of overlap
 
     def get_pure_idx(self, X):
@@ -135,7 +137,7 @@ class VAC:
         return np.hstack((self.cluster_pure_label,-1*np.ones(len(self.cluster_boundary_label),dtype=int)))
         
     def fit_raw_graph(self, X_inlier, y_inlier_pred, n_average = 10, n_edge = 2, clf_args = None):
-        self.VGraph = VGraph(clf_type='svm', n_average = n_average, clf_args=clf_args, n_edge = n_edge)
+        self.VGraph = VGraph(clf_type=self.clf_type, n_average = n_average, clf_args=clf_args, n_edge = n_edge, test_size_ratio=0.8)
         self.VGraph.fit(X_inlier, y_inlier_pred)
         
     def fit_robust_graph(self, X_inlier, cv_robust = 0.99):
