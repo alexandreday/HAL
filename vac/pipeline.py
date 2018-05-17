@@ -132,6 +132,7 @@ class CLUSTER():
         )
 
         # Check this part now
+        
         if self.try_load is True:
             if model_vac.load(self.file_name['fdc']) is False:
                 idx_pure_big, idx_pure_small, idx_out, idx_boundary = model_vac.get_pure_idx(X_tsne)
@@ -163,9 +164,8 @@ class CLUSTER():
             y_pred[np.where(idx_train == e)[0]] = label_pure_big[i]
 
         # ===================================================
-        # ===================================================
 
-        x_train = X_zscore[idx_train] # points to train on
+        x_train = X_zscore[idx_train] # points to train on 
 
         print("---> Initial estimates")
 
