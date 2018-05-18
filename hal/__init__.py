@@ -1,11 +1,10 @@
-from .main import VAC
-from .vgraph import VGraph
+from .graph import kNN_Graph
 from .tree import TREE
 from .tupledict import TupleDict
 from .utility import *
-from .pipeline import CLUSTER
+from .pipeline import HAL
 from .metric import *
 from .classify import CLF
 from .purify import DENSITY_PROFILER
 
-__all__ = ['VGraph', 'VAC', 'TupleDict','TREE','CLF']
+__all__ = ['kNN_Graph', 'HAL', 'TupleDict', 'TREE', 'CLF']
