@@ -6,29 +6,36 @@ from tsne_visual import dataset
 from fitsne import FItSNE
 from sklearn.decomposition import PCA
 import pickle
+from sklearn.preprocessing import StandardScaler as Scaler
+from MulticoreTSNE import MulticoreTSNE as TSNE
 
 def main():
+    np.random.seed(0)
     testMNIST()
 
     
 def testMNIST():
-    X, y = dataset.load_mnist()
-    #y = y.flatten()[:10000]
-    #pickle.dump(y, open('ymnist.pkl','wb'))
+
+
+    """ X, y = dataset.load_mnist()
+    y = y.flatten()
+    pickle.dump(y, open('ymnist.pkl','wb'))
+
+    Xpca = PCA(n_components=40).fit_transform(X)
+    #Xpca = Scaler().fit_transform(Xpca)
+    #Xtsne=TSNE(perplexity=30,verbose=1).fit_transform(Xpca)
+    Xtsne = FItSNE(np.ascontiguousarray(Xpca), perplexity=20, max_iter=1000, late_exag_coeff=2.0, start_late_exag_iter=800)
+    pickle.dump(Xtsne,open('tsne4.pkl','wb')) """
     y = pickle.load(open('ymnist.pkl','rb'))
-
-    Xpca = PCA(n_components=40).fit_transform(X)[:10000]
-    Xtsne = FItSNE(np.ascontiguousarray(Xpca), perplexity=40, late_exag_coeff=4.0,start_late_exag_iter=900)
-    pickle.dump(Xtsne,open('tsne2.pkl','wb'))
-    Xtsne = pickle.load(open('tsne2.pkl','rb'))
-    exit()
-
-    model_fdc = FDC(eta=0.5, n_cluster_init=40, nh_size=40, test_ratio_size=0.2)
-    model_DP = DENSITY_PROFILER(model_fdc, outlier_ratio=0.2, nn_pure_ratio=0.9, min_size_cluster=40).fit(Xtsne)
+    Xtsne = pickle.load(open('tsne4.pkl','rb'))
+    #exit()    np.random.seed(0)
+    model_fdc = FDC(eta=1.5, n_cluster_init=30, nh_size=80, test_ratio_size=0.8)
+    model_DP = DENSITY_PROFILER(model_fdc, outlier_ratio=0.2, nn_pure_ratio=0.95, min_size_cluster=80).fit(Xtsne)
 
     plotting.cluster_w_label(Xtsne, y)
     ypred = model_DP.y
-    model_DP.check_purity(y)
+    model_DP.check_purity(y) # this can be used to test t-SNE and initial set-up ...
+    model_DP.describe()
 
     plotting.cluster_w_label(Xtsne, ypred)
 
