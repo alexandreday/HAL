@@ -72,7 +72,8 @@ class DENSITY_PROFILER:
         return self
     
     def mark_small_cluster(self):
-        y_unique = np.unique(self.y)[2:] # removes -1 and -2 labels
+        y_unique = np.unique(self.y)
+        y_unique = y_unique[y_unique > -1]
         counts = []
         for y_u in y_unique:
             counts.append(np.count_nonzero(self.y == y_u))
@@ -92,15 +93,18 @@ class DENSITY_PROFILER:
     ################# INFORMATIVE FUNCTIONS #######################
     
     def describe(self):
-        from collections import OrderedDict
-        des = OrderedDict()
+        import pandas as pd
+
+        des = [] 
         y_unique = np.unique(self.y)
         for yu in y_unique:
             c = np.count_nonzero(self.y == yu)
-            des[yu] = [c, c/len(self.y)]
-        print(des)
+            des.append([yu, c, c/len(self.y)])
+        
+        print(pd.DataFrame(des, columns=['label','count','ratio']))
 
     def check_purity(self, ytrue, plot=True): # Only if you have access to the true labels
+
         from collections import OrderedDict
         y_unique = np.unique(self.y)
         y_unique = y_unique[y_unique > -1]
@@ -124,7 +128,7 @@ class DENSITY_PROFILER:
             plt.tight_layout()
             plt.show()
         
-        return np.sum(cS_value), cluster_entropy
+        return np.mean(cS_value), np.sum(cS_value), cluster_entropy
 
         
         

@@ -128,14 +128,16 @@ class HAL():
             test_ratio_size=self.fdc_test_ratio_size,
             n_cluster_init=self.n_cluster_init
         )
-
+        
         self.purify(X_tsne)
         self.dp_profile.describe()
+
 
         # plotting intermediate results
         if self.plot_inter is True:
             plotting.cluster_w_label(X_tsne, self.ypred)
 
+        self.ypred_init = np.copy(self.ypred)
         #self.fit_kNN_graph(X_zscore, self.ypred)
 
         ######## Tree random forest classifer graph #############

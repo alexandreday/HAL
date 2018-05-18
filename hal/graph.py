@@ -12,22 +12,32 @@ class kNN_Graph:
     """ Validation graph class - builds a graph with nodes corresponding
     to clusters and draws edges between clusters that have a low validation score
     """
-    def __init__(self, n_average = 10, cv_score = 0., test_size_ratio = 0.8, clf_type='svm', clf_args=None, n_edge =2):
-        self.n_average = n_average
+    def __init__(self, 
+        n_bootstrap = 10, 
+        cv_score = 0., 
+        test_size_ratio = 0.8, 
+        clf_type='svm', 
+        clf_args=None,
+        verbose = 1,
+        n_edge =2):
+        
+        self.n_bootstrap = n_bootstrap
         self.cv_score_threshold = cv_score
         self.test_size_ratio = test_size_ratio
         self.clf_type = clf_type
+        
         if clf_args is None:
             self.clf_args = {'class_weight':'balanced'}
         else:
             self.clf_args = clf_args
-        self.cluster_label = None
-        self.edge_score = OrderedDict()
-        self.fout = FOUT('out.txt')
-        self.n_edge = n_edge
-        print(self.__dict__)
 
-    def fit(self, X, y_pred):  
+        self.edge_score = OrderedDict()
+        #self.fout = FOUT('out.txt')
+        self.n_edge = n_edge
+        self.cout = cout if verbose is 1 else lambda *a, **k: None
+        print(self.__dict__)
+        
+    def fit(self, X, y_pred, n_bootstrap_shallow = 4):  
         """ Constructs a low connectivity graph by joining clusters that have low edge scores.
         Each cluster is connected to n_edge other clusters.
 
@@ -43,88 +53,73 @@ class kNN_Graph:
         """
 
         y_unique = np.unique(y_pred) # keep -1 since we want to add their labels later on !
-        y_unique = y_unique[y_unique >=0] # boundary terms are marked by -1 for now .
+        y_unique = y_unique[y_unique > -1] # boundary terms are marked by -1 for now .
+
         n_cluster = len(y_unique)
         n_iteration = (n_cluster*(n_cluster-1))/2
         n_edge = self.n_edge
         
+        self.cout('Performing classification sweep over %i pairs of clusters'%n_iteration)
+        self.cout('Training on input of dimension %i, %i'%X.shape)
         
-        print('[vgraph.py]    Performing classification sweep over %i pairs of clusters'%n_iteration)
-        self.cluster_label = np.copy(y_pred)
+        self.y_pred = y_pred # shallow copy
 
-        
         if self.clf_type == 'rf':
             clf_args_pre = {'class_weight':'balanced', 'n_estimators': 30, 'max_features': min([X.shape[1],200])}
         elif self.clf_type == 'svm':
             clf_args_pre = {'class_weight':'balanced', 'kernel': 'linear'}
         
-        n_average_pre = 4 # don't bother with this now, we just want a rough idea of what is good and what is bad.
-        info = '[vgraph.py]    parameters:\t'+("n_average =%i"%n_average_pre)+'\t'+str(clf_args_pre)
         
-        print(info)
-        self.fout.write(info)
-        score = {yu:{} for yu in y_unique} # dict of dict score[i][j] returns score for that edge
+        info = 'CLF pre-parameters:\t'+("n_bootstrap = %i"%n_bootstrap_shallow)+'\t'+str(clf_args_pre)
+        self.cout(info)
 
+
+        # Looping over all possible edges 
         # This is O(N^2) complexity in the number of clusters ...
+        self.score = TupleDict()
         for i, yu1 in enumerate(y_unique): 
             for j, yu2 in enumerate(y_unique):
                 if i < j:
                     idx_tuple = (yu1, yu2)
-                    clf = self.classify_edge(idx_tuple, X, clf_args=clf_args_pre, n_average=n_average_pre)
+                    clf = self.classify_edge(idx_tuple, X, clf_args=clf_args_pre, n_average=n_bootstrap_shallow)
                     edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
-                    score[yu1][yu2] = clf.cv_score # since n_average is small, just use mean, no variance for now !
-                    score[yu2][yu1] = clf.cv_score
-        #exit()
-        edge_list = []
-        score_list = []
-        for cluster_idx in y_unique:
-            key_tmp = list(score[cluster_idx].keys())
-            v_tmp = list(score[cluster_idx].values())
-            asort = np.argsort(v_tmp)
-            for pos in asort[:n_edge]: ## ---------> For each node, get n_edges (worst ones) ==> here may want to look at a distribution or something like that
-                edge_list.append((cluster_idx, key_tmp[pos]))
-                score_list.append(v_tmp[pos])
-    
-        edge_list = np.array(edge_list)[np.argsort(score_list)] # resort end list 
+                    self.score[idx_tuple] = clf.cv_score - clf.cv_score_std # SCORE definition here
 
-        # How to select the edges ? Should you look at distribution and take a percentile, maybe <= =(
-        print("[vgraph.py]    Edges that will be used ...")
-        for edge in edge_list:
-            i, j = edge
-            print("[vgraph.py]    {0:<5d}".format(i),' ---- ',"{0:<5d}".format(j),'  =~  ',"%.4f"%score[i][j])
+        # Sorting, keeping only worst edges for kNN 
+        edge_list = []
+        for i, yu1 in enumerate(y_unique):
+            score_i = []
+            for j, yu2 in enumerate(y_unique):
+                score_i.append(self.score[(yu1, yu2)])
+            asort = np.argsort(score_i)[:self.n_edge] # connectivity
+            edge_list.append([yu1, y_unique[asort]])
+        
+        edge_info_raw(edge_info, self.score)
+
+        ######################################
+        ######################################
+        ######################################
 
         # Now looping over those edges and making sure scores are accurately estimated (IMPORTANT)
         self.graph = TupleDict()
-        self.nn_list = OrderedDict()
         self.edge_score = TupleDict()
 
-        print('\n\n\n')
-        print('[graph.py]    Performing deeper sweep over worst edges and coarse-graining from there:')
-
-        for yu in y_unique:
-            self.nn_list[yu] = set([])
-
-        info = '[vgraph.py]    '+'Parameters:\t'+("n_average =%i"%self.n_average)+'\t'+str(self.clf_args)
-        print(info)
-        self.fout.write(info)
+        self.cout("Performing deeper sweep over worst edges")
+        info = 'CLF post-parameters:\t'+("n_bootstrap = %i"%self.n_bootstrap)+'\t'+str(self.clf_args)
+        self.cout(info)
 
         # This is O(N) in the number of clusters
         for edge in edge_list:
-            n1, n2 = edge
-            self.nn_list[n1].add(n2)
-            self.nn_list[n2].add(n1)
+            node_1, nn_node_1 = edge
+            for node_2 in nn_node_1:
+                idx_edge = (node_1, node_2)
+                if idx_edge not in self.graph.keys():
+                    clf = self.classify_edge(idx_edge, X, n_average=self.n_average, clf_args = self.clf_args)
+                    self.edge_score[idx_edge] = [clf.cv_score, clf.cv_score_std]
+                    self.graph[idx_edge] = clf
 
-            idx_tuple = (n1,n2) if n1 < n2 else (n2, n1)
+                    edge_info_update(edge, self.graph) # print results
 
-            if idx_tuple not in self.graph.keys():
-                clf = self.classify_edge(edge, X, n_average=self.n_average, clf_args = self.clf_args)
-                self.edge_score[idx_tuple] = [clf.cv_score, clf.cv_score_std]
-
-                # printing out results
-                edge_info_update(edge, score[n1][n2], 0., clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
-
-                self.graph[(n1, n2)] = clf
-            
         return self
         
     def classify_edge(self, edge_tuple, X, n_average=3, clf_args = None):
@@ -407,7 +402,14 @@ class kNN_Graph:
         for a in asort:
             print("{0:<8d}{1:<8d}{2:<10.4f}".format(idx_list[a][0], idx_list[a][1], score[a]))
 
-def edge_info(edge_tuple, cv_score, std_score, min_score, fout=None):
+def edge_info_raw(edge_list, score, cout=print):
+    cout("Edges that will be used ...")
+    for edge in edge_list:
+        i, nn_i  = edge
+        for j in nn_i:
+            cout("{0:<5d}".format(i),' ---- ',"{0:<5d}".format(j),'  =~  ',"%.4f"%score[(i,j)])
+
+def edge_info(edge_tuple, cv_score, std_score, min_score, fout=None, cout = print):
     
     edge_str = "{0:5<d}{1:4<s}{2:5<d}".format(edge_tuple[0]," -- ",edge_tuple[1])
 
@@ -415,7 +417,7 @@ def edge_info(edge_tuple, cv_score, std_score, min_score, fout=None):
 
     out = "[vgraph.py]    {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format(robust_or_not, edge_str, "score =", cv_score, "\t+-",std_score)
 
-    print(out)
+    cout(out)
 
     if fout is not None:
         fout.write(out)
@@ -443,3 +445,8 @@ def merge_info(c1, c2, score, new_c, n_cluster, fout=None):
     print(out)
     if fout is not None:
         fout.write(out)
+
+def cout(s):
+    print("[graph] %s"%s)
+
+
