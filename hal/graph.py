@@ -15,7 +15,8 @@ class kNN_Graph:
     def __init__(self, 
         n_bootstrap = 10, 
         cv_score = 0., 
-        test_size_ratio = 0.8, 
+        test_size_ratio = 0.8,
+        n_sample_max = 1000,
         clf_type='svm', 
         clf_args=None,
         verbose = 1,
@@ -25,6 +26,7 @@ class kNN_Graph:
         self.cv_score_threshold = cv_score
         self.test_size_ratio = test_size_ratio
         self.clf_type = clf_type
+        self.n_sample_max = n_sample_max
         
         if clf_args is None:
             self.clf_args = {'class_weight':'balanced'}
@@ -34,7 +36,7 @@ class kNN_Graph:
         self.edge_score = OrderedDict()
         #self.fout = FOUT('out.txt')
         self.n_edge = n_edge
-        self.cout = cout if verbose is 1 else lambda *a, **k: None
+        self.cout = graph_cout if verbose is 1 else lambda *a, **k: None
         print(self.__dict__)
         
     def fit(self, X, y_pred, n_bootstrap_shallow = 4):  
@@ -69,10 +71,8 @@ class kNN_Graph:
         elif self.clf_type == 'svm':
             clf_args_pre = {'class_weight':'balanced', 'kernel': 'linear'}
         
-        
         info = 'CLF pre-parameters:\t'+("n_bootstrap = %i"%n_bootstrap_shallow)+'\t'+str(clf_args_pre)
         self.cout(info)
-
 
         # Looping over all possible edges 
         # This is O(N^2) complexity in the number of clusters ...
@@ -94,7 +94,8 @@ class kNN_Graph:
             asort = np.argsort(score_i)[:self.n_edge] # connectivity
             edge_list.append([yu1, y_unique[asort]])
         
-        edge_info_raw(edge_info, self.score)
+
+        edge_info_raw(edge_list, self.score, cout = self.cout)
 
         ######################################
         ######################################
@@ -114,16 +115,15 @@ class kNN_Graph:
             for node_2 in nn_node_1:
                 idx_edge = (node_1, node_2)
                 if idx_edge not in self.graph.keys():
-                    clf = self.classify_edge(idx_edge, X, n_average=self.n_average, clf_args = self.clf_args)
+                    clf = self.classify_edge(idx_edge, X)
                     self.edge_score[idx_edge] = [clf.cv_score, clf.cv_score_std]
                     self.graph[idx_edge] = clf
-
-                    edge_info_update(edge, self.graph) # print results
-
+                    edge_info_update(edge, self.graph, cout=self.cout) # print results
         return self
         
-    def classify_edge(self, edge_tuple, X, n_average=3, clf_args = None):
-        """ Trains a classifier on the childs of "root" and returns a classifier for these types.
+    def classify_edge(self, edge_tuple, X, clf_type=None, clf_args=None, 
+        n_bootstrap=None, test_size_ratio=None, n_sample_max = None):
+        """ Trains a classifier for cluster edge_tuple[0] and edge_tuple[1]
 
         Important attributes are (for CLF object):
 
@@ -140,10 +140,23 @@ class kNN_Graph:
         CLF object (from classify.py). Object has similar syntax to sklearn's classifier syntax
 
         """
-        pos_subset = np.where((self.cluster_label == edge_tuple[0]) | (self.cluster_label == edge_tuple[1]))
+        if clf_type is None:
+            clf_type = self.clf_type
+        if clf_args is None:
+            clf_args = self.clf_args
+        if n_bootstrap is None:
+            n_bootstrap = self.n_bootstrap
+        if test_size_ratio is None:
+            test_size_ratio = self.test_size_ratio
+        if n_sample_max is None:
+            n_sample_max = self.n_sample_max
+
+        pos_subset = np.where((self.y_pred == edge_tuple[0]) | (self.y_pred == edge_tuple[1]))
+        
         Xsubset = X[pos_subset] # original space coordinates
         ysubset = y[pos_subset] # labels
-        return CLF(clf_type=self.clf_type, n_average=n_average, test_size=self.test_size_ratio, clf_kwargs=clf_args).fit(Xsubset, ysubset)
+
+        return CLF(clf_type=clf_type, n_bootstrap=n_bootstrap, n_sample_max=n_sample_max, test_size=test_size_ratio, clf_kwargs=clf_args).fit(Xsubset, ysubset)
     
     def merge_until_robust(self, X_in, cv_robust, ratio_dict):
         """
@@ -401,6 +414,21 @@ class kNN_Graph:
         print("{0:<8s}{1:<8s}{2:<10s}".format('e1', 'e2', 'score'))
         for a in asort:
             print("{0:<8d}{1:<8d}{2:<10.4f}".format(idx_list[a][0], idx_list[a][1], score[a]))
+        
+    def plot_kNN_graph(self, idx_pos):
+        from plotlygraph import plot_graph
+        graph_tmp = {k : v[0]-v[1] for k,v in self.graph.items()}
+        node_pos = idx_pos
+        
+
+        #graph = {(1,2):0.5,(2,3):0.2,(3,4):0.143,(4,1):0.91}
+        node_pos = {1:[0.1,0.1],2:[0.1,0.293],3:[-0.5,-0.2],4:[0.9,0.1]}
+        node_score = {1:0.2993,2:0.333,3:0.999,4:0.87373}
+        plot_graph(graph, node_pos, node_score)
+        plot
+
+        #(graph, node_pos, node_score)
+
 
 def edge_info_raw(edge_list, score, cout=print):
     cout("Edges that will be used ...")
@@ -415,38 +443,28 @@ def edge_info(edge_tuple, cv_score, std_score, min_score, fout=None, cout = prin
 
     robust_or_not = "robust edge" if cv_score - std_score > min_score else "reject edge "
 
-    out = "[vgraph.py]    {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format(robust_or_not, edge_str, "score =", cv_score, "\t+-",std_score)
+    out = "{0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format(robust_or_not, edge_str, "score =", cv_score, "\t+-",std_score)
 
     cout(out)
 
     if fout is not None:
         fout.write(out)
 
-def edge_info_update(edge_tuple, cv_score_pre, std_score_pre, cv_score_post, std_score_post, min_score, fout=None):
+def edge_info_update(edge_tuple, graph, cout=print):
     
     edge_str = "{0:5<d}{1:4<s}{2:5<d}".format(edge_tuple[0]," -- ",edge_tuple[1])
-
-    robust_or_not = "robust edge" if cv_score_post - std_score_post > min_score else "reject edge "
-    out ="[vgraph.py]    {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:^8s}{5:6.5f}{6:^10s}{7:<7.4f}{8:^8s}{9:6.5f}".format(robust_or_not, edge_str, "score change", 
-    cv_score_pre, '+/-', std_score_pre,
-    '\t>>>>\t', 
-    cv_score_post, '+/-', std_score_post
-    )
-
-    print(out)
-
-    if fout is not None:
-        fout.write(out)
+    cv, cv_std = graph[edge_tuple]
+    out = "{0:<20s}{1:<10.4f}{2:^10s}{3:<10.4f}".format(edge_str,cv,'+/-',cv_std)
+    cout(out)
     
-def merge_info(c1, c2, score, new_c, n_cluster, fout=None):
+def merge_info(c1, c2, score, new_c, n_cluster, cout=print):
     edge_str = "{0:5<d}{1:4<s}{2:5<d}".format(c1," -- ",c2)
     out = "[vgraph.py]    {0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6d}{6:>15s}{7:>5d}".format("merge edge ",edge_str,"score - std =",score,
     "\tnew label ->",new_c,'n_cluster=',n_cluster)
-    print(out)
-    if fout is not None:
-        fout.write(out)
+    cout(out)
 
-def cout(s):
+def graph_cout(s):
     print("[graph] %s"%s)
+
 
 

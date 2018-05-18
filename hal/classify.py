@@ -19,9 +19,9 @@ class CLF:
     clf_kwargs : optional keyword arguments for the classifier    
     """
 
-    def __init__(self, clf_type='svm', n_average=10, test_size = 0.8, n_sample_max = 1000, clf_kwargs=None):
+    def __init__(self, clf_type='svm', n_bootstrap=10, test_size = 0.8, n_sample_max = 1000, clf_kwargs=None):
         self.clf_type = clf_type
-        self.n_average = n_average
+        self.n_bootstrap = n_bootstrap
         self.n_sample_max = n_sample_max
         self.test_size = test_size
         self.clf_kwargs = {} if clf_kwargs is None else clf_kwargs
@@ -44,7 +44,7 @@ class CLF:
         
         Other parameters
         ------------
-        self.n_average : int
+        self.n_bootstrap : int
             number of classifiers to train (will then take majority vote)
         
         self.test_size: float
@@ -58,7 +58,7 @@ class CLF:
         #### ----------
         #         #### ----------
 
-        print('Training %s with n_average=%i, with nsample=%i'%(self.clf_type, self.n_average, len(X)))
+        print('Training %s with n_bootstrap=%i, with nsample=%i'%(self.clf_type, self.n_bootstrap, len(X)))
 
         s=time.time()
 
@@ -80,7 +80,7 @@ class CLF:
         assert len(self.y_unique) > 1, "Cluster provided only has a unique label, can't classify !"
         
         dt = 0
-        for _ in range(self.n_average):
+        for _ in range(self.n_bootstrap):
 
             xtrain, xtest, ytrain, ytest = self.train_test_split(X, y)
             
