@@ -14,8 +14,8 @@ import os
 def quick_name(root, object_name, para, ext=".pkl"):
     return root + object_name+"_"+para+".pkl"
 
-class CLUSTER():
-    """Validated agglomerative clustering [NEED A BETTER NAME]
+class HAL():
+    """HAL-x : clustering via Hierarchial Agglomerative Learning
         
     Parameters
     -------------
@@ -36,7 +36,7 @@ class CLUSTER():
         seed = 0,
         nh_size = 40,
         eta = 2.0,
-        test_ratio_size = 0.8,
+        fdc_test_ratio_size = 0.8,
         run_tSNE = True, # if not True, put in a file name for reading
         plot_inter = True,
         root = "",
@@ -47,40 +47,39 @@ class CLUSTER():
         self.param = {}
         
         # t-SNE parameters
-        self.param['perplexity'] = perplexity
-        self.param['n_iteration_tsne'] = n_iteration_tsne
-        self.param['angle'] = angle
-        self.param['tsne_type'] = tsne_type
+        self.perplexity = perplexity
+        self.n_iteration_tsne = n_iteration_tsne
+        self.angle = angle
+        self.tsne_type = tsne_type
 
         # Purification parameters 
-        self.param['outlier_ratio'] = outlier_ratio
-        self.param['nn_pure_ratio'] = nn_pure_ratio
-        self.param['min_size_cluster'] = min_size_cluster
+        self.outlier_ratio = outlier_ratio
+        self.nn_pure_ratio = nn_pure_ratio
+        self.min_size_cluster = min_size_cluster
         
         # 
-        self.param['n_cluster_init'] = n_cluster_init
-        self.param['seed'] = seed
-        self.param['root'] = root
-        self.param['n_jobs'] = n_jobs
+        self.n_cluster_init = n_cluster_init
+        self.seed = seed
+        self.root = root
+        self.n_jobs = n_jobs
 
         # Density clustering parameters
-        self.param['nh_size'] = nh_size
-        self.param['eta'] = eta
-        self.param['test_ratio_size'] = test_ratio_size
+        self.nh_size = nh_size
+        self.eta = eta
+        self.fdc_test_ratio_size = fdc_test_ratio_size
 
-        self.param['tsne'] = run_tSNE
+        self.tsne = run_tSNE
         self.plot_inter = plot_inter 
         self.try_load = try_load
+        info_str = make_file_name(self.__dict__)
 
         self.file_name = {}
-        info_str = make_file_name(self.param)
         self.file_name['raw'] = quick_name(root, 'raw', info_str)
         self.file_name['fdc'] = quick_name(root, 'fdc', info_str)
         self.file_name['robust'] = quick_name(root, 'robust', info_str)
         self.file_name['tree'] = quick_name(root, 'tree', info_str)
-        self.file_name['tsne'] = self.param['root'] + 'tsne_perp=%i_niter=%i.pkl'%(self.param['perplexity'], self.param['n_iteration_tsne'])
-        #print(self.file_name)
-
+        self.file_name['tsne'] = root + 'tsne_perp=%i_niter=%i.pkl'%(self.param['perplexity'], self.n_iteration_tsne)
+    
     def fit(self, data, clf_type = 'svm', clf_args = None):
         """ Clustering and fitting random forest classifier ...
         Processing steps:
@@ -113,6 +112,12 @@ class CLUSTER():
 
         X_tsne = self.run_tSNE(X_zscore)
 
+        self.purify(X_tsne)
+
+        if self.plot_inter is True:
+            plotting.cluster_w_label(X_tsne, self.ypred)
+
+
         ######################### Density clustering ###########################
 
         model_fdc = FDC(
@@ -131,9 +136,11 @@ class CLUSTER():
             clf_type = clf_type
         )
 
+
+
         # Check this part now
         
-        if self.try_load is True:
+        """ if self.try_load is True:
             if model_vac.load(self.file_name['fdc']) is False:
                 idx_pure_big, idx_pure_small, idx_out, idx_boundary = model_vac.get_pure_idx(X_tsne)
                 model_vac.save(name = self.file_name['fdc'])
@@ -149,21 +156,22 @@ class CLUSTER():
             ytmp[model_vac.idx_sets[('all','inliers')]] = model_vac.density_clf.cluster_label
             plotting.cluster_w_label(X_tsne, ytmp)
             print('[pipeline.py]   Plotting pure data and boundaries')
-            plotting.cluster_w_label(X_tsne[idx_pure_big], model_vac.label_sets[('pure','big')])
+            plotting.cluster_w_label(X_tsne[idx_pure_big], model_vac.label_sets[('pure','big')]) """
     
-    
+
         # OK this is a mess, but at least there are no bug, need to clean this up ... 
 
-        idx_train_pure = model_vac.idx_sets[('all','pure')][model_vac.idx_sets[('pure','big')]]
+        """ idx_train_pure = model_vac.idx_sets[('all','pure')][model_vac.idx_sets[('pure','big')]]
         idx_train_bound = model_vac.idx_sets[('all','boundary')]
         idx_train = np.sort(np.hstack([idx_train_pure, idx_train_bound]))
         label_pure_big = model_vac.label_sets[('pure','big')]
         y_pred = -1*np.ones(len(idx_train), dtype=int)
-
-        for i, e in enumerate(idx_train_pure):
-            y_pred[np.where(idx_train == e)[0]] = label_pure_big[i]
+        """
+        """ for i, e in enumerate(idx_train_pure):
+            y_pred[np.where(idx_train == e)[0]] = label_pure_big[i] """
 
         # ===================================================
+
 
         x_train = X_zscore[idx_train] # points to train on 
 
@@ -172,7 +180,7 @@ class CLUSTER():
         ################ Raw graph #############
         if self.try_load is True:
             if model_vac.load(self.file_name['raw']) is False:    
-                model_vac.fit_raw_graph(x_train, y_pred, n_average = 30, clf_args = clf_args, n_edge = 4)
+                model_vac.fit_raw_graph(X_zscore, y_pred, n_average = 30, clf_args = clf_args, n_edge = 4)
                 model_vac.save(self.file_name['raw'])
         else:
             model_vac.fit_raw_graph(x_train, y_pred, n_average = 30, clf_args = clf_args, n_edge = 4)
@@ -196,6 +204,21 @@ class CLUSTER():
         # classifying tree, can predict on new data that is normalized beforehand
         # When running on new data, use mytree.predict(ss.transform(X)) to get labels !
         return self.tree, self.ss 
+
+    def purify(self, X):
+        """
+        Tries to purify clusters by removing outliers, boundary terms and small clusters
+        """
+
+        self.dp_profile = DENSITY_PROFILER(
+            self.density_clf,
+            outlier_ratio=self.outlier_ratio, 
+            nn_pure_ratio=self.nn_pure_ratio, 
+            min_size_cluster=self.min_size_cluster
+        )
+
+        self.dp_profile.fit(StandardScaler().fit_transform(X))
+        self.ypred = self.dp_profile.y
 
     def load_clf(self, fname=None):
         if fname is not None:

@@ -1,10 +1,10 @@
 from setuptools import setup
 
-setup(name='valid_clustering',
-      version='0.2',
+setup(name='Hierarchical agglomerative learning',
+      version='0.3',
       description='Validated clustering package',
       author='Alexandre Day',
       author_email='alexandre.day1@gmail.com',
       license='MIT',
-      packages=['vac'],
+      packages=['hal'],
       zip_safe=False)

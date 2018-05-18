@@ -8,16 +8,16 @@ import pickle, time
 from .tupledict import TupleDict
 from .utility import FOUT
 
-class VGraph:
+class kNN_Graph:
     """ Validation graph class - builds a graph with nodes corresponding
     to clusters and draws edges between clusters that have a low validation score
     """
-    def __init__(self, n_average = 10, cv_score = 0., test_size_ratio = 0.8, clf_type='rf', clf_args=None, n_edge =2):
+    def __init__(self, n_average = 10, cv_score = 0., test_size_ratio = 0.8, clf_type='svm', clf_args=None, n_edge =2):
         self.n_average = n_average
         self.cv_score_threshold = cv_score
         self.test_size_ratio = test_size_ratio
         self.clf_type = clf_type
-        self.clf_args = clf_args
+        self.clf_args = clf_args if clf_args is not None else self.clf_args = {'class_weight':'balanced'}
         self.cluster_label = None
         self.edge_score = OrderedDict()
         self.fout = FOUT('out.txt')

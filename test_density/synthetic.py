@@ -30,13 +30,12 @@ def testMNIST():
     Xtsne = pickle.load(open('tsne4.pkl','rb'))
     #exit()    np.random.seed(0)
     model_fdc = FDC(eta=1.5, n_cluster_init=30, nh_size=80, test_ratio_size=0.8)
-    model_DP = DENSITY_PROFILER(model_fdc, outlier_ratio=0.2, nn_pure_ratio=0.95, min_size_cluster=80).fit(Xtsne)
+    model_DP = DENSITY_PROFILER(model_fdc, outlier_ratio=0.1, nn_pure_ratio=0.95, min_size_cluster=80).fit(Xtsne)
 
     plotting.cluster_w_label(Xtsne, y)
     ypred = model_DP.y
     model_DP.check_purity(y) # this can be used to test t-SNE and initial set-up ...
     model_DP.describe()
-
     plotting.cluster_w_label(Xtsne, ypred)
 
     # check purity w.r.t. to original assignment
