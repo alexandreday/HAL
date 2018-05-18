@@ -1,12 +1,12 @@
-from .classify import CLF
+from classify import CLF
 from fdc import FDC
 import numpy as np
 from copy import deepcopy
 from collections import Counter, OrderedDict
 from matplotlib import pyplot as plt
 import pickle, time
-from .tupledict import TupleDict
-from .utility import FOUT
+from tupledict import TupleDict
+from utility import FOUT
 
 class kNN_Graph:
     """ Validation graph class - builds a graph with nodes corresponding
@@ -17,7 +17,10 @@ class kNN_Graph:
         self.cv_score_threshold = cv_score
         self.test_size_ratio = test_size_ratio
         self.clf_type = clf_type
-        self.clf_args = clf_args if clf_args is not None else self.clf_args = {'class_weight':'balanced'}
+        if clf_args is None:
+            self.clf_args = {'class_weight':'balanced'}
+        else:
+            self.clf_args = clf_args
         self.cluster_label = None
         self.edge_score = OrderedDict()
         self.fout = FOUT('out.txt')

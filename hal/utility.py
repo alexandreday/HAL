@@ -20,7 +20,7 @@ def make_file_name(param):
         ['min_size_cluster', 'minsize', int],
         ['nh_size', 'nhsize', int],
         ['eta', 'eta', float],
-        ['test_ratio_size', 'testfdcsize', float]
+        ['fdc_test_ratio_size', 'testfdcsize', float]
     ]
     info_str = ''
     for e in out:
@@ -34,3 +34,8 @@ def make_file_name(param):
             info_str += '%s=%.2f_'%(n, float(v))
 
     return info_str[:-1]
+
+def print_param(my_dict):
+    for k, v in my_dict.items():
+        print("[hal]    {0:<20s}{1:<4s}{2:<20s}".format(str(k),":",str(v)))
+        

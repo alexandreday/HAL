@@ -13,7 +13,7 @@ def main():
     np.random.seed(0)
     testMNIST()
 
-    
+
 def testMNIST():
 
 

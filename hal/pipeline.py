@@ -1,7 +1,8 @@
-from .graph import kNN_Graph
-from .tupledict import TupleDict
-from .tree import TREE
-from .utility import make_file_name
+from graph import kNN_Graph
+from tupledict import TupleDict
+from tree import TREE
+from utility import make_file_name, print_param
+from purify import DENSITY_PROFILER
 
 from fdc import FDC, plotting
 from fitsne import FItSNE
@@ -27,8 +28,9 @@ class HAL():
         min_size_cluster=0,
         perplexity = 50,    
         n_iteration_tsne =  1000,
-        angle = 0.5,
+        late_exag = -1,
         tsne_type = 'fft', # default is FFTW t-SNE
+        alpha_late = 2.0,
         n_cluster_init = 30,
         seed = 0,
         nh_size = 40,
@@ -50,9 +52,10 @@ class HAL():
         # t-SNE parameters
         self.perplexity = perplexity
         self.n_iteration_tsne = n_iteration_tsne
-        self.angle = angle
         self.n_jobs = n_jobs
         self.tsne_type = tsne_type
+        self.late_exag = late_exag
+        self.alpha_late = alpha_late
 
         # Purification parameters 
         self.outlier_ratio = outlier_ratio
@@ -70,7 +73,10 @@ class HAL():
         self.clf_test_size_ratio = clf_test_size_ratio
         self.n_bootstrap = n_bootstrap
         self.clf_type = clf_type
-        self.clf_args = {'class_weight':'balanced'} if clf_args is None else self.clf_args = clf_args
+        if clf_args is None:
+            self.clf_args = {'class_weight':'balanced'}
+        else: 
+            self.clf_args = clf_args
         self.n_edge_kNN = n_edge_kNN
 
         # Misc.
@@ -86,7 +92,7 @@ class HAL():
         self.file_name['fdc'] = quick_name(root, 'fdc', info_str)
         self.file_name['robust'] = quick_name(root, 'robust', info_str)
         self.file_name['tree'] = quick_name(root, 'tree', info_str)
-        self.file_name['tsne'] = root + 'tsne_perp=%i_niter=%i.pkl'%(self.param['perplexity'], self.n_iteration_tsne)
+        self.file_name['tsne'] = root + 'tsne_perp=%i_niter=%i_alphaLate=%.1f.pkl'%(self.perplexity, self.n_iteration_tsne, self.alpha_late)
     
     def fit(self, data):
         """ Clustering and fitting random forest classifier ...
@@ -103,10 +109,9 @@ class HAL():
         tree classifier, zscore scaler
         """
 
-        if clf_args is None:
-            clf_args = {'class_weight':'balanced','n_estimators': 50, 'max_features': min([data.shape[1],200])}
-        
-        #print(self.__dict__)
+        """ if clf_args is None:
+            clf_args = {'class_weight':'balanced','n_estimators': 50, 'max_features': min([data.shape[1],200])} """
+
         np.random.seed(self.seed)
         
         # Standardizes data -> important for cross-sample classification
@@ -118,8 +123,8 @@ class HAL():
         
         # purifies clusters
         self.density_cluster = FDC(
-            nh_size=self.nh_size
-            eta=self.eta
+            nh_size=self.nh_size,
+            eta=self.eta,
             test_ratio_size=self.fdc_test_ratio_size,
             n_cluster_init=self.n_cluster_init
         )
@@ -144,11 +149,12 @@ class HAL():
         #return self.tree, self.ss 
 
     def fit_kNN_graph(self, X, ypred):
+        # Left it here ... need to update this to run graph clustering
         self.kNN_graph = kNN_graph(
             n_bootstrap = self.n_bootstrap,
             test_size_ratio = self.clf_test_size_ratio,
             clf_type = self.clf_type,
-            clf_args = self.clf_args
+            clf_args = self.clf_args,
             n_edge = self.n_edge_kNN
         )
 
@@ -162,16 +168,16 @@ class HAL():
             self.density_cluster = FDC()
 
         self.dp_profile = DENSITY_PROFILER(
-            self.density_clf,
+            self.density_cluster,
             outlier_ratio=self.outlier_ratio, 
             nn_pure_ratio=self.nn_pure_ratio, 
             min_size_cluster=self.min_size_cluster
         )
+        print_param(self.dp_profile.__dict__)
 
         self.dp_profile.fit(StandardScaler().fit_transform(X))
         self.ypred = self.dp_profile.y
         
-
     def load_clf(self, fname=None):
         if fname is not None:
             self.tree, self.ss = pickle.load(open(tree_file_name,'rb'))
@@ -205,13 +211,14 @@ class HAL():
         print('[pipeline.py]    Running t-SNE for X.shape = (%i,%i)'%X.shape)
     
         tsnefile = self.file_name['tsne']
+        print(tsnefile)
         if check_exist(tsnefile):
             return pickle.load(open(tsnefile,'rb'))
         else:
             assert self.tsne_type == 'fft' # for now just use this one
             Xtsne = FItSNE(
                 np.ascontiguousarray(X.astype(np.float)),
-                start_late_exag_iter=900, late_exag_coeff=4.
+                start_late_exag_iter=self.late_exag, late_exag_coeff=self.alpha_late,
                 max_iter = self.n_iteration_tsne,
                 perplexity= self.perplexity,
             )
