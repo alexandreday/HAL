@@ -37,5 +37,6 @@ def make_file_name(param):
 
 def print_param(my_dict):
     for k, v in my_dict.items():
-        print("[hal]    {0:<20s}{1:<4s}{2:<20s}".format(str(k),":",str(v)))
+        print("[HAL] {0:<20s}{1:<4s}{2:<20s}".format(str(k),":",str(v)))
+    print('\n')
         

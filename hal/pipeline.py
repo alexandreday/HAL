@@ -26,9 +26,9 @@ class HAL():
         outlier_ratio=0.2,
         nn_pure_ratio=0.99,
         min_size_cluster=0,
-        perplexity = 50,    
+        perplexity = 30,    
         n_iteration_tsne =  1000,
-        late_exag = -1,
+        late_exag = 800,
         tsne_type = 'fft', # default is FFTW t-SNE
         alpha_late = 2.0,
         n_cluster_init = 30,
@@ -211,7 +211,7 @@ class HAL():
         print('[pipeline.py]    Running t-SNE for X.shape = (%i,%i)'%X.shape)
     
         tsnefile = self.file_name['tsne']
-        print(tsnefile)
+
         if check_exist(tsnefile):
             return pickle.load(open(tsnefile,'rb'))
         else:
@@ -220,7 +220,7 @@ class HAL():
                 np.ascontiguousarray(X.astype(np.float)),
                 start_late_exag_iter=self.late_exag, late_exag_coeff=self.alpha_late,
                 max_iter = self.n_iteration_tsne,
-                perplexity= self.perplexity,
+                perplexity= self.perplexity
             )
             pickle.dump(Xtsne, open(tsnefile,'wb')) # Saving data in with useful name tag
             print('[HAL]    t-SNE data saved in %s' % tsnefile)
