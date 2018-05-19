@@ -27,6 +27,7 @@ class kNN_Graph:
         self.test_size_ratio = test_size_ratio
         self.clf_type = clf_type
         self.n_sample_max = n_sample_max
+        self.recomputed = False
         
         if clf_args is None:
             self.clf_args = {'class_weight':'balanced'}
@@ -120,32 +121,51 @@ class kNN_Graph:
                     clf = self.classify_edge(idx_edge, X)
                     self.graph[idx_edge] = clf
                     edge_info_update(idx_edge, self.graph, cout=self.cout) # print results
-                
-                
-                
-        """ clf = self.graph[idx_edge]
-        node_score.append(clf.cv_score - clf.cv_score_std) # THIS IS WHAT IS USED FOR COARSE-GRAINING
-    node_score = np.sort(node_score)
-    self.node[node_1] = node_score[1] - node_score[0] """
+        
+        self.compute_edge_score()
+        self.compute_node_score()
+
         return self
 
     def compute_edge_score(self):
         # This should be recomputed everytime the graph is updated (not comput. expensive)
-        assert self.recomputed is True
+        
         self.edge = TupleDict()
         eps = 1e-10
 
         for yu in self.cluster_idx:
             score = []
-            nn_yu = self.graph[yu].get_nn()
+            nn_yu = self.graph.get_nn(yu)
             for nn in nn_yu:
                 clf = self.graph[(yu, nn)]
                 self.edge[(yu,nn)] = clf.cv_score - clf.cv_score_std
 
     def compute_node_score(self):
-        assert self.recomputed is True
         
 
+        self.node = dict()
+        gap_list = []
+        nn_j = []
+
+        for yu in self.cluster_idx:
+            nn_yu = self.edge.get_nn(yu)
+            edge_ij = []
+            for nn in nn_yu:
+                edge_ij.append(self.edge[(yu,nn)])
+            
+            asort = np.sort(edge_ij)
+            if len(edge_ij) > 1:
+                gap.append(edge_ij[asort[1]] - edge_ij[asort[0]])
+            else:
+                gap.append(-1)
+            nn_j = nn_yu[asort[0]] # nearest-neighbor of yu
+
+
+
+
+
+
+        
 
 
     def classify_edge(self, edge_tuple, X, clf_type=None, clf_args=None, 
