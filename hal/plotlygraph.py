@@ -44,7 +44,7 @@ def line_interpolate(alpha, x1, x2):
 def make_edge_trace(graph, node_pos, lw= 2.5):
     edge_trace_list = []
 
-    middle_node_trace = Scatter(x=[],y=[],text=[],mode='markers',hoverinfo='text', marker=Marker(opacity=0,size=10))
+    middle_node_trace = Scatter(x=[],y=[],text=[],mode='markers',hoverinfo='text', marker=Marker(opacity=0,size=2))
 
     for edge, v in graph.items():
         trace = Scatter(x=[],y=[],text=[],mode='lines',hoverinfo='none', line= Line(width=lw,color='#888'))
@@ -53,7 +53,7 @@ def make_edge_trace(graph, node_pos, lw= 2.5):
         trace['x'] += [x0, x1, None]
         trace['y'] += [y0, y1, None]
         edge_trace_list.append(trace)
-        for alpha in np.linspace(0.05,0.95, 10):
+        for alpha in np.linspace(0.1,0.9, 15):
             p1 = line_interpolate(alpha, node_pos[edge[0]], node_pos[edge[1]])
             middle_node_trace['x'].append(p1[0])
             middle_node_trace['y'].append(p1[1])
@@ -76,7 +76,7 @@ def make_node_trace(node_score, node_pos):
         colorscale='YIGnBu',
         reversescale=True,
         color=[],
-        size=15,
+        size=30,
         colorbar=dict(
             thickness=10,
             title='Cluster score',
@@ -92,7 +92,7 @@ def make_node_trace(node_score, node_pos):
         node_trace['x'].append(x)
         node_trace['y'].append(y)
         node_trace['marker']['color'].append(v)
-        node_trace['text'].append("score=%.3f"%v)
+        node_trace['text'].append("k=%i\nscore=%.3f"%(k,v))
 
     return node_trace
 

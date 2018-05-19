@@ -156,7 +156,7 @@ class kNN_Graph:
             for nn in nn_yu:
                 edge_ij.append(self.edge[(yu,nn)])
             
-            asort = np.sort(edge_ij)
+            asort = np.argsort(edge_ij)
             if len(edge_ij) > 1:
                 gap = edge_ij[asort[1]] - edge_ij[asort[0]]
                 gap_list.append(gap)

@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 class FOUT:
     def __init__(self, fname='tmp.txt'):
@@ -40,13 +41,16 @@ def print_param(my_dict):
         print("[HAL] {0:<20s}{1:<4s}{2:<20s}".format(str(k),":",str(v)))
     print('\n')
 
-def find_position_idx_center(Xtsne, ypred, idx_center, rho):
-    assert len(Xtsne) == len(ypred)
-    
+def find_position_idx_center(X_tsne, ypred, idx_center, rho):
+    """
+    Returns dict of idx_center to cartesian Xtsne coordinates
+    """
+    assert len(X_tsne) == len(ypred)
+
     idx_center_pos = {}
     for idx in idx_center:
         pos = np.where(ypred == idx)[0]
         pos_center = np.argmax(rho[pos])
-        idx_center_pos[idx] = Xtsne[pos[pos_center]]
+        idx_center_pos[idx] = X_tsne[pos[pos_center]]
 
     return idx_center_pos

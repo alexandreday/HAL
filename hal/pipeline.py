@@ -90,7 +90,7 @@ class HAL():
         info_str = make_file_name(self.__dict__)
 
         self.file_name = {}
-        self.file_name['raw'] = quick_name(root, 'raw', info_str)
+        self.file_name['kNN'] = quick_name(root, 'kNN', info_str)
         self.file_name['fdc'] = quick_name(root, 'fdc', info_str)
         self.file_name['robust'] = quick_name(root, 'robust', info_str)
         self.file_name['tree'] = quick_name(root, 'tree', info_str)
@@ -142,6 +142,8 @@ class HAL():
 
         self.fit_kNN_graph(X_zscore, self.ypred)
 
+        self.plot_kNN_graph(X_tsne)
+
         ######## Tree random forest classifer graph #############
         """ print('[pipeline.py]    == >> Fitting tree << == ')
         self.tree = TREE(model_vac.VGraph.history, {'class_weight':'balanced','n_estimators':30, 'max_features':min([100,x_train.shape[1]])})
@@ -154,6 +156,10 @@ class HAL():
 
     def fit_kNN_graph(self, X, ypred):
         # Left it here ... need to update this to run graph clustering
+        if check_exist(self.file_name['kNN']):
+            self.kNN_graph = pickle.load(open(self.file_name['kNN'],'rb'))
+            return
+
         self.kNN_graph = kNN_Graph(
             n_bootstrap = self.n_bootstrap,
             test_size_ratio = self.clf_test_size_ratio,
@@ -164,9 +170,12 @@ class HAL():
         )
 
         self.kNN_graph.fit(X, ypred, n_bootstrap_shallow=5)
+        pickle.dump(self.kNN_graph, open(self.file_name['kNN'],'wb'))
 
-
-        self.kNN_graph.plot_kNN_graph(idx_pos)
+    def plot_kNN_graph(self, X_tsne):
+        from utility import find_position_idx_center
+        idx_center = find_position_idx_center(X_tsne, self.ypred, np.unique(self.ypred), self.density_cluster.rho)
+        self.kNN_graph.plot_kNN_graph(idx_center)
 
     def purify(self, X):
         """
