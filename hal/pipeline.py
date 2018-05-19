@@ -42,6 +42,7 @@ class HAL():
         try_load = True,
         n_jobs = 0, # All available processors will be used
         random_seed = None,
+        n_clf_sample_max = 1000,
         clf_type = 'svm',
         clf_args = None,
         n_bootstrap = 30,
@@ -73,6 +74,7 @@ class HAL():
         self.clf_test_size_ratio = clf_test_size_ratio
         self.n_bootstrap = n_bootstrap
         self.clf_type = clf_type
+        self.n_clf_sample_max = n_clf_sample_max
         if clf_args is None:
             self.clf_args = {'class_weight':'balanced'}
         else: 
@@ -128,17 +130,17 @@ class HAL():
             test_ratio_size=self.fdc_test_ratio_size,
             n_cluster_init=self.n_cluster_init
         )
-        
+
         self.purify(X_tsne)
         self.dp_profile.describe()
-
 
         # plotting intermediate results
         if self.plot_inter is True:
             plotting.cluster_w_label(X_tsne, self.ypred)
 
         self.ypred_init = np.copy(self.ypred)
-        #self.fit_kNN_graph(X_zscore, self.ypred)
+
+        self.fit_kNN_graph(X_zscore, self.ypred)
 
         ######## Tree random forest classifer graph #############
         """ print('[pipeline.py]    == >> Fitting tree << == ')
@@ -152,20 +154,28 @@ class HAL():
 
     def fit_kNN_graph(self, X, ypred):
         # Left it here ... need to update this to run graph clustering
-        self.kNN_graph = kNN_graph(
+        self.kNN_graph = kNN_Graph(
             n_bootstrap = self.n_bootstrap,
             test_size_ratio = self.clf_test_size_ratio,
+            n_sample_max=self.n_clf_sample_max,
             clf_type = self.clf_type,
             clf_args = self.clf_args,
             n_edge = self.n_edge_kNN
         )
 
-        self.fit_kNN_graph.fit(X, ypred)
+        self.kNN_graph.fit(X, ypred, n_bootstrap_shallow=5)
 
     def purify(self, X):
         """
         Tries to purify clusters by removing outliers, boundary terms and small clusters
         """
+        if check_exist(self.file_name['fdc']):
+            self.dp_profile = pickle.load(open(self.file_name['fdc'],'rb'))
+            self.density_cluster = self.dp_profile.density_model
+            print_param(self.dp_profile.__dict__)
+            self.ypred = self.dp_profile.y
+            return
+
         if self.density_cluster is None:
             self.density_cluster = FDC()
 
@@ -179,6 +189,8 @@ class HAL():
 
         self.dp_profile.fit(StandardScaler().fit_transform(X))
         self.ypred = self.dp_profile.y
+
+        pickle.dump(self.dp_profile, open(self.file_name['fdc'],'wb'))
         
     def load_clf(self, fname=None):
         if fname is not None:

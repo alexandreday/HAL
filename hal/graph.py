@@ -35,12 +35,12 @@ class kNN_Graph:
             self.clf_args = clf_args
 
         self.edge_score = OrderedDict()
-        #self.fout = FOUT('out.txt')
+        self.fout = None#/FOUT('out.txt')
         self.n_edge = n_edge
         self.cout = graph_cout if verbose is 1 else lambda *a, **k: None
         print(self.__dict__)
         
-    def fit(self, X, y_pred, n_bootstrap_shallow = 4):  
+    def fit(self, X, y_pred, n_bootstrap_shallow = 5):  
         """ Constructs a low connectivity graph by joining clusters that have low edge scores.
         Each cluster is connected to n_edge other clusters.
 
@@ -72,7 +72,7 @@ class kNN_Graph:
         elif self.clf_type == 'svm':
             clf_args_pre = {'class_weight':'balanced', 'kernel': 'linear'}
         
-        info = 'CLF pre-parameters:\t'+("n_bootstrap = %i"%n_bootstrap_shallow)+'\t'+str(clf_args_pre)
+        info = 'CLF pre-parameters:\t'+("n_bootstrap = %i"%n_bootstrap_shallow)+',clf_args='+str(clf_args_pre)
         self.cout(info)
 
         # Looping over all possible edges 
@@ -82,7 +82,7 @@ class kNN_Graph:
             for j, yu2 in enumerate(y_unique):
                 if i < j:
                     idx_tuple = (yu1, yu2)
-                    clf = self.classify_edge(idx_tuple, X, clf_args=clf_args_pre, n_average=n_bootstrap_shallow)
+                    clf = self.classify_edge(idx_tuple, X,self.y_pred, clf_args=clf_args_pre,n_bootstrap=n_bootstrap_shallow)
                     edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
                     self.score[idx_tuple] = clf.cv_score - clf.cv_score_std # SCORE definition here
 
@@ -90,15 +90,19 @@ class kNN_Graph:
         edge_list = []
         for i, yu1 in enumerate(y_unique):
             score_i = []
+            idx_tmp = []
             for j, yu2 in enumerate(y_unique):
-                score_i.append(self.score[(yu1, yu2)])
+                if i != j:
+                    score_i.append(self.score[(yu1, yu2)])
+                    idx_tmp.append(yu2)
             asort = np.argsort(score_i)[:self.n_edge] # connectivity
-            edge_list.append([yu1, y_unique[asort]])
+            idx_tmp = np.array(idx_tmp)
+            edge_list.append([yu1, idx_tmp[asort]])
     
         edge_info_raw(edge_list, self.score, cout = self.cout)
         del self.score
+        exit()
 
-        ######################################
         ######################################
         ######################################
 
@@ -118,7 +122,7 @@ class kNN_Graph:
             for node_2 in nn_node_1:
                 idx_edge = (node_1, node_2)
                 if idx_edge not in self.graph.keys():
-                    clf = self.classify_edge(idx_edge, X)
+                    clf = self.classify_edge(idx_edge, X, self.y_pred)
                     self.graph[idx_edge] = clf
                     edge_info_update(idx_edge, self.graph, cout=self.cout) # print results
         
@@ -153,7 +157,7 @@ class kNN_Graph:
                 edge_ij.append(self.edge[(yu,nn)])
             
             asort = np.sort(edge_ij)
-            if len(edge_ij) > 1:
+            if len(edge_ij) > 1:
                 gap.append(edge_ij[asort[1]] - edge_ij[asort[0]])
             else:
                 gap.append(-1)
@@ -167,7 +171,7 @@ class kNN_Graph:
         
 
 
-    def classify_edge(self, edge_tuple, X, clf_type=None, clf_args=None, 
+    def classify_edge(self, edge_tuple, X, y, clf_type=None, clf_args=None, 
         n_bootstrap=None, test_size_ratio=None, n_sample_max = None):
         """ Trains a classifier for cluster edge_tuple[0] and edge_tuple[1]
 
@@ -424,7 +428,7 @@ class kNN_Graph:
             new_idx_set.add((new_cluster_label, ni))
 
         for idx_tuple in new_idx_set:
-            clf = self.classify_edge(idx_tuple, X, n_average=self.n_average, clf_args = self.clf_args)
+            clf = self.classify_edge(idx_tuple, X, self.y_pred, n_average=self.n_average, clf_args = self.clf_args)
             self.edge_score[idx_tuple] = [clf.cv_score, clf.cv_score_std]
             edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
             self.graph[idx_tuple] = clf
@@ -460,11 +464,6 @@ class kNN_Graph:
         print("{0:<8s}{1:<8s}{2:<10s}".format('e1', 'e2', 'score'))
         for a in asort:
             print("{0:<8d}{1:<8d}{2:<10.4f}".format(idx_list[a][0], idx_list[a][1], score[a]))
-    
-    def compute_node_score(self):
-
-
-
         
     def plot_kNN_graph(self, idx_pos):
         from plotlygraph import plot_graph
@@ -480,13 +479,12 @@ class kNN_Graph:
 
         #(graph, node_pos, node_score)
 
-
 def edge_info_raw(edge_list, score, cout=print):
     cout("Edges that will be used ...")
     for edge in edge_list:
         i, nn_i  = edge
         for j in nn_i:
-            cout("{0:<5d}".format(i),' ---- ',"{0:<5d}".format(j),'  =~  ',"%.4f"%score[(i,j)])
+            cout("{0:^5d}".format(i)+' ---- '+"{0:^5d}".format(j)+'  =~  '+"%.4f"%score[(i,j)])
 
 def edge_info(edge_tuple, cv_score, std_score, min_score, fout=None, cout = print):
     
