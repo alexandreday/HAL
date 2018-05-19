@@ -93,9 +93,9 @@ class kNN_Graph:
                 score_i.append(self.score[(yu1, yu2)])
             asort = np.argsort(score_i)[:self.n_edge] # connectivity
             edge_list.append([yu1, y_unique[asort]])
-        
-
+    
         edge_info_raw(edge_list, self.score, cout = self.cout)
+        del self.score
 
         ######################################
         ######################################
@@ -103,11 +103,13 @@ class kNN_Graph:
 
         # Now looping over those edges and making sure scores are accurately estimated (IMPORTANT)
         self.graph = TupleDict()
-        self.edge_score = TupleDict()
+        self.cluster_idx = set(y_unique)
 
         self.cout("Performing deeper sweep over worst edges")
         info = 'CLF post-parameters:\t'+("n_bootstrap = %i"%self.n_bootstrap)+'\t'+str(self.clf_args)
         self.cout(info)
+
+        self.node_score = {}
 
         # This is O(N) in the number of clusters
         for edge in edge_list:
@@ -116,11 +118,36 @@ class kNN_Graph:
                 idx_edge = (node_1, node_2)
                 if idx_edge not in self.graph.keys():
                     clf = self.classify_edge(idx_edge, X)
-                    self.edge_score[idx_edge] = [clf.cv_score, clf.cv_score_std]
                     self.graph[idx_edge] = clf
-                    edge_info_update(edge, self.graph, cout=self.cout) # print results
+                    edge_info_update(idx_edge, self.graph, cout=self.cout) # print results
+                
+                
+                
+        """ clf = self.graph[idx_edge]
+        node_score.append(clf.cv_score - clf.cv_score_std) # THIS IS WHAT IS USED FOR COARSE-GRAINING
+    node_score = np.sort(node_score)
+    self.node[node_1] = node_score[1] - node_score[0] """
         return self
+
+    def compute_edge_score(self):
+        # This should be recomputed everytime the graph is updated (not comput. expensive)
+        assert self.recomputed is True
+        self.edge = TupleDict()
+        eps = 1e-10
+
+        for yu in self.cluster_idx:
+            score = []
+            nn_yu = self.graph[yu].get_nn()
+            for nn in nn_yu:
+                clf = self.graph[(yu, nn)]
+                self.edge[(yu,nn)] = clf.cv_score - clf.cv_score_std
+
+    def compute_node_score(self):
+        assert self.recomputed is True
         
+
+
+
     def classify_edge(self, edge_tuple, X, clf_type=None, clf_args=None, 
         n_bootstrap=None, test_size_ratio=None, n_sample_max = None):
         """ Trains a classifier for cluster edge_tuple[0] and edge_tuple[1]
@@ -414,12 +441,17 @@ class kNN_Graph:
         print("{0:<8s}{1:<8s}{2:<10s}".format('e1', 'e2', 'score'))
         for a in asort:
             print("{0:<8d}{1:<8d}{2:<10.4f}".format(idx_list[a][0], idx_list[a][1], score[a]))
+    
+    def compute_node_score(self):
+
+
+
         
     def plot_kNN_graph(self, idx_pos):
         from plotlygraph import plot_graph
         graph_tmp = {k : v[0]-v[1] for k,v in self.graph.items()}
         node_pos = idx_pos
-        
+
 
         #graph = {(1,2):0.5,(2,3):0.2,(3,4):0.143,(4,1):0.91}
         node_pos = {1:[0.1,0.1],2:[0.1,0.293],3:[-0.5,-0.2],4:[0.9,0.1]}
