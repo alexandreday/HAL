@@ -149,7 +149,7 @@ class kNN_Graph:
         self.node = dict()
         gap_list = []
         nn_j = []
-        
+
         for yu in self.cluster_idx:
             nn_yu = self.edge.get_nn(yu)
             edge_ij = []
@@ -164,14 +164,6 @@ class kNN_Graph:
                 gap = -1
                 gap_list.append(-1)
             self.node[yu] = gap
-
-
-
-
-
-
-        
-
 
     def classify_edge(self, edge_tuple, X, y, clf_type=None, clf_args=None, 
         n_bootstrap=None, test_size_ratio=None, n_sample_max = None):
@@ -469,16 +461,12 @@ class kNN_Graph:
         
     def plot_kNN_graph(self, idx_pos):
         from plotlygraph import plot_graph
-        graph_tmp = {k : v[0]-v[1] for k,v in self.graph.items()}
-        node_pos = idx_pos
-
-
+        #graph_tmp = {k : v for k,v in self.edge.items()}
+        #
         #graph = {(1,2):0.5,(2,3):0.2,(3,4):0.143,(4,1):0.91}
-        node_pos = {1:[0.1,0.1],2:[0.1,0.293],3:[-0.5,-0.2],4:[0.9,0.1]}
-        node_score = {1:0.2993,2:0.333,3:0.999,4:0.87373}
-        plot_graph(graph, node_pos, node_score)
-        plot
-
+        #node_pos = {1:[0.1,0.1],2:[0.1,0.293],3:[-0.5,-0.2],4:[0.9,0.1]}
+        #node_score = {1:0.2993,2:0.333,3:0.999,4:0.87373}
+        plot_graph(self.edge, idx_pos, self.node)#node_score)
         #(graph, node_pos, node_score)
 
 def edge_info_raw(edge_list, score, cout=print):

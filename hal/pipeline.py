@@ -165,6 +165,9 @@ class HAL():
 
         self.kNN_graph.fit(X, ypred, n_bootstrap_shallow=5)
 
+
+        self.kNN_graph.plot_kNN_graph(idx_pos)
+
     def purify(self, X):
         """
         Tries to purify clusters by removing outliers, boundary terms and small clusters
@@ -191,7 +194,7 @@ class HAL():
         self.ypred = self.dp_profile.y
 
         pickle.dump(self.dp_profile, open(self.file_name['fdc'],'wb'))
-        
+    
     def load_clf(self, fname=None):
         if fname is not None:
             self.tree, self.ss = pickle.load(open(tree_file_name,'rb'))

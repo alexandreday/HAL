@@ -39,3 +39,14 @@ def print_param(my_dict):
     for k, v in my_dict.items():
         print("[HAL] {0:<20s}{1:<4s}{2:<20s}".format(str(k),":",str(v)))
     print('\n')
+
+def find_position_idx_center(Xtsne, ypred, idx_center, rho):
+    assert len(Xtsne) == len(ypred)
+    
+    idx_center_pos = {}
+    for idx in idx_center:
+        pos = np.where(ypred == idx)[0]
+        pos_center = np.argmax(rho[pos])
+        idx_center_pos[idx] = Xtsne[pos[pos_center]]
+
+    return idx_center_pos
