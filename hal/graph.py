@@ -101,7 +101,6 @@ class kNN_Graph:
     
         edge_info_raw(edge_list, self.score, cout = self.cout)
         del self.score
-        exit()
 
         ######################################
         ######################################
@@ -114,15 +113,13 @@ class kNN_Graph:
         info = 'CLF post-parameters:\t'+("n_bootstrap = %i"%self.n_bootstrap)+'\t'+str(self.clf_args)
         self.cout(info)
 
-        self.node_score = {}
-
         # This is O(N) in the number of clusters
         for edge in edge_list:
             node_1, nn_node_1 = edge
             for node_2 in nn_node_1:
                 idx_edge = (node_1, node_2)
                 if idx_edge not in self.graph.keys():
-                    clf = self.classify_edge(idx_edge, X, self.y_pred)
+                    clf = self.classify_edge(idx_edge, X, self.y_pred) # using constructor parameters here
                     self.graph[idx_edge] = clf
                     edge_info_update(idx_edge, self.graph, cout=self.cout) # print results
         
@@ -132,6 +129,9 @@ class kNN_Graph:
         return self
 
     def compute_edge_score(self):
+        """ 
+            Computing edge weight based off classifier scores
+        """
         # This should be recomputed everytime the graph is updated (not comput. expensive)
         
         self.edge = TupleDict()
@@ -149,7 +149,7 @@ class kNN_Graph:
         self.node = dict()
         gap_list = []
         nn_j = []
-
+        
         for yu in self.cluster_idx:
             nn_yu = self.edge.get_nn(yu)
             edge_ij = []
@@ -158,10 +158,12 @@ class kNN_Graph:
             
             asort = np.sort(edge_ij)
             if len(edge_ij) > 1:
-                gap.append(edge_ij[asort[1]] - edge_ij[asort[0]])
+                gap = edge_ij[asort[1]] - edge_ij[asort[0]]
+                gap_list.append(gap)
             else:
-                gap.append(-1)
-            nn_j = nn_yu[asort[0]] # nearest-neighbor of yu
+                gap = -1
+                gap_list.append(-1)
+            self.node[yu] = gap
 
 
 
@@ -501,8 +503,9 @@ def edge_info(edge_tuple, cv_score, std_score, min_score, fout=None, cout = prin
 
 def edge_info_update(edge_tuple, graph, cout=print):
     
-    edge_str = "{0:5<d}{1:4<s}{2:5<d}".format(edge_tuple[0]," -- ",edge_tuple[1])
-    cv, cv_std = graph[edge_tuple]
+    edge_str = "{0:5<d}{1:4^s}{2:5<d}".format(edge_tuple[0]," -- ",edge_tuple[1])
+    clf = graph[edge_tuple]
+    cv, cv_std = clf.cv_score, clf.cv_score_std
     out = "{0:<20s}{1:<10.4f}{2:^10s}{3:<10.4f}".format(edge_str,cv,'+/-',cv_std)
     cout(out)
     

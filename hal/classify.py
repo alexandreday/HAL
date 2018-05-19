@@ -81,7 +81,7 @@ class CLF:
         
         dt = 0
         for _ in range(self.n_bootstrap):
-
+            
             xtrain, xtest, ytrain, ytest = self.train_test_split(X, y)
             
             std = np.std(xtrain, axis = 0)    
@@ -96,10 +96,11 @@ class CLF:
     
             # predict on train set
             t_score = clf.score(xtrain, ytrain) 
+            
             training_score.append(t_score)
 
             # predict on test set
-            p_score = clf.score(xtest, ytest) 
+            p_score = clf.score(xtest, ytest)
             predict_score.append(p_score)
 
             clf_list.append(clf)
@@ -114,7 +115,7 @@ class CLF:
         self.n_sample_ = len(y)
         self.idx_pos.clear()
 
-        print('Done ALL in %.4f with training of %.4f '%(time.time()-s, dt))
+        print('Done ALL in %.4f with training of %.4f'%(time.time()-s, dt))
         return self
 
 
