@@ -142,7 +142,6 @@ class kNN_Graph:
 
     def compute_node_score(self):
         
-
         self.node = dict()
         gap_list = []
         nn_j = []
