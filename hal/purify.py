@@ -92,7 +92,7 @@ class DENSITY_PROFILER:
 
     ################# INFORMATIVE FUNCTIONS #######################
     
-    def describe(self):
+    def describe(self, cout = print):
         import pandas as pd
 
         des = [] 
@@ -101,7 +101,7 @@ class DENSITY_PROFILER:
             c = np.count_nonzero(self.y == yu)
             des.append([yu, c, c/len(self.y)])
         
-        print(pd.DataFrame(des, columns=['label','count','ratio']).to_string(index=False))
+        cout(pd.DataFrame(des, columns=['label','count','ratio']).to_string(index=False))
 
     def check_purity(self, ytrue, plot=True): # Only if you have access to the true labels
 

@@ -466,7 +466,8 @@ class kNN_Graph:
         #graph = {(1,2):0.5,(2,3):0.2,(3,4):0.143,(4,1):0.91}
         #node_pos = {1:[0.1,0.1],2:[0.1,0.293],3:[-0.5,-0.2],4:[0.9,0.1]}
         #node_score = {1:0.2993,2:0.333,3:0.999,4:0.87373}
-        plot_graph(self.edge, idx_pos, self.node)#node_score)
+        plot_graph(self.edge, idx_pos, self.node, title='k-NN graph')
+        #node_score)
         #(graph, node_pos, node_score)
 
 def edge_info_raw(edge_list, score, cout=print):

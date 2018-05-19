@@ -18,8 +18,9 @@ def plot_graph(graph, node_pos, node_score, fontsize=20, title='YOLO'):
     """
     edge_trace_list, middle_node_trace =make_edge_trace(graph, node_pos)
     node_trace=make_node_trace(node_score, node_pos)
+    node_trace2 = make_node_trace(node_score, node_pos, text="not")
 
-    fig = Figure(data=Data([*edge_trace_list, middle_node_trace, node_trace]),
+    fig = Figure(data=Data([*edge_trace_list, middle_node_trace, node_trace, node_trace2]),
              layout=Layout(
                 title="<br>%s"%title,
                 titlefont=dict(size=fontsize),
@@ -61,19 +62,20 @@ def make_edge_trace(graph, node_pos, lw= 2.5):
 
     return edge_trace_list, middle_node_trace
 
-def make_node_trace(node_score, node_pos):
+def make_node_trace(node_score, node_pos, text='custom'):
     node_trace = Scatter(
     x=[],
     y=[],
     text=[],
     mode='markers',
     hoverinfo='text',
+    textfont = ,
     marker = Marker(
         showscale=True,
         # colorscale options
         # 'Greys' | 'Greens' | 'Bluered' | 'Hot' | 'Picnic' | 'Portland' |
         # Jet' | 'RdBu' | 'Blackbody' | 'Earth' | 'Electric' | 'YIOrRd' | 'YIGnBu'
-        colorscale='YIGnBu',
+        colorscale='Electric',
         reversescale=True,
         color=[],
         size=30,
@@ -83,16 +85,27 @@ def make_node_trace(node_score, node_pos):
             xanchor='left',
             titleside='right'
         ),
-        line=dict(width=2)
+        line=dict(width=2),
     ))
 
-
-    for k, v in node_score.items():
-        x, y = node_pos[k]
-        node_trace['x'].append(x)
-        node_trace['y'].append(y)
-        node_trace['marker']['color'].append(v)
-        node_trace['text'].append("k=%i\nscore=%.3f"%(k,v))
+    if text =='custom':
+        for k, v in node_score.items():
+            x, y = node_pos[k]
+            node_trace['x'].append(x)
+            node_trace['y'].append(y)
+            node_trace['marker']['color'].append(v)
+            node_trace['text'].append("k=%i, score=%.3f"%(k,v))
+    else:
+        node_trace['mode'] = 'text'
+        for k, v in node_score.items():
+            x, y = node_pos[k]
+            node_trace['x'].append(x)
+            node_trace['y'].append(y)
+            #node_trace['marker']['color'].append(v)
+            #node_trace['marker']=Marker()#['color'].append(v)
+            node_trace['text'].append(str(k))
+            #node_trace['marker']['textfont']['color'].append("#000000")
+        #node_trace['marker']['opacity'] = 0
 
     return node_trace
 
