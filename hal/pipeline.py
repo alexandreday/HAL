@@ -175,7 +175,7 @@ class HAL():
     def plot_kNN_graph(self, X_tsne):
         from utility import find_position_idx_center
         idx_center = find_position_idx_center(X_tsne, self.ypred, np.unique(self.ypred), self.density_cluster.rho)
-        self.kNN_graph.plot_kNN_graph(idx_center)
+        self.kNN_graph.plot_kNN_graph(idx_center, X=X_tsne)
 
     def purify(self, X):
         """

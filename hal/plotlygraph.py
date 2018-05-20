@@ -1,26 +1,50 @@
 import plotly.offline as of
+import plotly.plotly as py
 from plotly.graph_objs import *
 import numpy as np
 
 def main():
-
-    # example
+    #example
     graph = {(1,2):0.5,(2,3):0.2,(3,4):0.143,(4,1):0.91}
     node_pos = {1:[0.1,0.1],2:[0.1,0.293],3:[-0.5,-0.2],4:[0.9,0.1]}
     node_score = {1:0.2993,2:0.333,3:0.999,4:0.87373}
     plot_graph(graph, node_pos, node_score)
     return
 
-def plot_graph(graph, node_pos, node_score, fontsize=20, title='YOLO'):
+def scatter_data(X, opacity=0.2, n_sample=10000, scatter_obj=Scatter):
+    nn= min([len(X), n_sample])
+    sample = np.random.choice(np.arange(len(X)),size=nn,replace=False)
+    return scatter_obj(
+            x=X[sample,0], y=X[sample,1], 
+            mode = 'markers', 
+            hoverinfo='skip', 
+            marker = dict(opacity = opacity, color = '#888',size=2.0)
+            )
+
+def plot_graph(
+            graph, node_pos, node_score, 
+            X = None, fontsize=20, opacity = 0.2, n_sample=10000, title=None, savefile=None):
+
     """
     Graph is just a dictionary of tuples. Values are the scores
     Node pos are the cartesian coordinate of the nodes (dict)
     """
-    edge_trace_list, middle_node_trace =make_edge_trace(graph, node_pos)
+    edge_trace_list, middle_node_trace = make_edge_trace(graph, node_pos)
     node_trace=make_node_trace(node_score, node_pos)
-    node_trace2 = make_node_trace(node_score, node_pos, text="not")
+    node_trace2 = make_node_trace(node_score, node_pos, text="")
 
-    fig = Figure(data=Data([*edge_trace_list, middle_node_trace, node_trace, node_trace2]),
+    if savefile is None:
+        scatter_obj = Scattergl
+    else:
+        scatter_obj = Scatter
+
+    data_list = []    
+    if X is not None:
+        data_list += [scatter_data(X, n_sample=n_sample, opacity=opacity, scatter_obj=scatter_obj)]
+
+    data_list += [*edge_trace_list, middle_node_trace, node_trace, node_trace2]
+    
+    fig = Figure(data=Data(data_list),
              layout=Layout(
                 title="<br>%s"%title,
                 titlefont=dict(size=fontsize),
@@ -28,21 +52,20 @@ def plot_graph(graph, node_pos, node_score, fontsize=20, title='YOLO'):
                 showlegend=False,
                 hovermode='closest',
                 margin=dict(b=20,l=5,r=5,t=40),
-                #annotations=[ dict(
-                    #text="Python code: <a href='https://plot.ly/ipython-notebooks/network-graphs/'> https://plot.ly/ipython-notebooks/network-graphs/</a>",
-                    #showarrow=False,
-                    #xref="paper", yref="paper",
-                    #x=0.005, y=-0.002 ) ],
                 xaxis=XAxis(showgrid=False, zeroline=False, showticklabels=False),
-                yaxis=YAxis(showgrid=False, zeroline=False, showticklabels=False)))
+                yaxis=YAxis(showgrid=False, zeroline=False, showticklabels=False)
+             )
+    )
 
-    of.plot(fig)
+    if savefile is not None:
+        py.image.save_as(fig, savefile, scale=2)
+    else:
+        of.plot(fig)
 
 def line_interpolate(alpha, x1, x2):
     return np.array(x1)+alpha*(np.array(x2)-np.array(x1))
 
-
-def make_edge_trace(graph, node_pos, lw= 2.5):
+def make_edge_trace(graph, node_pos, lw= 1.5):
     edge_trace_list = []
 
     middle_node_trace = Scatter(x=[],y=[],text=[],mode='markers',hoverinfo='text', marker=Marker(opacity=0,size=2))
@@ -69,13 +92,12 @@ def make_node_trace(node_score, node_pos, text='custom'):
     text=[],
     mode='markers',
     hoverinfo='text',
-    textfont = ,
     marker = Marker(
         showscale=True,
         # colorscale options
         # 'Greys' | 'Greens' | 'Bluered' | 'Hot' | 'Picnic' | 'Portland' |
         # Jet' | 'RdBu' | 'Blackbody' | 'Earth' | 'Electric' | 'YIOrRd' | 'YIGnBu'
-        colorscale='Electric',
+        colorscale='Portland',
         reversescale=True,
         color=[],
         size=30,
@@ -97,6 +119,7 @@ def make_node_trace(node_score, node_pos, text='custom'):
             node_trace['text'].append("k=%i, score=%.3f"%(k,v))
     else:
         node_trace['mode'] = 'text'
+        node_trace['textfont']['color']='#f9feff'
         for k, v in node_score.items():
             x, y = node_pos[k]
             node_trace['x'].append(x)

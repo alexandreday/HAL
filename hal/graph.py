@@ -459,16 +459,9 @@ class kNN_Graph:
         for a in asort:
             print("{0:<8d}{1:<8d}{2:<10.4f}".format(idx_list[a][0], idx_list[a][1], score[a]))
         
-    def plot_kNN_graph(self, idx_pos):
+    def plot_kNN_graph(self, idx_pos, X=None, savefile=None):
         from plotlygraph import plot_graph
-        #graph_tmp = {k : v for k,v in self.edge.items()}
-        #
-        #graph = {(1,2):0.5,(2,3):0.2,(3,4):0.143,(4,1):0.91}
-        #node_pos = {1:[0.1,0.1],2:[0.1,0.293],3:[-0.5,-0.2],4:[0.9,0.1]}
-        #node_score = {1:0.2993,2:0.333,3:0.999,4:0.87373}
-        plot_graph(self.edge, idx_pos, self.node, title='k-NN graph')
-        #node_score)
-        #(graph, node_pos, node_score)
+        plot_graph(self.edge, idx_pos, self.node, X=X, title='k-NN graph', savefile=savefile, n_sample=20000)
 
 def edge_info_raw(edge_list, score, cout=print):
     cout("Edges that will be used ...")
