@@ -1,9 +1,6 @@
 from classify import CLF
-from fdc import FDC
 import numpy as np
 from copy import deepcopy
-from collections import Counter, OrderedDict
-from matplotlib import pyplot as plt
 import pickle, time
 from tupledict import TupleDict
 from utility import FOUT
@@ -36,10 +33,10 @@ class kNN_Graph:
         else:
             self.clf_args = clf_args
 
-        self.edge_score = OrderedDict()
         self.fout = None#/FOUT('out.txt')
         self.n_edge = n_edge
         self.y_murky = y_murky
+        self.merger_history = []
         self.cout = graph_cout if verbose is 1 else lambda *a, **k: None
         print(self.__dict__)
         
@@ -235,7 +232,8 @@ class kNN_Graph:
                 del self.graph[(node_1, node)]
             if node in neighbor_node_2:
                 del self.graph[(node_2, node)]
-            
+        
+        self.merger_history.append([(node_1, node_2), y_new, deepcopy(self.graph[(node_1, node_2)])]) # this saves the classifiers for later
         del self.graph[(node_1, node_2)]
 
         self.cluster_idx.remove(node_1)
@@ -285,168 +283,16 @@ class kNN_Graph:
 
         return CLF(clf_type=clf_type, n_bootstrap=n_bootstrap, n_sample_max=n_sample_max, test_size=test_size_ratio, clf_kwargs=clf_args).fit(Xsubset, ysubset)
     
-    def merge_until_robust(self, X_in, cv_robust, ratio_dict):
-        """
-        Merges cluster based on certainty metric
+    def coarse_grain(self, X, y_pred):
 
-        X_in : inliers features in the original space
-        
-        ratio_dict : dict of cluster labels to list of boundary points for the cluster with info [majority_ratio_cluster_label, idx_in]
+        #self.history.append([score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list), (n1,n2, self.current_max_label), deepcopy(self.graph[(n1,n2)])])
+        while np.max(self.node.values()) > 0:
+            edge, score, gap = self.find_next_merger()
+            self.merge_edge(edge, X, y_pred)
 
-        --> why not just work with X_in instead ==> so you don't have to reinclude stuff ... !
-        """ 
+    def build_tree(self):
+        return
 
-        yunique = np.unique(self.cluster_label) # this includes boundary points.
-        yunique = yunique[yunique >=0] # remove boundary !
-        self.init_n_cluster = len(yunique)
-        self.current_max_label = np.max(yunique) + 1
-        self.current_n_merge = 0
-        self.history = []
-        self.ratio_dict = deepcopy(ratio_dict)
-        n_cluster = self.init_n_cluster
-
-        while True:
-            all_robust = True
-            if n_cluster == 1:
-                self.history.append([-1, np.copy(self.cluster_label), deepcopy(self.nn_list), -1, -1])
-                break
-            worst_effect_cv = 10
-            worst_edge = -1
-            score_list = []
-            edge_list = []
-            yunique = np.unique(self.cluster_label) # > how would you prepare this ?
-            yunique = yunique[yunique >=0] # remove boundary <== <==
-
-            score_dict = {yu:{} for yu in yunique}
-
-            for edge, clf in self.graph.items():
-                effect_score = clf.cv_score - clf.cv_score_std
-                score_list.append(effect_score)
-                edge_list.append(edge)
-                score_dict[edge[0]][edge[1]] = effect_score
-                score_dict[edge[1]][edge[0]] = effect_score
-                if effect_score < worst_effect_cv:
-                    worst_effect_cv = effect_score
-                    worst_edge = (edge[0], edge[1])
-            
-            """ for n1, v in score_dict.items():
-                for n2, score_value in v.items():
-                    print((n1, n2),' = %.4f '%score_value, end='')
-                    print('    ', end='')
-                print('\n', end='') """
-
-            certainty_node = {}
-            # for each node just assign a score, and mark the other node that it should be merged with
-            max_certainty = -1
-            for cluster_idx, n_dict in score_dict.items():
-                k, v = list(n_dict.keys()), list(n_dict.values())
-                asort_edge = np.argsort(v) # we want largest value
-                nn = k[asort_edge[0]] # node it should be merged with if certainty is high
-                if len(asort_edge) > 1:
-                    certainty_value = v[asort_edge[1]]-v[asort_edge[0]] # certainty value for each edge
-                else:
-                    # here there is only one edge left. So merge this edge if it has the lowest score of all.
-                    idx_tmp = (cluster_idx, k) if cluster_idx < k else (k, cluster_idx)
-                    if worst_edge == idx_tmp:
-                        certainty_value = 10. # trick !
-
-                # ----------------> 
-                certainty_node[cluster_idx] = [certainty_value, nn]
-                if certainty_value > max_certainty:
-                    max_certainty = certainty_value
-                    edge_merge = (cluster_idx, nn)
-
-            asort = np.argsort(score_list)
-            print('[vgraph.py]    Lowest scores:')
-            for aa in asort[:5]:
-                print(edge_list[aa], '\t\t', score_list[aa])
-
-            worst_effect_cv = score_list[asort[0]]
-            
-            if worst_effect_cv < cv_robust:
-                all_robust = False
-            
-            print('[vgraph.py]    Merging edge %i --- %i\t'%(edge_merge[0], edge_merge[1]),'with certainty=\t%.4f'%max_certainty)
-
-            if all_robust is False:
-
-                n_cluster = self.init_n_cluster - self.current_n_merge - 1
-                n1, n2 = edge_merge
-
-                merge_info(n1, n2, score_dict[n1][n2], self.current_max_label, n_cluster, fout = self.fout)
-                
-                n_cluster -= 1
-                # info before the merge -> this score goes with these labels            
-                self.edge_score
-
-                self.history.append([score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list), (n1,n2, self.current_max_label), deepcopy(self.graph[(n1,n2)])])
-                
-                #self.reinclude_bounday(X ===> here)
-
-                self.merge_edge(X_in, edge_merge, ratio_dict) # this will modify cluster_labels and ratio_dict.
-                # when merging edge should reinclude the boundary point ...
-                # 1. this will modify X. 2. this will modify self.cluster_label. 3. This will modify scores (better !)
-            
-            else:
-                self.history.append([worst_effect_cv, np.copy(self.cluster_label), deepcopy(self.nn_list), -1, -1])
-
-                break
-
-    def update_ratio_dict(self, edge_tuple, new_label):
-        # edge_tuple : edge being merged
-        # >>>> First updating cluster labels :
-
-        i1, i2 = edge_tuple
-        remaining_element = {i1:[], i2:[]}
-
-        for ii in [i1,i2]: # go over each cluster of the edge boundaries
-            idx_boundary = self.ratio_dict[ii] # if the point is on the boundary between the two being merge, include it in the merge.
-            #print(ii, idx_boundary)
-            if len(idx_boundary) > 0:
-
-                cond_1 = (idx_boundary[:,0] == i1) & (idx_boundary[:,1] == i2) # is this condition ok ?
-                cond_2 = (idx_boundary[:,1] == i1) & (idx_boundary[:,0] == i2)
-                cond = cond_1 | cond_2
-
-                idx_in_boundary = idx_boundary[cond, 2] # idx w.r.t. to .cluster_label
-                # bug here when merging with the boundary --> implies that 
-
-                tmp = idx_boundary[(cond == False)]# points that are merged with other clusters...
-                remaining_element[ii] = tmp
-                self.cluster_label[idx_in_boundary] = new_label # ok once this is done, need to update ratio dict as well ... for neighbors and remove cluster
-
-        remain = []
-        for k, v in remaining_element.items():
-            for e in v:
-                remain.append(e)
-        if len(remain) > 0:
-            self.ratio_dict[new_label] = np.vstack(remain) # updated boundary.
-        else:
-            self.ratio_dict[new_label] = [] # updated boundary.
-
-        for k, v in self.ratio_dict.items():
-            if len(v) > 0:
-                pos = (v[:,0] == i1) | (v[:,0] == i2)
-                v[pos,0] = new_label
-                pos = (v[:,1] == i1) | (v[:,1] == i2)
-                v[pos,1] = new_label
-    
-    def print_edge_score(self, option = 0):
-        """ Print edge scores in sorted """
-
-        score = []
-        idx_list =[]
-        for idx, s in self.edge_score.items():
-            if option == 0:
-                score.append(s[0]-s[1])
-            else:
-                score.append(s[0])
-            idx_list.append(idx)
-    
-        asort = np.argsort(score)
-        print("{0:<8s}{1:<8s}{2:<10s}".format('e1', 'e2', 'score'))
-        for a in asort:
-            print("{0:<8d}{1:<8d}{2:<10.4f}".format(idx_list[a][0], idx_list[a][1], score[a]))
         
     def plot_kNN_graph(self, idx_pos, X=None, savefile=None):
         from plotlygraph import plot_graph

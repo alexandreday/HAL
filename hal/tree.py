@@ -3,7 +3,6 @@ import numpy as np
 import pickle
 import copy, time
 from collections import OrderedDict as OD
-from collections import Counter
 
 class TREENODE:
 
@@ -56,25 +55,26 @@ class TREENODE:
 class TREE:
     """ Contains all the hierachy and information concerning the clustering """
     
-    def __init__(self, merge_and_clf, clf_args, test_size_ratio=0.8):
-        # merge_and_clf = list([idx_1, idx_2, edge_clf])
-        self.merge_and_clf = merge_and_clf
+    def __init__(self, merge_history, clf_type, clf_args, test_size_ratio=0.8):
+        #merger_history = list of  [edge, clf]
+
+        self.merge_history = merge_history
         self.clf_args = clf_args
+        self.clf_type = clf_type
         self.test_size_ratio = test_size_ratio
 
-    def fit(self, X): 
-        """ X is the original space (boundary + pure) 
+    def fit(self, X, y_pred, n_bootstrap=10): 
+        """ 
+
         """
         #[score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list),(n1,n2, self.current_max_label),deepcopy(self.graph[(n1,n2)])])
-        ypred = self.merge_and_clf[-1][1]
-        n_merge = len(self.merge_and_clf)
-
-        clf_top =  CLF(clf_type='rf', n_average=5, test_size=self.test_size_ratio,clf_kwargs=self.clf_args).fit(X, ypred)    
-        y_unique = np.unique(ypred)
+        
+        y_unique = np.unique(y_pred)
+        clf_root = CLF(clf_type=clf_type, n_bootstrap=n_bootstrap, test_size=self.test_size_ratio, clf_kwargs=self.clf_args).fit(X, y_pred)
+        self.root = TREENODE(id_ = y_unique[-1]+1 , scale=clf_root.cv_score)
 
         self.node_dict = OD()
         self.clf_dict = OD()
-        self.root = TREENODE(id_ = max(y_unique)+1, scale=clf_top.cv_score)
         
         self.node_dict[self.root.get_id()] = self.root
         self.clf_dict[self.root.get_id()] = clf_top
@@ -85,20 +85,16 @@ class TREE:
             self.node_dict[c_node.get_id()] = c_node
 
         # building full tree here
-        for nm in range(n_merge-2,0,-1): # already checked last "merge", 
-            idx_1, idx_2, idx_merge = self.merge_and_clf[nm][3]
-            #print(idx_1,idx_2, idx_merge)
-            clf = self.merge_and_clf[nm][4] 
-            self.clf_dict[idx_merge] = clf
-            self.node_dict[idx_merge].scale = clf.cv_score
+        for edge, y_new, clf in reversed(self.merge_history):
+            idx_1, idx_2 = edge
 
-            c_node = TREENODE(id_ = idx_1, parent = self.node_dict[idx_merge])
-            self.node_dict[c_node.get_id()] = c_node
-            self.node_dict[idx_merge].add_child(c_node)
+            self.clf_dict[y_new] = clf
+            self.node_dict[y_new].scale = clf.cv_score
 
-            c_node = TREENODE(id_ = idx_2, parent = self.node_dict[idx_merge])
-            self.node_dict[c_node.get_id()] = c_node
-            self.node_dict[idx_merge].add_child(c_node)
+            for idx in edge:
+                c_node = TREENODE(id_ = idx, parent = self.node_dict[y_new])
+                self.node_dict[c_node.get_id()] = c_node
+                self.node_dict[y_new].add_child(c_node)
         
     def predict(self, X_, cv = 0.9, option='fast'):
         """
