@@ -144,7 +144,10 @@ class HAL():
 
         self.plot_kNN_graph(X_tsne)
 
-        print(self.kNN_graph.find_next_merger())
+        #self.kNN_graph.coarse_grain(y_murky=self.dp_profile.y_murky)
+        
+        #self.dp_profile.y_murky
+        #self.kNN_graph.coarse_grain(self.dp)
 
 
 

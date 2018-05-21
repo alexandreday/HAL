@@ -53,8 +53,9 @@ class DENSITY_PROFILER:
     def mark_murky_points(self):
 
         self.density_model.nn_list
-        counts = np.empty(len(self.y), dtype=float)
         n_sample = len(self.y)
+        counts = np.empty(n_sample, dtype=float)
+    
 
         for i in range(n_sample): # could cythonize this ... but no need for that now
             y_tmp =np.copy(self.y[self.density_model.nn_list[i]])
@@ -66,6 +67,8 @@ class DENSITY_PROFILER:
 
         
         self.idx_murky = np.where(counts < self.nn_pure_ratio)[0]
+        self.y_murky = -1*np.ones(n_sample, dtype=int)
+        self.y_murky[self.idx_murky] = np.copy(self.y[self.idx_murky]) # these are copied for later mergers 
         self.y[self.idx_murky] = -2 # assign murky
         self.y[self.idx_lowD] = -1 # reassign lowD
 

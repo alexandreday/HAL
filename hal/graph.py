@@ -28,7 +28,7 @@ class kNN_Graph:
         self.clf_type = clf_type
         self.n_sample_max = n_sample_max
         self.recomputed = False
-        
+
         if clf_args is None:
             self.clf_args = {'class_weight':'balanced'}
         else:
@@ -37,6 +37,7 @@ class kNN_Graph:
         self.edge_score = OrderedDict()
         self.fout = None#/FOUT('out.txt')
         self.n_edge = n_edge
+        self.y_murky = None
         self.cout = graph_cout if verbose is 1 else lambda *a, **k: None
         print(self.__dict__)
         
@@ -66,6 +67,7 @@ class kNN_Graph:
         self.cout('Training on input of dimension %i, %i'%X.shape)
         
         self.y_pred = y_pred # shallow copy
+        self.y_max = np.max(y_unique)
 
         if self.clf_type == 'rf':
             clf_args_pre = {'class_weight':'balanced', 'n_estimators': 30, 'max_features': min([X.shape[1],200])}
@@ -188,9 +190,48 @@ class kNN_Graph:
     def merge_edge(self, edge_tuple, X, y_pred):
         # When merging, need to recompute scores for new edges.
         # Step 0. Find a new label
+
+        y_new = self.y_max+1
+        self.y_max +=1
+
+        node_1, node_2 = edge_tuple
+
         # Step 1. Relabel edge nodes
+        pos_idx_1 = np.where(self.y_pred == node_1)[0]
+        pos_idx_2 = np.where(self.y_pred == node_2)[0]
+        self.y_pred[pos_idx_1] = y_new
+        self.y_pred[pos_idx_2] = y_new
+
+        if self.y_murky is not None:
+            # Add back in intra (unpure) cluster elements
+            pos_idx_1 = np.where(self.y_murky == node_1)[0]
+            pos_idx_2 = np.where(self.y_murky == node_2)[0]
+
+            self.y_pred[pos_idx_1] = y_new
+            self.y_pred[pos_idx_2] = y_new
+            self.y_murky[pos_idx_1] = -1
+            self.y_murky[pos_idx_2] = -1
+
         # Step 2. Recompute edges
-        
+        node_list = list(self.graph.get_nn(node_1).union(self.graph.get_nn(node_2))-set([node_1,node_2]))
+
+        for node in node_list:
+            idx_new_edge = (y_new, node)
+            clf = self.classify_edge(idx_new_edge, X, self.y_pred) # using constructor parameters here
+            self.graph[idx_new_edge] = clf
+            edge_info_update(idx_new_edge, self.graph, cout=self.cout) # print results
+
+            del self.graph[(node_1, node)]
+            del self.graph[(node_2, node)]
+
+        self.cluster_idx.remove(node_1)
+        self.cluster_idx.remove(node_2)
+        self.cluster_idx.add(y_new)
+
+        self.compute_edge_score()
+        self.compute_node_score()
+
+        return self
 
 
     def classify_edge(self, edge_tuple, X, y, clf_type=None, clf_args=None, 
