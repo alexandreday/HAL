@@ -144,6 +144,10 @@ class HAL():
 
         self.plot_kNN_graph(X_tsne)
 
+        print(self.kNN_graph.find_next_merger())
+
+
+
         ######## Tree random forest classifer graph #############
         """ print('[pipeline.py]    == >> Fitting tree << == ')
         self.tree = TREE(model_vac.VGraph.history, {'class_weight':'balanced','n_estimators':30, 'max_features':min([100,x_train.shape[1]])})
@@ -158,7 +162,7 @@ class HAL():
         # Left it here ... need to update this to run graph clustering
         if check_exist(self.file_name['kNN']):
             self.kNN_graph = pickle.load(open(self.file_name['kNN'],'rb'))
-            return
+            return self
 
         self.kNN_graph = kNN_Graph(
             n_bootstrap = self.n_bootstrap,
@@ -171,6 +175,7 @@ class HAL():
 
         self.kNN_graph.fit(X, ypred, n_bootstrap_shallow=5)
         pickle.dump(self.kNN_graph, open(self.file_name['kNN'],'wb'))
+        return self
 
     def plot_kNN_graph(self, X_tsne):
         from utility import find_position_idx_center

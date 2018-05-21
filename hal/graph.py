@@ -166,14 +166,14 @@ class kNN_Graph:
         # If node has only one connection ... what to do => nothing, if really bad, will merge with other node (since that one has many connections)
         # If all nodes have gap = -1 (only one pair left), stop
         node, gap = max(self.node.items(), key=lambda x:x[1])
-        
+
         if gap < 0: # only two nodes left
-            node_2 = self.edge.get_nn(node)[0]
+            node_2 = list(self.edge.get_nn(node))[0]
             edge_to_merge = (node, node_2)
             score_edge = self.edge[(node, node_2)]
             gap = -1
         else:
-            nn_yu = self.edge.get_nn(node)
+            nn_yu = list(self.edge.get_nn(node))
 
             edge_ij = []
             for nn in nn_yu:
@@ -184,6 +184,14 @@ class kNN_Graph:
             score_edge = edge_ij[arg_minscore_edge]
 
         return edge_to_merge, score_edge, gap
+
+    def merge_edge(self, edge_tuple, X, y_pred):
+        # When merging, need to recompute scores for new edges.
+        # Step 0. Find a new label
+        # Step 1. Relabel edge nodes
+        # Step 2. Recompute edges
+        
+
 
     def classify_edge(self, edge_tuple, X, y, clf_type=None, clf_args=None, 
         n_bootstrap=None, test_size_ratio=None, n_sample_max = None):
