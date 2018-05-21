@@ -58,7 +58,7 @@ class CLF:
         #### ----------
         #         #### ----------
 
-        print('Training %s with n_bootstrap=%i, with nsample=%i'%(self.clf_type, self.n_bootstrap, len(X)))
+        #print('Training %s with n_bootstrap=%i, with nsample=%i'%(self.clf_type, self.n_bootstrap, len(X)))
 
         s=time.time()
 
@@ -115,7 +115,7 @@ class CLF:
         self.n_sample_ = len(y)
         self.idx_pos.clear()
 
-        print('Done ALL in %.4f with training of %.4f'%(time.time()-s, dt))
+        #print('Done ALL in %.4f with training of %.4f'%(time.time()-s, dt))
         return self
 
 

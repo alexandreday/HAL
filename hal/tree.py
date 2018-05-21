@@ -70,14 +70,15 @@ class TREE:
         #[score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list),(n1,n2, self.current_max_label),deepcopy(self.graph[(n1,n2)])])
         
         y_unique = np.unique(y_pred)
-        clf_root = CLF(clf_type=clf_type, n_bootstrap=n_bootstrap, test_size=self.test_size_ratio, clf_kwargs=self.clf_args).fit(X, y_pred)
+        idx_subset = np.where(y_pred > -1)
+        clf_root = CLF(clf_type=self.clf_type, n_bootstrap=n_bootstrap, test_size=self.test_size_ratio, clf_kwargs=self.clf_args).fit(X[idx_subset], y_pred[idx_subset])
         self.root = TREENODE(id_ = y_unique[-1]+1 , scale=clf_root.cv_score)
 
         self.node_dict = OD()
         self.clf_dict = OD()
         
         self.node_dict[self.root.get_id()] = self.root
-        self.clf_dict[self.root.get_id()] = clf_top
+        self.clf_dict[self.root.get_id()] = clf_root
 
         for yu in y_unique:
             c_node = TREENODE(id_=yu, parent=self.root)
@@ -95,6 +96,8 @@ class TREE:
                 c_node = TREENODE(id_ = idx, parent = self.node_dict[y_new])
                 self.node_dict[c_node.get_id()] = c_node
                 self.node_dict[y_new].add_child(c_node)
+        
+        return self
         
     def predict(self, X_, cv = 0.9, option='fast'):
         """

@@ -91,6 +91,7 @@ class HAL():
 
         self.file_name = {}
         self.file_name['kNN'] = quick_name(root, 'kNN', info_str)
+        self.file_name['kNN_coarse'] = quick_name(root, 'kNN_coarse', info_str)
         self.file_name['fdc'] = quick_name(root, 'fdc', info_str)
         self.file_name['robust'] = quick_name(root, 'robust', info_str)
         self.file_name['tree'] = quick_name(root, 'tree', info_str)
@@ -142,39 +143,13 @@ class HAL():
 
         self.fit_kNN_graph(X_zscore, self.ypred)
 
-        self.plot_kNN_graph(X_tsne)
+        if self.plot_inter is True:
+            self.plot_kNN_graph(X_tsne)
 
-        edge, _, _ = self.kNN_graph.find_next_merger()
+        self.coarse_grain_kNN_graph(X_zscore, self.ypred)
 
-        print("MERGING EDGE:\t",edge)
-        self.kNN_graph.merge_edge(edge, X_zscore, self.ypred)
+        self.kNN_graph.build_tree(X_zscore)
 
-        self.plot_kNN_graph(X_tsne)
-
-        edge, _, _ = self.kNN_graph.find_next_merger()
-
-        print("MERGING EDGE:\t",edge)
-        self.kNN_graph.merge_edge(edge, X_zscore, self.ypred)
-
-        self.plot_kNN_graph(X_tsne)
-
-
-        #self.kNN_graph.coarse_grain(y_murky=self.dp_profile.y_murky)
-
-        #self.dp_profile.y_murky
-        #self.kNN_graph.coarse_grain(self.dp)
-
-
-
-        ######## Tree random forest classifer graph #############
-        """ print('[pipeline.py]    == >> Fitting tree << == ')
-        self.tree = TREE(model_vac.VGraph.history, {'class_weight':'balanced','n_estimators':30, 'max_features':min([100,x_train.shape[1]])})
-        self.tree.fit(x_train)
-        pickle.dump([self.tree, self.ss], open(self.file_name['tree'],'wb')) """
-
-        # classifying tree, can predict on new data that is normalized beforehand
-        # When running on new data, use mytree.predict(ss.transform(X)) to get labels !
-        #return self.tree, self.ss 
 
     def fit_kNN_graph(self, X, ypred):
         # Left it here ... need to update this to run graph clustering
@@ -196,10 +171,23 @@ class HAL():
         pickle.dump(self.kNN_graph, open(self.file_name['kNN'],'wb'))
         return self
 
+    def coarse_grain_kNN_graph(self, X, ypred):
+
+        if check_exist(self.file_name['kNN_coarse']):
+            self.kNN_graph = pickle.load(open(self.file_name['kNN_coarse'],'rb'))
+            return self
+        else:
+            self.kNN_graph.coarse_grain(X, ypred)
+            pickle.dump(self.kNN_graph, open(self.file_name['kNN_coarse'],'wb'))
+
+
     def plot_kNN_graph(self, X_tsne):
         from utility import find_position_idx_center
         idx_center = find_position_idx_center(X_tsne, self.ypred, np.unique(self.ypred), self.density_cluster.rho)
         self.kNN_graph.plot_kNN_graph(idx_center, X=X_tsne)
+
+    def predict(self, X, cv=0.5):
+        return self.kNN_graph.predict(self.ss.transform(X), cv=cv) # predict on full set !
 
     def purify(self, X):
         """
@@ -234,12 +222,6 @@ class HAL():
         else:
             self.tree, self.ss = pickle.load(open(self.file_name['tree'],'rb'))
     
-    def predict(self, X, cv=0.9, option='fast'):
-        """
-        Standardizes according to training set rescaling and then predicts given the cv-score specified
-        """
-        return self.tree.predict(self.ss.transform(X), cv=cv, option=option)   
-
     def run_tSNE(self, X):
         """
         Performs t-SNE dimensional reduction using a FFT based C-implementation of Barnes-Hut t-SNE (very fast)

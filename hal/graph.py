@@ -1,4 +1,5 @@
 from classify import CLF
+from tree import TREE
 import numpy as np
 from copy import deepcopy
 import pickle, time
@@ -286,14 +287,19 @@ class kNN_Graph:
     def coarse_grain(self, X, y_pred):
 
         #self.history.append([score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list), (n1,n2, self.current_max_label), deepcopy(self.graph[(n1,n2)])])
-        while np.max(self.node.values()) > 0:
+        while np.max(list(self.node.values())) > 0:
             edge, score, gap = self.find_next_merger()
+            print('Merging edge\t', edge)
             self.merge_edge(edge, X, y_pred)
+            print('\n\n\n')
 
-    def build_tree(self):
-        return
+    def build_tree(self, X):
+        self.tree = TREE(self.merger_history,self.clf_type,self.clf_args,test_size_ratio=self.test_size_ratio)
+        self.tree.fit(X, self.y_pred)
 
-        
+    def predict(self, X, cv=0.5):
+        return self.tree.predict(X, cv=cv)
+
     def plot_kNN_graph(self, idx_pos, X=None, savefile=None):
         from plotlygraph import plot_graph
         #print(idx_pos)
