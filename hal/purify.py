@@ -16,6 +16,7 @@ class DENSITY_PROFILER:
         self.density_model = density_model
         self.outlier_ratio = outlier_ratio
         self.nn_pure_ratio = nn_pure_ratio
+        self.y_murky = None
         self.min_size_cluster= min_size_cluster # this should be on the order of the number of features
         self.y = None
 

@@ -20,7 +20,9 @@ class kNN_Graph:
         clf_type='svm', 
         clf_args=None,
         verbose = 1,
-        n_edge =2):
+        n_edge =2,
+        y_murky= None
+        ):
         
         self.n_bootstrap = n_bootstrap
         self.cv_score_threshold = cv_score
@@ -37,7 +39,7 @@ class kNN_Graph:
         self.edge_score = OrderedDict()
         self.fout = None#/FOUT('out.txt')
         self.n_edge = n_edge
-        self.y_murky = None
+        self.y_murky = y_murky
         self.cout = graph_cout if verbose is 1 else lambda *a, **k: None
         print(self.__dict__)
         
@@ -164,6 +166,12 @@ class kNN_Graph:
             self.node[yu] = gap
 
     def find_next_merger(self):
+        """ Finds the edge that should be merged next based on node score (gap)
+        and edge score (edge with minimum score)
+        Return
+        -------
+        edge_to_merge, score_edge, node_gap
+        """
         # Go to node with largest gap. Merge it with it's worst edge
         # If node has only one connection ... what to do => nothing, if really bad, will merge with other node (since that one has many connections)
         # If all nodes have gap = -1 (only one pair left), stop
@@ -190,7 +198,7 @@ class kNN_Graph:
     def merge_edge(self, edge_tuple, X, y_pred):
         # When merging, need to recompute scores for new edges.
         # Step 0. Find a new label
-
+        self.y_pred = y_pred
         y_new = self.y_max+1
         self.y_max +=1
 
@@ -213,7 +221,9 @@ class kNN_Graph:
             self.y_murky[pos_idx_2] = -1
 
         # Step 2. Recompute edges
-        node_list = list(self.graph.get_nn(node_1).union(self.graph.get_nn(node_2))-set([node_1,node_2]))
+        neighbor_node_1 = self.graph.get_nn(node_1) - set([node_2])
+        neighbor_node_2 = self.graph.get_nn(node_2) - set([node_1])
+        node_list = list(neighbor_node_1.union(neighbor_node_2))
 
         for node in node_list:
             idx_new_edge = (y_new, node)
@@ -221,8 +231,12 @@ class kNN_Graph:
             self.graph[idx_new_edge] = clf
             edge_info_update(idx_new_edge, self.graph, cout=self.cout) # print results
 
-            del self.graph[(node_1, node)]
-            del self.graph[(node_2, node)]
+            if node in neighbor_node_1:
+                del self.graph[(node_1, node)]
+            if node in neighbor_node_2:
+                del self.graph[(node_2, node)]
+            
+        del self.graph[(node_1, node_2)]
 
         self.cluster_idx.remove(node_1)
         self.cluster_idx.remove(node_2)
@@ -230,7 +244,7 @@ class kNN_Graph:
 
         self.compute_edge_score()
         self.compute_node_score()
-
+        
         return self
 
 
@@ -416,101 +430,7 @@ class kNN_Graph:
                 v[pos,0] = new_label
                 pos = (v[:,1] == i1) | (v[:,1] == i2)
                 v[pos,1] = new_label
-
-    def merge_edge(self, X, edge_tuple, ratio_dict):
-        """ relabels data according to merging, and recomputing new classifiers for new edges """
-        
-        idx_1, idx_2 = edge_tuple
-        new_cluster_label = self.current_max_label
-
-        pos_1 = (self.cluster_label == idx_1)
-        pos_2 = (self.cluster_label == idx_2)
-
-        self.cluster_label[pos_1] = new_cluster_label   # updating labels !
-        self.cluster_label[pos_2] = new_cluster_label   # updating labels !
-
-        self.update_ratio_dict(edge_tuple, new_cluster_label) # will also update self.cluster_label for merging
-
-        self.current_n_merge += 1
-        self.current_max_label += 1 
-
-        new_idx = []    # recompute classifiers for merged edge
-        idx_to_del = set([])    # avoids duplicates
-
-        for e in self.nn_list[idx_1]:
-            if e < idx_1:
-                idx_to_del.add((e, idx_1))
-            else:
-                idx_to_del.add((idx_1, e))
-            new_idx.append(e)
-
-        for e in self.nn_list[idx_2]:
-            if e < idx_2:
-                idx_to_del.add((e, idx_2))
-            else:
-                idx_to_del.add((idx_2, e))
-            #idx_to_del.add((idx_2, e))
-            new_idx.append(e)
-        
-        new_nn_to_add = set([])
-
-        for k, v in self.nn_list.items():
-            if idx_1 in v:
-                v.remove(idx_1)
-                v.add(new_cluster_label)
-                new_nn_to_add.add(k)
-            if idx_2 in v:
-                v.remove(idx_2)
-                v.add(new_cluster_label)
-                new_nn_to_add.add(k)
-        
-        self.nn_list[new_cluster_label] = new_nn_to_add
-        
-        if idx_1 in self.nn_list.keys():
-            del self.nn_list[idx_1]
-        if idx_2 in self.nn_list.keys():
-            del self.nn_list[idx_2]
-        
-        for k, v in self.nn_list.items():
-            if idx_1 in v:
-                v.remove(idx_1)
-            if idx_2 in v:
-                v.remove(idx_2)
-
-        ########################################
-        #########################################        
-
-        new_idx.remove(idx_1)
-        new_idx.remove(idx_2)
     
-        for idxd in idx_to_del: # these edges have been reassigned ... 
-            del self.graph[idxd]
-        
-        new_idx_set = set([])
-        for ni in new_idx:
-            new_idx_set.add((new_cluster_label, ni))
-
-        for idx_tuple in new_idx_set:
-            clf = self.classify_edge(idx_tuple, X, self.y_pred, n_average=self.n_average, clf_args = self.clf_args)
-            self.edge_score[idx_tuple] = [clf.cv_score, clf.cv_score_std]
-            edge_info(idx_tuple, clf.cv_score, clf.cv_score_std, self.cv_score_threshold, fout=self.fout)
-            self.graph[idx_tuple] = clf
-            idx_tuple_reverse = (idx_tuple[1], idx_tuple[0])
-        
-
-        k0_update = []
-        k1_update = []
-        for k, v in self.graph.items():
-            if (k[0] == idx_1) or (k[0] == idx_2): # old index still present !
-                k0_update.append(k)        
-            elif (k[1] == idx_1) or (k[1] == idx_2):
-                k1_update.append(k)
-        
-        for k0 in k0_update:
-            self.graph[(new_cluster_label, k0[1])] = self.graph.pop(k0)
-        for k1 in k1_update:
-            self.graph[(k1[0], new_cluster_label)] = self.graph.pop(k1)
-
     def print_edge_score(self, option = 0):
         """ Print edge scores in sorted """
 
@@ -530,6 +450,7 @@ class kNN_Graph:
         
     def plot_kNN_graph(self, idx_pos, X=None, savefile=None):
         from plotlygraph import plot_graph
+        #print(idx_pos)
         plot_graph(self.edge, idx_pos, self.node, X=X, title='k-NN graph', savefile=savefile, n_sample=20000)
 
 def edge_info_raw(edge_list, score, cout=print):

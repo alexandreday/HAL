@@ -144,8 +144,23 @@ class HAL():
 
         self.plot_kNN_graph(X_tsne)
 
+        edge, _, _ = self.kNN_graph.find_next_merger()
+
+        print("MERGING EDGE:\t",edge)
+        self.kNN_graph.merge_edge(edge, X_zscore, self.ypred)
+
+        self.plot_kNN_graph(X_tsne)
+
+        edge, _, _ = self.kNN_graph.find_next_merger()
+
+        print("MERGING EDGE:\t",edge)
+        self.kNN_graph.merge_edge(edge, X_zscore, self.ypred)
+
+        self.plot_kNN_graph(X_tsne)
+
+
         #self.kNN_graph.coarse_grain(y_murky=self.dp_profile.y_murky)
-        
+
         #self.dp_profile.y_murky
         #self.kNN_graph.coarse_grain(self.dp)
 
@@ -173,7 +188,8 @@ class HAL():
             n_sample_max=self.n_clf_sample_max,
             clf_type = self.clf_type,
             clf_args = self.clf_args,
-            n_edge = self.n_edge_kNN
+            n_edge = self.n_edge_kNN,
+            y_murky = self.dp_profile.y_murky
         )
 
         self.kNN_graph.fit(X, ypred, n_bootstrap_shallow=5)

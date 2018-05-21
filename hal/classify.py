@@ -100,7 +100,7 @@ class CLF:
             training_score.append(t_score)
 
             # predict on test set
-            p_score = clf.score(xtest, ytest)
+            p_score = clf.score(xtest[:1000], ytest[:1000])
             predict_score.append(p_score)
 
             clf_list.append(clf)
