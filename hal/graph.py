@@ -1,10 +1,10 @@
-from classify import CLF
-from tree import TREE
+from .classify import CLF
+from .tree import TREE
 import numpy as np
 from copy import deepcopy
 import pickle, time
-from tupledict import TupleDict
-from utility import FOUT
+from .tupledict import TupleDict
+from .utility import FOUT
 
 class kNN_Graph:
     """ Validation graph class - builds a graph with nodes corresponding
@@ -301,7 +301,7 @@ class kNN_Graph:
         return self.tree.predict(X, cv=cv)
 
     def plot_kNN_graph(self, idx_pos, X=None, savefile=None):
-        from plotlygraph import plot_graph
+        from .plotlygraph import plot_graph
         #print(idx_pos)
         plot_graph(self.edge, idx_pos, self.node, X=X, title='k-NN graph', savefile=savefile, n_sample=20000)
 

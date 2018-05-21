@@ -1,8 +1,8 @@
-from graph import kNN_Graph
-from tupledict import TupleDict
-from tree import TREE
-from utility import make_file_name, print_param
-from purify import DENSITY_PROFILER
+from .graph import kNN_Graph
+from .tupledict import TupleDict
+from .tree import TREE
+from .utility import make_file_name, print_param, find_position_idx_center
+from .purify import DENSITY_PROFILER
 
 from fdc import FDC, plotting
 from fitsne import FItSNE
@@ -41,7 +41,6 @@ class HAL():
         root = "",
         try_load = True,
         n_jobs = 0, # All available processors will be used
-        random_seed = None,
         n_clf_sample_max = 1000,
         clf_type = 'svm',
         clf_args = None,
@@ -130,6 +129,7 @@ class HAL():
             eta=self.eta,
             test_ratio_size=self.fdc_test_ratio_size,
             n_cluster_init=self.n_cluster_init
+
         )
 
         self.purify(X_tsne)
@@ -182,7 +182,6 @@ class HAL():
 
 
     def plot_kNN_graph(self, X_tsne):
-        from utility import find_position_idx_center
         idx_center = find_position_idx_center(X_tsne, self.ypred, np.unique(self.ypred), self.density_cluster.rho)
         self.kNN_graph.plot_kNN_graph(idx_center, X=X_tsne)
 
@@ -216,11 +215,11 @@ class HAL():
 
         pickle.dump(self.dp_profile, open(self.file_name['fdc'],'wb'))
     
-    def load_clf(self, fname=None):
+    """ def load_clf(self, fname=None):
         if fname is not None:
             self.tree, self.ss = pickle.load(open(tree_file_name,'rb'))
         else:
-            self.tree, self.ss = pickle.load(open(self.file_name['tree'],'rb'))
+            self.tree, self.ss = pickle.load(open(self.file_name['tree'],'rb')) """
     
     def run_tSNE(self, X):
         """
@@ -252,7 +251,8 @@ class HAL():
                 np.ascontiguousarray(X.astype(np.float)),
                 start_late_exag_iter=self.late_exag, late_exag_coeff=self.alpha_late,
                 max_iter = self.n_iteration_tsne,
-                perplexity= self.perplexity
+                perplexity= self.perplexity,
+                rand_seed=self.seed
             )
             pickle.dump(Xtsne, open(tsnefile,'wb')) # Saving data in with useful name tag
             print('[HAL]    t-SNE data saved in %s' % tsnefile)
