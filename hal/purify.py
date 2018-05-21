@@ -57,7 +57,6 @@ class DENSITY_PROFILER:
         n_sample = len(self.y)
         counts = np.empty(n_sample, dtype=float)
     
-
         for i in range(n_sample): # could cythonize this ... but no need for that now
             y_tmp =np.copy(self.y[self.density_model.nn_list[i]])
             y_tmp = y_tmp[(y_tmp != -1)]
@@ -65,7 +64,6 @@ class DENSITY_PROFILER:
                 counts[i] = 10. # not murky, just outlier
             else:
                 counts[i] = np.count_nonzero(y_tmp == self.y[i])/len(y_tmp)
-
         
         self.idx_murky = np.where(counts < self.nn_pure_ratio)[0]
         self.y_murky = -1*np.ones(n_sample, dtype=int)
