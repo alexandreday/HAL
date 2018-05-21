@@ -146,24 +146,32 @@ class kNN_Graph:
 
     def compute_node_score(self):
         
-        self.node = dict()
-        gap_list = []
-        nn_j = []
+        self.node = dict() # nodes with only one edge have gap of -1.
 
         for yu in self.cluster_idx:
             nn_yu = self.edge.get_nn(yu)
             edge_ij = []
             for nn in nn_yu:
                 edge_ij.append(self.edge[(yu,nn)])
-            
-            asort = np.argsort(edge_ij)
+        
             if len(edge_ij) > 1:
+                asort = np.argsort(edge_ij)
                 gap = edge_ij[asort[1]] - edge_ij[asort[0]]
-                gap_list.append(gap)
-            else:
+            else: # what to do if you have only one edge left ?
                 gap = -1
-                gap_list.append(-1)
             self.node[yu] = gap
+
+    def find_next_merger(self):
+        # Go to node with largest gap. Merge it with it's worst edge
+        # If node has only one connection ... what to do => nothing, if really bad, will merge with other node (since that one has many connections)
+        # If all nodes have gap = -1 (only one pair left), stop
+        node, gap = max(self.node.items(), key=lambda x:x[1])
+        nn_yu = self.edge.get_nn(node)
+        
+        for nn in nn_yu:
+                edge_ij.append(self.edge[(yu,nn)])
+
+        return node, gap
 
     def classify_edge(self, edge_tuple, X, y, clf_type=None, clf_args=None, 
         n_bootstrap=None, test_size_ratio=None, n_sample_max = None):
