@@ -179,8 +179,13 @@ class CLF:
                 idx_train.append(self.idx_pos[yc][:int(train_ratio*n_max)])
                 idx_test.append(self.idx_pos[yc][int(train_ratio*n_max):n_max])
             else:
-                idx_train.append(self.idx_pos[yc][:int(train_ratio*n_yc)])
-                idx_test.append(self.idx_pos[yc][int(train_ratio*n_yc):n_yc])
+                nsplit = int(train_ratio*n_yc)
+                if nsplit == 0:
+                    idx_train.append(self.idx_pos[yc][:int(0.5*n_yc)])
+                    idx_test.append(self.idx_pos[yc][int(0.5*n_yc):n_yc])
+                else:
+                    idx_train.append(self.idx_pos[yc][:nsplit])
+                    idx_test.append(self.idx_pos[yc][nsplit:n_yc])
         
         idx_train = np.hstack(idx_train)
         idx_test = np.hstack(idx_test)

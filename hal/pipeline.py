@@ -90,7 +90,7 @@ class HAL():
 
         self.file_name = {}
         self.file_name['kNN'] = quick_name(root, 'kNN', info_str)
-        self.file_name['kNN_coarse'] = quick_name(root, 'kNN_coarse', info_str)
+        self.file_name['kNN_tree'] = quick_name(root, 'kNN_tree', info_str)
         self.file_name['fdc'] = quick_name(root, 'fdc', info_str)
         self.file_name['robust'] = quick_name(root, 'robust', info_str)
         self.file_name['tree'] = quick_name(root, 'tree', info_str)
@@ -148,8 +148,6 @@ class HAL():
 
         self.coarse_grain_kNN_graph(X_zscore, self.ypred)
 
-        self.kNN_graph.build_tree(X_zscore)
-
 
     def fit_kNN_graph(self, X, ypred):
         # Left it here ... need to update this to run graph clustering
@@ -173,13 +171,19 @@ class HAL():
 
     def coarse_grain_kNN_graph(self, X, ypred):
 
-        if check_exist(self.file_name['kNN_coarse']):
-            self.kNN_graph = pickle.load(open(self.file_name['kNN_coarse'],'rb'))
+        if check_exist(self.file_name['kNN_tree']):
+            self.kNN_graph = pickle.load(open(self.file_name['kNN_tree'],'rb'))
             return self
         else:
             self.kNN_graph.coarse_grain(X, ypred)
-            pickle.dump(self.kNN_graph, open(self.file_name['kNN_coarse'],'wb'))
+            self.kNN_graph.build_tree(X)
+            pickle.dump(self.kNN_graph, open(self.file_name['kNN_tree'],'wb'))
 
+    def load(self, s=None):
+        if s is None:
+            self.kNN_graph = pickle.load(open(self.file_name['kNN_tree'],'rb'))
+        else:
+            return pickle.load(open(self.file_name[s],'rb'))
 
     def plot_kNN_graph(self, X_tsne):
         idx_center = find_position_idx_center(X_tsne, self.ypred, np.unique(self.ypred), self.density_cluster.rho)
