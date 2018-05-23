@@ -13,12 +13,47 @@ import numpy as np
 import pickle, os
 
 class HAL():
-    """HAL-x : clustering via Hierarchial Agglomerative Learning
+    """HAL-x : clustering via Hierarchial Agglomerative Learning.
+    Construct FFT t-SNE embedding and identify pure clusters. Constructs
+    a hierarchical classifer based on coarse-graining a k-NN graph
         
     Parameters
     -------------
-    [update coming soon]
     
+    outlier_ratio: float (default=0.2)
+        Ratio of the lowest density points that are considered outliers
+    
+    nn_pure_ratio: float (default=0.99)
+        Ratio of the neighborhood that has to be in the same cluster to be considered pure
+    
+    min_size_cluster: int (default=0)
+        Minimum size of a cluster
+    
+    perplexity: float (default=30)
+        t-SNE perplexity - sets the effective neighborhood size
+    
+    n_iteration_tsne: int (default = 1000)
+        Number of t-SNE iteration
+
+    late_exag: int (default=800)
+        Iteration at which to turn on late exageration
+    
+    alpha_late: float (default=2.0)
+        Exageration factor used
+
+    tsne_type: str (default='fft')
+        Type of t-SNE used (for now only FFT is used)
+    
+    n_cluster_init: int (default=30)
+        Number of initial cluster to start with (approx.)
+
+    seed : int (default =0)
+        Random seed
+    
+    nh_size : int (default=40)
+        Neighborhood size for density clustering
+
+    ...
     """
     # {'class_weight':'balanced','n_estimators': 50, 'max_features': min([X_down_sample.shape[1],200])}
 
@@ -74,6 +109,7 @@ class HAL():
         self.n_bootstrap = n_bootstrap
         self.clf_type = clf_type
         self.n_clf_sample_max = n_clf_sample_max
+        
         if clf_args is None:
             self.clf_args = {'class_weight':'balanced'}
         else: 
@@ -177,11 +213,11 @@ class HAL():
         else:
             self.kNN_graph.coarse_grain(X, ypred)
             self.kNN_graph.build_tree(X)
-            pickle.dump(self.kNN_graph, open(self.file_name['kNN_tree'],'wb'))
+            pickle.dump([self.ss, self.kNN_graph], open(self.file_name['kNN_tree'],'wb'))
 
     def load(self, s=None):
         if s is None:
-            self.kNN_graph = pickle.load(open(self.file_name['kNN_tree'],'rb'))
+            self.ss, self.kNN_graph = pickle.load(open(self.file_name['kNN_tree'],'rb'))
         else:
             return pickle.load(open(self.file_name[s],'rb'))
 
