@@ -20,7 +20,7 @@ def testMNIST():
 
     model = HAL(nh_size=100, min_size_cluster=30, 
         n_cluster_init=30,
-        plot_inter=True,
+        plot_inter=False,
         root='/Users/alexandreday/GitProject/HAL/MNIST/info/',
         late_exag=900,
         alpha_late=2.0,

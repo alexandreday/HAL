@@ -229,7 +229,11 @@ class HAL():
         return self.kNN_graph.predict(self.ss.transform(X), cv=cv) # predict on full set !
 
     def plot_tree(self, X, cv):
-       print(self.kNN_graph.tree.node_dict)
+        self.kNN_graph.tree.plot_tree(X, cv)
+        """ for k, v in self.kNN_graph.tree.node_dict.items():
+            print(k,'\t',v.info)
+            print('\n\n') """
+       #print(self.kNN_graph.tree.node_dict)
 
     def purify(self, X):
         """
@@ -261,7 +265,7 @@ class HAL():
     def run_tSNE(self, X):
         """
         Performs t-SNE dimensional reduction using a FFT based C-implementation of Barnes-Hut t-SNE (very fast)
-        Optionally, one can specificy number of paralell jobs to run from the :n_jobs: parameter in the constructor.
+        Optionally, one can specify the number of paralell jobs to run from the :n_jobs: parameter in the constructor.
         Make sure X is normalized too !
         
         Options

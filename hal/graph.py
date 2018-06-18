@@ -130,11 +130,11 @@ class kNN_Graph:
         self.compute_node_score()
 
         # Compute basic cluster statistics (leaf nodes):
-        for yu in y_unique:
+        for yu in np.unique(y_pred): # include outlier statistics
             pos = (self.y_pred == yu)
             median = np.median(X[pos],axis=0)
             std = np.std(X[pos],axis=0)
-            self.cluster_statistics[yu] = {"mu":median,"std":std,"size":np.count_nonzero(pos),"feature":[]}
+            self.cluster_statistics[yu] = {"mu":median,"std":std,"size":np.count_nonzero(pos)}
 
         return self
 
@@ -255,7 +255,7 @@ class kNN_Graph:
         pos = (y_pred == y_new)
         median = np.median(X[pos], axis=0)
         std = np.std(X[pos], axis=0)
-        self.cluster_statistics[y_new] = {"mu":median,"std":std,"size":np.count_nonzero(pos),"feature":[]}
+        self.cluster_statistics[y_new] = {"mu":median,"std":std,"size":np.count_nonzero(pos)}
 
         return self
 

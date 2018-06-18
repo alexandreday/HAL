@@ -72,17 +72,19 @@ class TREE:
         #[score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list),(n1,n2, self.current_max_label),deepcopy(self.graph[(n1,n2)])])
         
         pos = (y_pred > -1)
-        y_unique = np.unique(y_pred)
-        idx_subset = np.where(pos)
+        y_unique = np.unique(y_pred[pos]) # fit only on the non-outliers
+        idx_subset = np.where(pos)[0]
 
         clf_root = CLF(clf_type=self.clf_type, n_bootstrap=n_bootstrap, test_size=self.test_size_ratio, clf_kwargs=self.clf_args).fit(X[idx_subset], y_pred[idx_subset])
         self.root = TREENODE(id_ = y_unique[-1]+1 , scale=clf_root.cv_score)
 
         # cluster statistics for the root 
-        self.cluster_statistics[self.root.get_id()]  = {"mu":np.median(X[idx_subset], axis=0),
+        self.cluster_statistics[self.root.get_id()]  = {
+                                                        "mu":np.median(X[idx_subset], axis=0),
                                                         "std":np.std(X[idx_subset],axis=0),
                                                         "size":len(idx_subset),
-                                                        "feature":[]}
+                                                        "feature":[]
+                                                        }
 
         self.node_dict = OD()
         self.clf_dict = OD()
@@ -106,6 +108,10 @@ class TREE:
                 c_node = TREENODE(id_ = idx, parent = self.node_dict[y_new])
                 self.node_dict[c_node.get_id()] = c_node
                 self.node_dict[y_new].add_child(c_node)
+
+        # constructs the structures that have the information about the tree 
+        self.compute_feature_importance_dict(X)
+        self.compute_node_info() 
         
         return self
         
@@ -135,24 +141,36 @@ class TREE:
         return ypred
 
     def plot_tree(self, X, cv, out="nested"):
+        import json
+
+        ## so this is working ...
+        nested_dict = {}
+
+        self.construct_nested_dict(nested_dict, self.root.id_)
+
+        #print(nested_dict)
+        with open('tree.json','w') as f:
+            f.write(json.dumps(nested_dict))
         
-        self.compute_feature_importance_dict(X)
-        self.compute_node_info()
+    def construct_nested_dict(self, nested_dict, node_id):
 
-        print(self.node)
-        exit()
+        print("adding node %i"%node_id)
+        node = self.node_dict[node_id]
+        nested_dict["name"] = str(node_id)
+        nested_dict["info"] = "size=%i, cv=-"%self.cluster_statistics[node_id]["size"]
+        nested_dict["median_markers"] = list(node.info["median_marker"]["mu"])
+        nested_dict["std_markers"] = list(node.info["median_marker"]["std"])
+        nested_dict["cv"] = "-" if (node.info["cv"] < 0) else "%.3f"%node.info["cv"]
 
-        stack = [self.root]
-        if out is "nested":
-            while stack:
-                child = self.node_dict[stack[0].get_id()].child
-                stack = stack[1:]
-                for c in child:
-                    if c.scale > cv: # node division has high enough probability
-                        stack.append(c)
-
-    """ def add_node_nested(name,info,median_markers,feature_importance,cv):
-        return {'cv':cv,'name':name,'info':info,'median_markers':median_markers,'feature_importance':feature_importance} """
+        if len(node.info["children_id"]) == 0:
+            nested_dict["feature_importance"]=[]
+            return nested_dict
+        else:
+            nested_dict["feature_importance"]=list(node.info["feature_importance"][0]) # second element is std
+            nested_dict["children"] = []
+            for node_id_2 in node.info["children_id"]:
+                nested_dict["children"].append(self.construct_nested_dict({}, node_id_2))
+            return nested_dict
 
     def compute_feature_importance_dict(self, X):
         """ --> this only works for random forest <- """
