@@ -37,6 +37,7 @@ class kNN_Graph:
         self.fout = None#/FOUT('out.txt')
         self.n_edge = n_edge
         self.y_murky = y_murky
+        self.cluster_statistics = {} # node_id to median markers
         self.merger_history = []
         self.cout = graph_cout if verbose is 1 else lambda *a, **k: None
         print(self.__dict__)
@@ -128,6 +129,13 @@ class kNN_Graph:
         self.compute_edge_score()
         self.compute_node_score()
 
+        # Compute basic cluster statistics (leaf nodes):
+        for yu in y_unique:
+            pos = (self.y_pred == yu)
+            median = np.median(X[pos],axis=0)
+            std = np.std(X[pos],axis=0)
+            self.cluster_statistics[yu] = {"mu":median,"std":std,"size":np.count_nonzero(pos),"feature":[]}
+
         return self
 
     def compute_edge_score(self):
@@ -193,7 +201,7 @@ class kNN_Graph:
 
         return edge_to_merge, score_edge, gap
 
-    def merge_edge(self, edge_tuple, X, y_pred):
+    def merge_edge(self,edge_tuple, X, y_pred):
         # When merging, need to recompute scores for new edges.
         # Step 0. Find a new label
         self.y_pred = y_pred
@@ -243,9 +251,13 @@ class kNN_Graph:
 
         self.compute_edge_score()
         self.compute_node_score()
-        
-        return self
 
+        pos = (y_pred == y_new)
+        median = np.median(X[pos], axis=0)
+        std = np.std(X[pos], axis=0)
+        self.cluster_statistics[y_new] = {"mu":median,"std":std,"size":np.count_nonzero(pos),"feature":[]}
+
+        return self
 
     def classify_edge(self, edge_tuple, X, y, clf_type=None, clf_args=None, 
         n_bootstrap=None, test_size_ratio=None, n_sample_max = None):

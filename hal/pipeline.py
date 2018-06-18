@@ -208,7 +208,7 @@ class HAL():
     def coarse_grain_kNN_graph(self, X, ypred):
 
         if check_exist(self.file_name['kNN_tree']):
-            self.kNN_graph = pickle.load(open(self.file_name['kNN_tree'],'rb'))
+            self.ss, self.kNN_graph = pickle.load(open(self.file_name['kNN_tree'],'rb'))
             return self
         else:
             self.kNN_graph.coarse_grain(X, ypred)
@@ -227,6 +227,9 @@ class HAL():
 
     def predict(self, X, cv=0.5):
         return self.kNN_graph.predict(self.ss.transform(X), cv=cv) # predict on full set !
+
+    def plot_tree(self, X, cv):
+       print(self.kNN_graph.tree.node_dict)
 
     def purify(self, X):
         """

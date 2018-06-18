@@ -10,3 +10,4 @@ example
 vac/__pycache__*
 test*
 dev/*
+MNIST/*
