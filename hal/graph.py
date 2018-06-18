@@ -306,7 +306,7 @@ class kNN_Graph:
             print('\n\n\n')
 
     def build_tree(self, X):
-        self.tree = TREE(self.merger_history,self.clf_type,self.clf_args,test_size_ratio=self.test_size_ratio)
+        self.tree = TREE(self.merger_history,self.cluster_statistics,self.clf_type,self.clf_args,test_size_ratio=self.test_size_ratio)
         self.tree.fit(X, self.y_pred)
 
     def predict(self, X, cv=0.5):
@@ -328,9 +328,7 @@ def edge_info(edge_tuple, cv_score, std_score, min_score, fout=None, cout = prin
     
     edge_str = "{0:5<d}{1:4<s}{2:5<d}".format(edge_tuple[0]," -- ",edge_tuple[1])
 
-    robust_or_not = "robust edge" if cv_score - std_score > min_score else "reject edge "
-
-    out = "{0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format(robust_or_not, edge_str, "score =", cv_score, "\t+-",std_score)
+    out = "{0:<15s}{1:<15s}{2:<15s}{3:<7.4f}{4:<16s}{5:>6.5f}".format("[graph]", edge_str, "score =", cv_score, "\t+-",std_score)
 
     cout(out)
 

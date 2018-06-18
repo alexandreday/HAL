@@ -24,7 +24,8 @@ def testMNIST():
         root='/Users/alexandreday/GitProject/HAL/MNIST/info/',
         late_exag=900,
         alpha_late=2.0,
-        clf_type = 'svm'
+        clf_type = 'rf',
+        clf_args = {'class_weight':'balanced','max_features':40}
     )
     
     model.fit(Xpca)

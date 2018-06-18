@@ -257,13 +257,7 @@ class HAL():
         self.ypred = self.dp_profile.y
 
         pickle.dump(self.dp_profile, open(self.file_name['fdc'],'wb'))
-    
-    """ def load_clf(self, fname=None):
-        if fname is not None:
-            self.tree, self.ss = pickle.load(open(tree_file_name,'rb'))
-        else:
-            self.tree, self.ss = pickle.load(open(self.file_name['tree'],'rb')) """
-    
+
     def run_tSNE(self, X):
         """
         Performs t-SNE dimensional reduction using a FFT based C-implementation of Barnes-Hut t-SNE (very fast)
