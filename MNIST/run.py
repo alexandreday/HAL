@@ -28,9 +28,13 @@ def testMNIST():
         clf_args = {'class_weight':'balanced','max_features':40}
     )
     
+    model.load()
     model.fit(Xpca)
     y = model.predict(Xpca)
 
+    # -----------------> ------------
+
+    model.plot_tree(Xpca, -1)
     exit()
     #y = model.predict(Xpca)
     #exit()

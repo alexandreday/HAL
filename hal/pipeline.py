@@ -226,7 +226,7 @@ class HAL():
 
     def load(self, s=None):
         if s is None:
-            self.ss, self.kNN_graph = pickle.load(open(self.file_name['kNN_tree'],'rb'))
+            self.ss, self.kNN_graph = pickle.load(open(self.file_name['hal_model'],'rb'))
         else:
             return pickle.load(open(self.file_name[s],'rb'))
 
