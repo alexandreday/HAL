@@ -14,7 +14,7 @@ def testMNIST():
     ytrue = ytrue.flatten()
     """ Xpca = PCA(n_components=40).fit_transform(X)
     pickle.dump(Xpca, open('xpca.pkl','wb')) """
-    Xpca = pickle.load(open('xpca.pkl','rb'))
+    Xpca = pickle.load(open('/Users/alexandreday/GitProject/HAL/MNIST/xpca.pkl','rb'))
 
     np.random.seed(0)
 
@@ -29,9 +29,13 @@ def testMNIST():
     )
     
     model.fit(Xpca)
+    y = model.predict(Xpca)
 
-    model.plot_tree(Xpca,0.9)
     exit()
+    #y = model.predict(Xpca)
+    #exit()
+    #model.plot_tree(Xpca,0.9)
+    #exit()
 
 
     model.load()

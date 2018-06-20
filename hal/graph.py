@@ -305,10 +305,12 @@ class kNN_Graph:
             print('\n\n')
 
     def build_tree(self, X, ypred_init):
+        print("Building tree")
         self.tree = TREE(self.merger_history,self.cluster_statistics,self.clf_type,self.clf_args, ypred_init, test_size_ratio=self.test_size_ratio)
         self.tree.fit(X, self.y_pred)
 
     def predict(self, X, cv=0.5):
+        print('Predicting on %i points'%len(X))
         return self.tree.predict(X, cv=cv)
 
     def plot_kNN_graph(self, idx_pos, X=None, savefile=None):

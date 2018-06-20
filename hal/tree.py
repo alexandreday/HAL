@@ -113,6 +113,7 @@ class TREE:
         # constructs the structures that have the information about the tree 
         self.compute_feature_importance_dict(X)
         self.compute_node_info()
+
         print("Computing f1-scores")
         for node_id in self.node_dict.keys():
             self.node_dict[node_id].info['f1'] = self.compute_f1_score(X, node_id, self.y_pred_init)
@@ -122,14 +123,13 @@ class TREE:
     def predict(self, X_, cv = 0.9, option='fast'):
         """
         Prediction on the original space data points
+
         """
 
         if X_.ndim == 1:
             X = X_.reshape(-1,1)
         else:
             X = X_
-
-        print('Predicting on %i points'%len(X))
 
         stack = [self.root]
         ypred = self.clf_dict[stack[0].get_id()].predict(X, option=option)
@@ -140,8 +140,10 @@ class TREE:
             for c in child:
                 if c.scale > cv: # c.scale (unpropagated scores)
                     stack.append(c)
-                    pos = (ypred == c.get_id())
-                    ypred[pos] = self.clf_dict[c.get_id()].predict(X[pos], option=option)
+                    idx = np.where(ypred == c.get_id())[0]
+                    if len(idx) > 0:
+                        ypred[idx] = self.clf_dict[c.get_id()].predict(X[idx], option=option)
+                    
         return ypred
 
     def compute_f1_score(self, X, node_id, ypred_init):
