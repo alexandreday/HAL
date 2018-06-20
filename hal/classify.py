@@ -55,9 +55,6 @@ class CLF:
         self, CLF object
 
         """
-        #### ----------
-        #         #### ----------
-
         #print('Training %s with n_bootstrap=%i, with nsample=%i'%(self.clf_type, self.n_bootstrap, len(X)))
 
         s=time.time()

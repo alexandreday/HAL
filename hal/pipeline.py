@@ -127,6 +127,7 @@ class HAL():
         self.file_name = {}
         self.file_name['kNN'] = quick_name(root, 'kNN', info_str)
         self.file_name['kNN_tree'] = quick_name(root, 'kNN_tree', info_str)
+        self.file_name['hal_model'] = quick_name(root, 'hal_model', info_str)
         self.file_name['fdc'] = quick_name(root, 'fdc', info_str)
         self.file_name['robust'] = quick_name(root, 'robust', info_str)
         self.file_name['tree'] = quick_name(root, 'tree', info_str)
@@ -175,14 +176,16 @@ class HAL():
         if self.plot_inter is True:
             plotting.cluster_w_label(X_tsne, self.ypred)
 
-        self.ypred_init = np.copy(self.ypred)
+        self.ypred_init = np.copy(self.ypred) # important for later
 
         self.fit_kNN_graph(X_zscore, self.ypred)
 
         if self.plot_inter is True:
             self.plot_kNN_graph(X_tsne)
 
-        self.coarse_grain_kNN_graph(X_zscore, self.ypred)
+        self.coarse_grain_kNN_graph(X_zscore, self.ypred) # coarse grain
+
+        self.construct_model(X_zscore) # links all classifiers together in a hierarchical model
 
 
     def fit_kNN_graph(self, X, ypred):
@@ -209,11 +212,17 @@ class HAL():
 
         if check_exist(self.file_name['kNN_tree']):
             self.ss, self.kNN_graph = pickle.load(open(self.file_name['kNN_tree'],'rb'))
-            return self
         else:
             self.kNN_graph.coarse_grain(X, ypred)
-            self.kNN_graph.build_tree(X)
             pickle.dump([self.ss, self.kNN_graph], open(self.file_name['kNN_tree'],'wb'))
+        return self
+        
+    def construct_model(self, X):
+        if check_exist(self.file_name['hal_model']):
+            self.ss, self.kNN_graph = pickle.load(open(self.file_name['hal_model'],'rb'))
+        else:
+            self.kNN_graph.build_tree(X, self.ypred_init)
+            pickle.dump([self.ss, self.kNN_graph], open(self.file_name['hal_model'],'wb'))
 
     def load(self, s=None):
         if s is None:

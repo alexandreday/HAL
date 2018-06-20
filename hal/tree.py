@@ -56,11 +56,12 @@ class TREENODE:
 class TREE:
     """ Contains all the hierachy and information concerning the clustering """
     
-    def __init__(self, merge_history, cluster_statistics, clf_type, clf_args, test_size_ratio=0.8):
+    def __init__(self, merge_history, cluster_statistics, clf_type, clf_args, y_pred_init, test_size_ratio=0.8):
         #merger_history = list of  [edge, clf]
 
         self.merge_history = merge_history
         self.cluster_statistics = cluster_statistics
+        self.y_pred_init = y_pred_init # for computing f1-scores
         self.clf_args = clf_args
         self.clf_type = clf_type
         self.test_size_ratio = test_size_ratio
@@ -111,7 +112,10 @@ class TREE:
 
         # constructs the structures that have the information about the tree 
         self.compute_feature_importance_dict(X)
-        self.compute_node_info() 
+        self.compute_node_info()
+        print("Computing f1-scores")
+        for node_id in self.node_dict.keys():
+            self.node_dict[node_id].info['f1'] = self.compute_f1_score(X, node_id, self.y_pred_init)
         
         return self
         
@@ -140,15 +144,61 @@ class TREE:
                     ypred[pos] = self.clf_dict[c.get_id()].predict(X[pos], option=option)
         return ypred
 
+    def compute_f1_score(self, X, node_id, ypred_init):
+        # to relabel points according to nodes ... just start from ypred init and apply mergers
+        ytmp = np.copy(ypred_init)
+        stack = [node_id]
+        leaf_list = []
+
+        while stack:
+            current_node = stack[0]
+            stack = stack[1:]
+
+            if self.node_dict[current_node].info['leaf']:
+                leaf_list.append(current_node)
+            else:
+                for c in self.node_dict[current_node].info['children_id']:
+                    stack.append(c)
+        
+        pos = np.zeros(len(ypred_init), dtype=bool)
+        leaf_list = np.array(leaf_list, dtype=int)
+
+        for leaf in leaf_list:
+            pos = (pos | (ytmp == leaf))
+
+        idx_true = np.where(pos)[0]
+        idx_false = np.where(pos ^ np.ones(len(ypred_init), dtype=bool))[0]
+
+        idx_true_sample = np.random.choice(idx_true, size=min([200,len(idx_true)]), replace=False)
+        idx_false_sample = np.random.choice(idx_false, size=min([200,len(idx_false)]), replace=False)
+
+        ypred_true = self.predict(X[idx_true_sample], cv=-1)
+        ypred_false = self.predict(X[idx_false_sample], cv=-1)
+
+        for leaf in leaf_list:
+            ypred_true[ypred_true == leaf] = node_id
+            ypred_false[ypred_false == leaf] = node_id
+        
+        TP = np.count_nonzero(ypred_true == node_id)/len(ypred_true)   # true positives
+        FN = np.count_nonzero(ypred_true != node_id)/len(ypred_true) # false negative
+        FP = np.count_nonzero(ypred_false == node_id)/len(ypred_false) # false positives
+
+        R = TP/(TP + FN)
+        P = TP/(TP + FP)
+
+        F1 = 0.5*(R*P)/(R+P)
+
+        return F1 
+        
     def plot_tree(self, X, cv, out="nested"):
+        """ Construct a nested dictionary representing the tree along with principal information
+        and exports the nested dictornary in a json file (to be read by javascript program)
+        """
+
         import json
 
-        ## so this is working ...
         nested_dict = {}
-
         self.construct_nested_dict(nested_dict, self.root.id_)
-
-        #print(nested_dict)
         with open('tree.json','w') as f:
             f.write(json.dumps(nested_dict))
         
@@ -157,10 +207,11 @@ class TREE:
         print("adding node %i"%node_id)
         node = self.node_dict[node_id]
         nested_dict["name"] = str(node_id)
-        nested_dict["info"] = "size=%i, cv=-"%self.cluster_statistics[node_id]["size"]
+        nested_dict["info"] = "size=%i, cv=%.3f"%(self.cluster_statistics[node_id]["size"],node.info["cv"])
         nested_dict["median_markers"] = list(node.info["median_marker"]["mu"])
         nested_dict["std_markers"] = list(node.info["median_marker"]["std"])
         nested_dict["cv"] = "-" if (node.info["cv"] < 0) else "%.3f"%node.info["cv"]
+        nested_dict["f1"] = "%.3f"%node.info["f1"]
 
         if len(node.info["children_id"]) == 0:
             nested_dict["feature_importance"]=[]

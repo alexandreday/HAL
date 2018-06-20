@@ -298,15 +298,14 @@ class kNN_Graph:
     
     def coarse_grain(self, X, y_pred):
 
-        #self.history.append([score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list), (n1,n2, self.current_max_label), deepcopy(self.graph[(n1,n2)])])
         while np.max(list(self.node.values())) > 0:
             edge, score, gap = self.find_next_merger()
             print('Merging edge\t', edge)
             self.merge_edge(edge, X, y_pred)
-            print('\n\n\n')
+            print('\n\n')
 
-    def build_tree(self, X):
-        self.tree = TREE(self.merger_history,self.cluster_statistics,self.clf_type,self.clf_args,test_size_ratio=self.test_size_ratio)
+    def build_tree(self, X, ypred_init):
+        self.tree = TREE(self.merger_history,self.cluster_statistics,self.clf_type,self.clf_args, ypred_init, test_size_ratio=self.test_size_ratio)
         self.tree.fit(X, self.y_pred)
 
     def predict(self, X, cv=0.5):
