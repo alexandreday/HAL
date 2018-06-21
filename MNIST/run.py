@@ -28,9 +28,19 @@ def testMNIST():
         clf_args = {'class_weight':'balanced','max_features':40}
     )
     
-    model.load()
     model.fit(Xpca)
-    y = model.predict(Xpca)
+    #model.load()
+
+    Xtsne = model.load('tsne')
+  
+    import json
+
+    with open('/Users/alexandreday/d3-examples/tree_advance2/tsne.json','w') as f:
+        tmp = {"x":list(Xtsne[:,0]),"y":list(Xtsne[:,1]),"idx":model.ypred_init.tolist()}
+        f.write(json.dumps(tmp))
+    exit()
+    #model.fit(Xpca)
+    #y = model.predict(Xpca)
 
     # -----------------> ------------
 
