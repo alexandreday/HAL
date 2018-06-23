@@ -13,7 +13,7 @@ Again from your Anaconda Python 3 environment:
 ```
 pip install hal-x --upgrade
 ```
-# Example of use
+# Minimum use
 ```
 from hal import HAL
 from sklearn.datasets import make_blobs
@@ -21,12 +21,11 @@ from sklearn.datasets import make_blobs
 # generate some data
 X,y = make_blobs(10000,12,10) # 10 blobs in 12 dimensions, 10000 data points
 
-model = HAL(clf_type='rf')
+model = HAL(clf_type='rf') # many optional parameters here
 
 # builds model and outputs intermediate plots/results
 model.fit(X)
 
 # predict new labels
-
-ypred = HAL.predict(X)
+ypred = model.predict(X)
 ```
