@@ -21,7 +21,7 @@ from sklearn.datasets import make_blobs
 # generate some data
 X,y = make_blobs(10000,12,10) # 10 blobs in 12 dimensions, 10000 data points
 
-model = HAL()
+model = HAL(clf_type='rf')
 
 # builds model and outputs intermediate plots/results
 model.fit(X)
