@@ -1,23 +1,23 @@
-# Hierarchical agglomerative learning
-Package for performing clustering for high-dimensional data using powerful validation methods. The end result is a set of robust labels for the cluster found. We benchmark the method against traditional datasets and attain state-of-the-art results, surpassing previous performances by up to 10%.
+# Hierarchical Agglomerative Learning (HAL)
+Package for performing clustering for high-dimensional data. 
 
-# Installing
-I suggest you install the code using ```pip``` from an [Anaconda](https://conda.io/docs/user-guide/tasks/manage-environments.html) Python 3 environment. From that environment:
+# Installing (once)
+1. Activate an [Anaconda](https://conda.io/docs/user-guide/tasks/manage-environments.html) Python 3 environment
+2. Then use the commands:
 ```
-git clone https://github.com/alexandreday/fast_density_clustering.git
-cd fast_density_clustering
+git clone https://github.com/alexandreday/HAL.git
+cd HAL
+conda config --add channels conda-forge
+conda install cython numpy fftw
 pip install .
 ```
-You can also download the code and use the two last lines instead of cloning.
-
 # Updating
-I suggest you install the code using ```pip``` from an [Anaconda](https://conda.io/docs/user-guide/tasks/manage-environments.html) Python 3 environment. From that environment:
+Again from your Anaconda Python 3 environment, update the code by cloning:
 ```
-git clone https://github.com/alexandreday/fast_density_clustering.git
-cd fast_density_clustering
+git clone https://github.com/alexandreday/HAL.git
+cd HAL
 pip install . --upgrade
 ```
 
-
-YOLO
+# Example of use
 
