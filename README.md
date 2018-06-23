@@ -1,23 +1,16 @@
 # Hierarchical Agglomerative Learning (HAL)
-Package for performing clustering for high-dimensional data. 
+Package for performing clustering for high-dimensional data. This packages uses heavily scikit-learn and fft accelerated t-SNE. 
 
 # Installing (once)
 1. Activate an [Anaconda](https://conda.io/docs/user-guide/tasks/manage-environments.html) Python 3 environment
-2. Then use the commands:
 ```
-git clone https://github.com/alexandreday/HAL.git
-cd HAL
 conda config --add channels conda-forge
 conda install cython numpy fftw
-pip install .
+pip install hal-x
 ```
 # Updating
-Again from your Anaconda Python 3 environment, update the code by cloning:
+Again from your Anaconda Python 3 environment:
 ```
-git clone https://github.com/alexandreday/HAL.git
-cd HAL
-pip install . --upgrade
+pip install hal-x --upgrade
 ```
-
-# Example of use
 
