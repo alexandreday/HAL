@@ -19,15 +19,14 @@ from hal import HAL
 from sklearn.datasets import make_blobs
 
 # generate some data
-X,y = make_blobs(10000, 10)
+X,y = make_blobs(10000,12,10) # 10 blobs in 12 dimensions, 10000 data points
 
 model = HAL()
 
 # builds model and outputs intermediate plots/results
-HAL.fit(X)
+model.fit(X)
 
 # predict new labels
 
 ypred = HAL.predict(X)
-
 ```
