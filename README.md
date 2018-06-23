@@ -2,7 +2,7 @@
 Package for performing clustering for high-dimensional data. This packages uses heavily scikit-learn and fft accelerated t-SNE. 
 
 # Installing (once)
-1. Activate an [Anaconda](https://conda.io/docs/user-guide/tasks/manage-environments.html) Python 3 environment
+Activate an [Anaconda](https://conda.io/docs/user-guide/tasks/manage-environments.html) Python 3 environment
 ```
 conda config --add channels conda-forge
 conda install cython numpy fftw
@@ -13,4 +13,21 @@ Again from your Anaconda Python 3 environment:
 ```
 pip install hal-x --upgrade
 ```
+# Example of use
+```
+from hal import HAL
+from sklearn.datasets import make_blobs
 
+# generate some data
+X,y = make_blobs(10000, 10)
+
+model = HAL()
+
+# builds model and outputs intermediate plots/results
+HAL.fit(X)
+
+# predict new labels
+
+ypred = HAL.predict(X)
+
+```
