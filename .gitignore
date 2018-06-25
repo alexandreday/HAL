@@ -12,3 +12,4 @@ test*
 dev/*
 MNIST/*
 BIO_examples/*
+testing/*
