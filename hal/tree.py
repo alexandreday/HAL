@@ -1,6 +1,7 @@
 from .classify import CLF
 import numpy as np
 import pickle
+import os
 import copy, time
 from collections import OrderedDict as OD
 from .utility import compute_cluster_stats
@@ -73,10 +74,11 @@ class TREE:
         pos = (y_pred > -1)
         y_unique = np.unique(y_pred[pos]) # fit only on the non-outliers
         idx_subset = np.where(pos)[0]
+        y_new_tmp = y_unique[-1]+1
 
         clf_root = CLF(clf_type=self.clf_type, n_bootstrap=n_bootstrap, test_size=self.test_size_ratio, clf_kwargs=self.clf_args).fit(X[idx_subset], y_pred[idx_subset])
-        self.root = TREENODE(id_ = y_unique[-1]+1 , scale=clf_root.cv_score)
-
+        self.root = TREENODE(id_ = y_new_tmp , scale=clf_root.cv_score)
+    
         # cluster statistics for the root 
         self.cluster_statistics[self.root.get_id()]  = compute_cluster_stats(X[idx_subset], len(y_pred))
 
@@ -103,15 +105,19 @@ class TREE:
                 self.node_dict[c_node.get_id()] = c_node
                 self.node_dict[y_new].add_child(c_node)
 
+        self.merge_history.append([list(y_unique), y_new_tmp, copy.deepcopy(clf_root)])
+
         # constructs the structures that have the information about the tree 
 
-        ### Left it here ... how to update this ?D"FLSDKFLSDKFLSKDFL
+        ### Left it here ... how to update this thing ?
         self.compute_feature_importance_dict(X)
         self.compute_node_info()
+        self.find_idx_in_each_node()
 
-        print("Computing f1-scores")
+
+        """ print("Computing f1-scores")
         for node_id in self.node_dict.keys():
-            self.node_dict[node_id].info['f1'] = self.compute_f1_score(X, node_id, self.y_pred_init)
+            self.node_dict[node_id].info['f1'] = self.compute_f1_score(X, node_id, self.y_pred_init) """
         
         return self
         
@@ -141,7 +147,7 @@ class TREE:
                     
         return ypred
 
-    def compute_f1_score(self, X, node_id, ypred_init):
+    """ def compute_f1_score(self, X, node_id, ypred_init):
         # to relabel points according to nodes ... just start from ypred init and apply mergers
         ytmp = np.copy(ypred_init)
         stack = [node_id]
@@ -185,33 +191,43 @@ class TREE:
 
         F1 = 0.5*(R*P)/(R+P)
 
-        return F1 
+        return F1  """
         
-    def plot_tree(self, X, cv, out="nested"):
+    def plot_tree(self, Xtsne, idx): # plot tree given the specified cv score 
         """ Construct a nested dictionary representing the tree along with principal information
         and exports the nested dictornary in a json file (to be read by javascript program)
         """
-
         import json
-
         nested_dict = {}
+
         self.construct_nested_dict(nested_dict, self.root.id_)
-        with open('tree.json','w') as f:
+
+        #print(self.node_dict[51].info)
+        if not os.path.exists("js"):
+            os.makedirs("js")
+
+        with open('js/tree.json','w') as f:
             f.write(json.dumps(nested_dict))
         
-    def construct_nested_dict(self, nested_dict, node_id):
+        with open('js/idx_merge.json','w') as f:
+            tmp = {str(k) : list(map(int,node.info['idx_merged'])) for k, node in self.node_dict.items()}
+            f.write(json.dumps(tmp))
 
-        print("adding node %i"%node_id)
+        with open('js/tsne.json','w') as f:
+            f.write(json.dumps({"x":list(Xtsne[:,0]),"y":list(Xtsne[:,1]),"idx":list(map(int,idx))}))
+        
+    def construct_nested_dict(self, nested_dict, node_id):
+        ## Need a more structured approach here, but for now it's ok 
         node = self.node_dict[node_id]
         nested_dict["name"] = str(node_id)
-        nested_dict["info"] = "size=%i, cv=%.3f"%(self.cluster_statistics[node_id]["size"],node.info["cv"])
+        nested_dict["info"] = "size=%.4f, cv=%.3f"%(self.cluster_statistics[node_id]["ratio"],node.info["cv"])
         nested_dict["median_markers"] = list(node.info["median_marker"]["mu"])
         nested_dict["std_markers"] = list(node.info["median_marker"]["std"])
         nested_dict["cv"] = "-" if (node.info["cv"] < 0) else "%.3f"%node.info["cv"]
-        nested_dict["f1"] = "%.3f"%node.info["f1"]
+        nested_dict["f1"] = 0 #"%.3f"%node.info["f1"] # this is not quite working
 
         if len(node.info["children_id"]) == 0:
-            nested_dict["feature_importance"]=[]
+            nested_dict["feature_importance"]=[0]*len(nested_dict["median_markers"])
             return nested_dict
         else:
             nested_dict["feature_importance"]=list(node.info["feature_importance"][0]) # second element is std
@@ -221,15 +237,21 @@ class TREE:
             return nested_dict
 
     def compute_feature_importance_dict(self, X):
-        """ --> this only works for random forest <- """
-        assert self.clf_type == "rf", "Need to use random forest ('rf' option)"
+        """ -> feature importance computation <--  (valid for rf and linear svm) """
         self.feature_importance_dict = {}
 
-        for node_id, clf in self.clf_dict.items():
-            importance_matrix = np.vstack([c.feature_importances_ for c in clf.clf_list])
-            scores = np.mean(importance_matrix, axis=0)
-            std_scores = np.std(importance_matrix, axis=0)
-            self.feature_importance_dict[node_id] = [scores, std_scores]
+        if self.clf_type == "rf": #"Need to use random forest ('rf' option)"
+            for node_id, clf in self.clf_dict.items():
+                importance_matrix = np.vstack([c.feature_importances_ for c in clf.clf_list])
+                scores = np.mean(importance_matrix, axis=0)
+                std_scores = np.std(importance_matrix, axis=0)
+                self.feature_importance_dict[node_id] = [scores, std_scores]
+        elif self.clf_type == "svm":
+            for node_id, clf in self.clf_dict.items():
+                importance_matrix = np.vstack([c.coef_ for c in clf.clf_list]) # linear weights ... 
+                scores = np.mean(importance_matrix, axis=0)
+                std_scores = np.std(importance_matrix, axis=0)
+                self.feature_importance_dict[node_id] = [scores, std_scores]
     
     def save_JS_info(self):
         """
@@ -289,6 +311,29 @@ class TREE:
     def make_file_name(self):
         t_name = "clf_tree.pkl"
         return t_name
+
+    def find_idx_in_each_node(self):
+        for node in self.node_dict.values():
+            if node.is_leaf():
+                node.info['idx_merged'] = [node.get_id()]
+            else:
+                node.info['idx_merged'] = []
+
+        for mh in self.merge_history: # start from the bottom
+            idx_merged, new_idx, _  = mh
+            node = self.node_dict[new_idx]
+
+            for idx in idx_merged:
+                tmp = self.node_dict[idx].info['idx_merged']
+                if tmp: # if not empty, concatenate lists
+                    node.info['idx_merged'] += tmp 
+
+            #self.node_dict[new_idx].info['idx_merged']
+
+
+
+
+
 
 def str_gate(marker, sign):
     if sign < 0. :

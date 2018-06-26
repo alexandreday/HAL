@@ -30,7 +30,10 @@ class kNN_Graph:
         self.recomputed = False
 
         if clf_args is None:
-            self.clf_args = {'class_weight':'balanced'}
+            if clf_type == 'svm':
+                self.clf_kwargs = {'kernel':'linear','class_weight':'balanced'}
+            else:
+                self.clf_kwargs = {'class_weight':'balanced'}
         else:
             self.clf_args = clf_args
 
@@ -177,6 +180,9 @@ class kNN_Graph:
     def find_next_merger(self):
         """ Finds the edge that should be merged next based on node score (gap)
         and edge score (edge with minimum score)
+
+        // Non-greedy optimization here ... and keep information about mergers !
+
         Return
         -------
         edge_to_merge, score_edge, node_gap
@@ -245,7 +251,7 @@ class kNN_Graph:
             if node in neighbor_node_2:
                 del self.graph[(node_2, node)]
         
-        self.merger_history.append([(node_1, node_2), y_new, deepcopy(self.graph[(node_1, node_2)])]) # this saves the classifiers for later
+        self.merger_history.append([[node_1, node_2], y_new, deepcopy(self.graph[(node_1, node_2)])]) # this saves the classifiers for later
         del self.graph[(node_1, node_2)]
 
         self.cluster_idx.remove(node_1)

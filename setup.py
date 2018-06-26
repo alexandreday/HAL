@@ -5,13 +5,13 @@ with open("README.md", "r") as fh:
 
 setup(
       name='hal-x',
-      version='0.53',
+      version='0.6',
       description='Clustering via hierarchical agglomerative learning',
       author='Alexandre Day',
       author_email='alexandre.day1@gmail.com',
       license='MIT',
       packages=['hal'],
-      install_requires =['fitsne','scikit-learn'],
+      install_requires =['fitsne','scikit-learn',fdc],
       zip_safe=False,
       long_description=long_description,
       long_description_content_type="text/markdown",
