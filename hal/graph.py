@@ -190,7 +190,24 @@ class kNN_Graph:
         # Go to node with largest gap. Merge it with it's worst edge
         # If node has only one connection ... what to do => nothing, if really bad, will merge with other node (since that one has many connections)
         # If all nodes have gap = -1 (only one pair left), stop
-        node, gap = max(self.node.items(), key=lambda x:x[1])
+
+        cv_scores = list(self.edge.values())
+        edges = list(self.edge.keys())
+
+        # amongst worst edges -> take the node with the largest gap
+        idx = np.argsort(cv_scores)[:max([int(0.15*len(edges)),15])] # worst edges indices
+        
+        gap = -1
+        for i in idx:
+            ni,nj = edges[i]
+            if self.node[ni] > gap:
+                gap = self.node[ni]
+                node = ni
+            if self.node[nj] > gap:
+                gap = self.node[nj]
+                node = nj
+        
+        #node, gap = max(self.node.items(), key=lambda x:x[1]) # max gap
 
         if gap < 0: # only two nodes left
             node_2 = list(self.edge.get_nn(node))[0]
@@ -305,7 +322,7 @@ class kNN_Graph:
 
         while np.max(list(self.node.values())) > 0:
             edge, score, gap = self.find_next_merger()
-            print('Merging edge\t', edge)
+            print('Merging edge\t', edge,'\t gap=',gap,'\t score=',score)
             self.merge_edge(edge, X, y_pred)
             print('\n\n')
 

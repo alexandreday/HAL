@@ -61,9 +61,9 @@ class HAL():
         outlier_ratio=0.2,
         nn_pure_ratio=0.99,
         min_size_cluster=0,
-        perplexity = 30,    
+        perplexity = 40,    
         n_iteration_tsne =  1000,
-        late_exag = 800,
+        late_exag = 900,
         tsne_type = 'fft', # default is FFTW t-SNE
         alpha_late = 2.0,
         n_cluster_init = 30,
@@ -72,7 +72,7 @@ class HAL():
         eta = 2.0,
         fdc_test_ratio_size = 0.8,
         run_tSNE = True, # if not True, put in a file name for reading
-        plot_inter = True,
+        plot_inter = False,
         root = "",
         try_load = True,
         n_jobs = 0, # All available processors will be used
