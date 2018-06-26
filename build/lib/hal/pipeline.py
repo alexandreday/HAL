@@ -61,9 +61,9 @@ class HAL():
         outlier_ratio=0.2,
         nn_pure_ratio=0.99,
         min_size_cluster=0,
-        perplexity = 30,    
+        perplexity = 40,    
         n_iteration_tsne =  1000,
-        late_exag = 800,
+        late_exag = 900,
         tsne_type = 'fft', # default is FFTW t-SNE
         alpha_late = 2.0,
         n_cluster_init = 30,
@@ -72,7 +72,7 @@ class HAL():
         eta = 2.0,
         fdc_test_ratio_size = 0.8,
         run_tSNE = True, # if not True, put in a file name for reading
-        plot_inter = True,
+        plot_inter = False,
         root = "",
         try_load = True,
         n_jobs = 0, # All available processors will be used
@@ -111,7 +111,10 @@ class HAL():
         self.n_clf_sample_max = n_clf_sample_max
         
         if clf_args is None:
-            self.clf_args = {'class_weight':'balanced'}
+            if clf_type == 'svm':
+                self.clf_args = {'kernel':'linear','class_weight':'balanced'}
+            else:
+                self.clf_args = {'class_weight':'balanced'}
         else: 
             self.clf_args = clf_args
         self.n_edge_kNN = n_edge_kNN
@@ -223,6 +226,7 @@ class HAL():
         else:
             self.kNN_graph.build_tree(X, self.ypred_init)
             pickle.dump([self.ss, self.kNN_graph], open(self.file_name['hal_model'],'wb'))
+        self.plot_tree()
 
     def load(self, s=None):
         if s is None:
@@ -237,12 +241,9 @@ class HAL():
     def predict(self, X, cv=0.5):
         return self.kNN_graph.predict(self.ss.transform(X), cv=cv) # predict on full set !
 
-    def plot_tree(self, X, cv):
-        self.kNN_graph.tree.plot_tree(X, cv)
-        """ for k, v in self.kNN_graph.tree.node_dict.items():
-            print(k,'\t',v.info)
-            print('\n\n') """
-       #print(self.kNN_graph.tree.node_dict)
+    def plot_tree(self):
+        Xtsne = pickle.load(open(self.file_name['tsne'],'rb'))
+        self.kNN_graph.tree.plot_tree(Xtsne, self.ypred_init)
 
     def purify(self, X):
         """

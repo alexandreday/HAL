@@ -24,7 +24,14 @@ class CLF:
         self.n_bootstrap = n_bootstrap
         self.n_sample_max = n_sample_max
         self.test_size = test_size
-        self.clf_kwargs = {} if clf_kwargs is None else clf_kwargs
+        if clf_kwargs is None:
+            if clf_type == 'svm':
+                self.clf_kwargs = {'kernel':'linear','class_weight':'balanced'}
+            else:
+                self.clf_kwargs = {'class_weight':'balanced'}
+        else:
+            self.clf_kwargs = clf_kwargs
+
         self.trained = False
         self.cv_score = 1.0
         self.y_unique = None

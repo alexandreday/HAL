@@ -4,7 +4,7 @@ import numpy as np
 from copy import deepcopy
 import pickle, time
 from .tupledict import TupleDict
-from .utility import FOUT
+from .utility import FOUT, compute_cluster_stats
 
 class kNN_Graph:
     """ Validation graph class - builds a graph with nodes corresponding
@@ -30,14 +30,17 @@ class kNN_Graph:
         self.recomputed = False
 
         if clf_args is None:
-            self.clf_args = {'class_weight':'balanced'}
+            if clf_type == 'svm':
+                self.clf_kwargs = {'kernel':'linear','class_weight':'balanced'}
+            else:
+                self.clf_kwargs = {'class_weight':'balanced'}
         else:
             self.clf_args = clf_args
 
         self.fout = None#/FOUT('out.txt')
         self.n_edge = n_edge
         self.y_murky = y_murky
-        self.cluster_statistics = {} # node_id to median markers
+        self.cluster_statistics = {} # node_id to median markers ... should be part of graph stuff ?
         self.merger_history = []
         self.cout = graph_cout if verbose is 1 else lambda *a, **k: None
         print(self.__dict__)
@@ -130,13 +133,16 @@ class kNN_Graph:
         self.compute_node_score()
 
         # Compute basic cluster statistics (leaf nodes):
-        for yu in np.unique(y_pred): # include outlier statistics
-            pos = (self.y_pred == yu)
-            median = np.median(X[pos],axis=0)
-            std = np.std(X[pos],axis=0)
-            self.cluster_statistics[yu] = {"mu":median,"std":std,"size":np.count_nonzero(pos)}
-
+        for yu in np.unique(y_pred):
+            self.cluster_statistics[yu] = compute_cluster_stats(X[self.y_pred==yu], len(self.y_pred))
         return self
+
+    def compute_node_statistics(self, X, ypred, ynode):
+        pos = (ypred == yu)
+        median = np.median(X[pos],axis=0)
+        std = np.std(X[pos],axis=0)
+        size_ = np.count_nonzero(pos)
+        self.cluster_statistics[ynode] = {"mu":median,"std":std, "size":size_, "ratio":size_/len(pos)}
 
     def compute_edge_score(self):
         """ 
@@ -174,6 +180,9 @@ class kNN_Graph:
     def find_next_merger(self):
         """ Finds the edge that should be merged next based on node score (gap)
         and edge score (edge with minimum score)
+
+        // Non-greedy optimization here ... and keep information about mergers !
+
         Return
         -------
         edge_to_merge, score_edge, node_gap
@@ -181,7 +190,24 @@ class kNN_Graph:
         # Go to node with largest gap. Merge it with it's worst edge
         # If node has only one connection ... what to do => nothing, if really bad, will merge with other node (since that one has many connections)
         # If all nodes have gap = -1 (only one pair left), stop
-        node, gap = max(self.node.items(), key=lambda x:x[1])
+
+        cv_scores = list(self.edge.values())
+        edges = list(self.edge.keys())
+
+        # amongst worst edges -> take the node with the largest gap
+        idx = np.argsort(cv_scores)[:max([int(0.15*len(edges)),15])] # worst edges indices
+        
+        gap = -1
+        for i in idx:
+            ni,nj = edges[i]
+            if self.node[ni] > gap:
+                gap = self.node[ni]
+                node = ni
+            if self.node[nj] > gap:
+                gap = self.node[nj]
+                node = nj
+        
+        #node, gap = max(self.node.items(), key=lambda x:x[1]) # max gap
 
         if gap < 0: # only two nodes left
             node_2 = list(self.edge.get_nn(node))[0]
@@ -242,7 +268,7 @@ class kNN_Graph:
             if node in neighbor_node_2:
                 del self.graph[(node_2, node)]
         
-        self.merger_history.append([(node_1, node_2), y_new, deepcopy(self.graph[(node_1, node_2)])]) # this saves the classifiers for later
+        self.merger_history.append([[node_1, node_2], y_new, deepcopy(self.graph[(node_1, node_2)])]) # this saves the classifiers for later
         del self.graph[(node_1, node_2)]
 
         self.cluster_idx.remove(node_1)
@@ -251,11 +277,7 @@ class kNN_Graph:
 
         self.compute_edge_score()
         self.compute_node_score()
-
-        pos = (y_pred == y_new)
-        median = np.median(X[pos], axis=0)
-        std = np.std(X[pos], axis=0)
-        self.cluster_statistics[y_new] = {"mu":median,"std":std,"size":np.count_nonzero(pos)}
+        self.cluster_statistics[y_new] = compute_cluster_stats(X[self.y_pred==y_new], len(self.y_pred))
 
         return self
 
@@ -300,7 +322,7 @@ class kNN_Graph:
 
         while np.max(list(self.node.values())) > 0:
             edge, score, gap = self.find_next_merger()
-            print('Merging edge\t', edge)
+            print('Merging edge\t', edge,'\t gap=',gap,'\t score=',score)
             self.merge_edge(edge, X, y_pred)
             print('\n\n')
 

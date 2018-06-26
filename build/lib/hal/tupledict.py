@@ -40,7 +40,7 @@ class TupleDict(collections.MutableMapping):
         return iter(self.store)
 
     def __len__(self):
-        return len(self.store._)
+        return len(self.store)
     
     def __repr__(self):
         return str(self.store)
