@@ -11,6 +11,11 @@ class FOUT:
         fout = open(self.fname,'a')
         fout.write(mystring+'\n')
         fout.close()
+
+def compute_cluster_stats(Xsubset, size):
+    median = np.median(Xsubset,axis=0)
+    std = np.std(Xsubset,axis=0)
+    return  {"mu":median, "std":std, "size":len(Xsubset), "ratio":len(Xsubset)/size}
     
 def make_file_name(param):
     out = [

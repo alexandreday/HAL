@@ -4,7 +4,7 @@ import numpy as np
 from copy import deepcopy
 import pickle, time
 from .tupledict import TupleDict
-from .utility import FOUT
+from .utility import FOUT, compute_cluster_stats
 
 class kNN_Graph:
     """ Validation graph class - builds a graph with nodes corresponding
@@ -37,7 +37,7 @@ class kNN_Graph:
         self.fout = None#/FOUT('out.txt')
         self.n_edge = n_edge
         self.y_murky = y_murky
-        self.cluster_statistics = {} # node_id to median markers
+        self.cluster_statistics = {} # node_id to median markers ... should be part of graph stuff ?
         self.merger_history = []
         self.cout = graph_cout if verbose is 1 else lambda *a, **k: None
         print(self.__dict__)
@@ -130,13 +130,16 @@ class kNN_Graph:
         self.compute_node_score()
 
         # Compute basic cluster statistics (leaf nodes):
-        for yu in np.unique(y_pred): # include outlier statistics
-            pos = (self.y_pred == yu)
-            median = np.median(X[pos],axis=0)
-            std = np.std(X[pos],axis=0)
-            self.cluster_statistics[yu] = {"mu":median,"std":std,"size":np.count_nonzero(pos)}
-
+        for yu in np.unique(y_pred):
+            self.cluster_statistics[yu] = compute_cluster_stats(X[self.y_pred==yu], len(self.y_pred))
         return self
+
+    def compute_node_statistics(self, X, ypred, ynode):
+        pos = (ypred == yu)
+        median = np.median(X[pos],axis=0)
+        std = np.std(X[pos],axis=0)
+        size_ = np.count_nonzero(pos)
+        self.cluster_statistics[ynode] = {"mu":median,"std":std, "size":size_, "ratio":size_/len(pos)}
 
     def compute_edge_score(self):
         """ 
@@ -251,11 +254,7 @@ class kNN_Graph:
 
         self.compute_edge_score()
         self.compute_node_score()
-
-        pos = (y_pred == y_new)
-        median = np.median(X[pos], axis=0)
-        std = np.std(X[pos], axis=0)
-        self.cluster_statistics[y_new] = {"mu":median,"std":std,"size":np.count_nonzero(pos)}
+        self.cluster_statistics[y_new] = compute_cluster_stats(X[self.y_pred==y_new], len(self.y_pred))
 
         return self
 

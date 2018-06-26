@@ -3,6 +3,7 @@ import numpy as np
 import pickle
 import copy, time
 from collections import OrderedDict as OD
+from .utility import compute_cluster_stats
 
 class TREENODE:
 
@@ -60,17 +61,14 @@ class TREE:
         #merger_history = list of  [edge, clf]
 
         self.merge_history = merge_history
-        self.cluster_statistics = cluster_statistics
+        self.cluster_statistics = cluster_statistics # computed in merging, just need to add root
         self.y_pred_init = y_pred_init # for computing f1-scores
         self.clf_args = clf_args
         self.clf_type = clf_type
         self.test_size_ratio = test_size_ratio
 
     def fit(self, X, y_pred, n_bootstrap=10): 
-        """ 
-
-        """
-        #[score_dict[n1][n2], np.copy(self.cluster_label), deepcopy(self.nn_list),(n1,n2, self.current_max_label),deepcopy(self.graph[(n1,n2)])])
+        """ Fits hierarchical model"""
         
         pos = (y_pred > -1)
         y_unique = np.unique(y_pred[pos]) # fit only on the non-outliers
@@ -80,12 +78,7 @@ class TREE:
         self.root = TREENODE(id_ = y_unique[-1]+1 , scale=clf_root.cv_score)
 
         # cluster statistics for the root 
-        self.cluster_statistics[self.root.get_id()]  = {
-                                                        "mu":np.median(X[idx_subset], axis=0),
-                                                        "std":np.std(X[idx_subset],axis=0),
-                                                        "size":len(idx_subset),
-                                                        "feature":[]
-                                                        }
+        self.cluster_statistics[self.root.get_id()]  = compute_cluster_stats(X[idx_subset], len(y_pred))
 
         self.node_dict = OD()
         self.clf_dict = OD()
@@ -111,6 +104,8 @@ class TREE:
                 self.node_dict[y_new].add_child(c_node)
 
         # constructs the structures that have the information about the tree 
+
+        ### Left it here ... how to update this ?D"FLSDKFLSDKFLSKDFL
         self.compute_feature_importance_dict(X)
         self.compute_node_info()
 
@@ -235,6 +230,12 @@ class TREE:
             scores = np.mean(importance_matrix, axis=0)
             std_scores = np.std(importance_matrix, axis=0)
             self.feature_importance_dict[node_id] = [scores, std_scores]
+    
+    def save_JS_info(self):
+        """
+        Outputs information for javascript interface 
+        """
+        return
 
     def compute_node_info(self):
 
