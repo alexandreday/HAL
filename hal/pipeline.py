@@ -125,8 +125,11 @@ class HAL():
 
         if not os.path.exists(root):
             os.makedirs(root)
-            
+
         self.root = root
+        if self.root[-1] != "/":
+            self.root+="/"
+            
         self.tsne = run_tSNE
         self.plot_inter = plot_inter 
         self.try_load = try_load
