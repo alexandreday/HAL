@@ -11,7 +11,7 @@ setup(
       author_email='alexandre.day1@gmail.com',
       license='MIT',
       packages=['hal'],
-      install_requires =['fitsne', 'scikit-learn', 'fdc', 'plotly'],
+      install_requires =['fitsne>=0.2.3', 'scikit-learn>=0.19.1', 'fdc>=0.1', 'plotly>=2.6.0'],
       zip_safe=False,
       long_description=long_description,
       long_description_content_type="text/markdown",

@@ -245,8 +245,6 @@ class HAL():
     def plot_tree(self):
         Xtsne = pickle.load(open(self.file_name['tsne'],'rb'))
         self.kNN_graph.tree.plot_tree(Xtsne, self.ypred_init)
-
-    def render_js(self):
         runjs('js/')
 
     def purify(self, X):

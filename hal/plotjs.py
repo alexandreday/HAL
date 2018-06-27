@@ -3,6 +3,9 @@
 import os, time
 
 def runjs(root="./"):
+    """Copies index.html and haltree.js to "root" directory and then runs
+    local server to render data/javascript
+    """
 
     run_dir = os.getcwd()
     package_dir = os.path.dirname(os.path.realpath(__file__))
@@ -15,7 +18,7 @@ def runjs(root="./"):
     cmd = 'cp %s %s %s %s'%(file_index, file_tree, file_server, run_dir+'/'+root)
     os.system(cmd)
     time.sleep(0.25)
-
+    ######## ------------------ ######
     os.system('python %s/custom_server.py 1'%out)
 
 """ if __name__ == "__main__":
