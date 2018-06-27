@@ -235,7 +235,6 @@ class HAL():
         else:
             self.kNN_graph.build_tree(X, self.ypred_init)
             pickle.dump([self.ss, self.kNN_graph], open(self.file_name['hal_model'],'wb'))
-        self.plot_tree()
 
     def load(self, s=None):
         if s is None:
