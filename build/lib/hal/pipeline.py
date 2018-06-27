@@ -3,6 +3,7 @@ from .tupledict import TupleDict
 from .tree import TREE
 from .utility import make_file_name, print_param, find_position_idx_center
 from .purify import DENSITY_PROFILER
+from .plotjs import runjs
 
 from fdc import FDC, plotting
 from fitsne import FItSNE
@@ -73,7 +74,7 @@ class HAL():
         fdc_test_ratio_size = 0.8,
         run_tSNE = True, # if not True, put in a file name for reading
         plot_inter = False,
-        root = "",
+        root = "info_hal", # default directory where information will be dumped
         try_load = True,
         n_jobs = 0, # All available processors will be used
         n_clf_sample_max = 1000,
@@ -121,6 +122,14 @@ class HAL():
 
         # Misc.
         self.seed = seed
+
+        if not os.path.exists(root):
+            os.makedirs(root)
+
+
+        if root[-1] != "/":
+            root+="/"
+
         self.root = root
         self.tsne = run_tSNE
         self.plot_inter = plot_inter 
@@ -135,7 +144,7 @@ class HAL():
         self.file_name['robust'] = quick_name(root, 'robust', info_str)
         self.file_name['tree'] = quick_name(root, 'tree', info_str)
         self.file_name['tsne'] = root + 'tsne_perp=%i_niter=%i_alphaLate=%.1f.pkl'%(self.perplexity, self.n_iteration_tsne, self.alpha_late)
-    
+
     def fit(self, data):
         """ Clustering and fitting random forest classifier ...
         Processing steps:
@@ -226,7 +235,6 @@ class HAL():
         else:
             self.kNN_graph.build_tree(X, self.ypred_init)
             pickle.dump([self.ss, self.kNN_graph], open(self.file_name['hal_model'],'wb'))
-        self.plot_tree()
 
     def load(self, s=None):
         if s is None:
@@ -244,6 +252,7 @@ class HAL():
     def plot_tree(self):
         Xtsne = pickle.load(open(self.file_name['tsne'],'rb'))
         self.kNN_graph.tree.plot_tree(Xtsne, self.ypred_init)
+        runjs('js/')
 
     def purify(self, X):
         """

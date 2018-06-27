@@ -9,23 +9,30 @@ conda install cython numpy fftw
 pip install hal-x
 ```
 # Updating
-Again from your Anaconda Python 3 environment:
+For future versions of the package, you can upgrade using:
 ```
 pip install hal-x --upgrade
 ```
-# Minimum use
+# Small example
 ```
-from hal import HAL
+from hal import HAL  # this imports the class HAL() 
 from sklearn.datasets import make_blobs
 
-# generate some data
-X,y = make_blobs(10000,12,10) # 10 blobs in 12 dimensions, 10000 data points
+# Generate some data. 
+X,y = make_blobs(10000,12,10) # 10 gaussians in 12 dimensions, 10000 data points
 
-model = HAL(clf_type='rf') # many optional parameters here
+# The HAL constructor has many optional parameters, documentation coming soon
+model = HAL(clf_type='svm') # using linear SVMs (fastest) for agglomeration. Other options are 'rf' and 'nb' (random forest, and naive bayes)
 
-# builds model and outputs intermediate plots/results
+# builds model -> will save data in file info_hal
 model.fit(X)
 
-# predict new labels
-ypred = model.predict(X)
+# rendering of results using javascript
+model.plot_tree()
+
+# Now that your model is fitted, can predict on data (either new or old), using a cross-validation score of 0.95
+ypred = model.predict(X, cv=0.95)
+
+# The fitted model information is in directory info_hal. To reload that information for later use, just:
+model.load()
 ```
