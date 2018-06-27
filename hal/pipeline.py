@@ -74,7 +74,7 @@ class HAL():
         fdc_test_ratio_size = 0.8,
         run_tSNE = True, # if not True, put in a file name for reading
         plot_inter = False,
-        root = "",
+        root = "info_hal", # default directory where information will be dumped
         try_load = True,
         n_jobs = 0, # All available processors will be used
         n_clf_sample_max = 1000,
@@ -122,6 +122,10 @@ class HAL():
 
         # Misc.
         self.seed = seed
+
+        if not os.path.exists(root):
+            os.makedirs(root)
+            
         self.root = root
         self.tsne = run_tSNE
         self.plot_inter = plot_inter 
