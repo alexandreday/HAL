@@ -1,4 +1,8 @@
 from setuptools import setup
+import sys
+
+if sys.version_info < (3,6):
+    sys.exit('Sorry, Python < 3.6 is not supported. Consider upgrading. \n See https://conda.io/docs/user-guide/tasks/manage-environments.html for a quick setup ')
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -15,6 +19,7 @@ setup(
       zip_safe=False,
       long_description=long_description,
       long_description_content_type="text/markdown",
+      include_package_data=True,
       url="https://alexandreday.github.io/",
       classifiers=(
         "Programming Language :: Python :: 3",
