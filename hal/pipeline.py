@@ -126,10 +126,11 @@ class HAL():
         if not os.path.exists(root):
             os.makedirs(root)
 
+
+        if root[-1] != "/":
+            root+="/"
+
         self.root = root
-        if self.root[-1] != "/":
-            self.root+="/"
-            
         self.tsne = run_tSNE
         self.plot_inter = plot_inter 
         self.try_load = try_load
@@ -143,7 +144,7 @@ class HAL():
         self.file_name['robust'] = quick_name(root, 'robust', info_str)
         self.file_name['tree'] = quick_name(root, 'tree', info_str)
         self.file_name['tsne'] = root + 'tsne_perp=%i_niter=%i_alphaLate=%.1f.pkl'%(self.perplexity, self.n_iteration_tsne, self.alpha_late)
-    
+
     def fit(self, data):
         """ Clustering and fitting random forest classifier ...
         Processing steps:
