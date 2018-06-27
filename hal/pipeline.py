@@ -3,6 +3,7 @@ from .tupledict import TupleDict
 from .tree import TREE
 from .utility import make_file_name, print_param, find_position_idx_center
 from .purify import DENSITY_PROFILER
+from .plotjs import runjs
 
 from fdc import FDC, plotting
 from fitsne import FItSNE
@@ -244,6 +245,9 @@ class HAL():
     def plot_tree(self):
         Xtsne = pickle.load(open(self.file_name['tsne'],'rb'))
         self.kNN_graph.tree.plot_tree(Xtsne, self.ypred_init)
+
+    def render_js(self):
+        runjs('js/')
 
     def purify(self, X):
         """
