@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: hal-x
-Version: 0.70
+Version: 0.72
 Summary: Clustering via hierarchical agglomerative learning
 Home-page: https://alexandreday.github.io/
 Author: Alexandre Day
@@ -16,7 +16,7 @@ Description: # Hierarchical Agglomerative Learning (HAL)
         Activate an [Anaconda](https://conda.io/docs/user-guide/tasks/manage-environments.html) Python 3 environment
         ```
         conda config --add channels conda-forge
-        conda install cython numpy fftw
+        conda install cython numpy fftw scipy
         pip install hal-x
         ```
         # Updating

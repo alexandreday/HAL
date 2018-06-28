@@ -22,7 +22,7 @@ d3.json("tree.json", function(error1, treeData) { // read tree data => some info
     var title_list = ["Median marker expression","Feature importance score"];
     var marker_name = range(0, treeData["median_markers"].length);
     
-    var node_radius = 15;
+    var node_radius = 20;
     var node_color_default = "white", node_color_select = "#6acef2";
     var depth_height = 100;
 
@@ -30,11 +30,11 @@ d3.json("tree.json", function(error1, treeData) { // read tree data => some info
     var width = chartDiv.clientWidth;
     var height = chartDiv.clientHeight; */
 
-    var width = 800;// in the future, should set those according to max width and depth of tree
-    var height = 1300; 
+    var width = 1000;// in the future, should set those according to max width and depth of tree
+    var height = 1000; 
 
 // Set the dimensions and margins of the diagram
-    var margin = {top: 50, right: 50, bottom: 30, left: 50}
+    var margin = {top: 50, right: 50, bottom: 30, left: 50};
     /* width = width - margin.left - margin.right,
     height = height - margin.top - margin.bottom; */
 
@@ -48,7 +48,7 @@ var svg = d3.select("body #tree")
     .append("g")
     .attr("transform", "translate("+ margin.left + "," + margin.top + ")");
 
-svg.append("text").attr("class","plot-title").attr("transform", "translate(" + 80 + " ," + -20 + ")")
+svg.append("text").attr("class","plot-title").attr("transform", "translate(" + 250 + " ," + -20 + ")")
           .style("text-anchor", "middle")
           .text("Hierarchical structure");
 
@@ -66,19 +66,21 @@ var treemap = d3.tree().size([width, height]);
 
 // Assigns parent, children, height, depth
 var root = d3.hierarchy(treeData, function(d) { return d.children; });
-root.x0 = width / 2;
-root.y0 = 0;
+/* root.x0 = width / 2;
+root.y0 = 0; */
+root.x0 = 0;
+root.y0 = height / 2;
 
 /* Invoke the tip in the context of your visualization */
-svg.call(tip)
+svg.call(tip);
 
 /* // Collapse after the second level
 root.children.forEach(collapse); */
-menu1 = d3.select("#menu1")
-menu2 = d3.select("#menu2")
+var menu1 = d3.select("#menu1");
+var menu2 = d3.select("#menu2");
 
-menu1.selectAll(".myCheck").call(init)
-menu2.selectAll(".myCheck").call(init)
+menu1.selectAll(".myCheck").call(init);
+menu2.selectAll(".myCheck").call(init);
 //console.log(d3.select("body menu1 myCheck"))
 
 var old_choice=[0,0], render_plot=false, click_node; // this is tricky .. !
@@ -175,7 +177,7 @@ function update(source) {
   var nodeEnter = node.enter().append('g')
       .attr('class', 'node')
       .attr("transform", function(d) {
-        return "translate(" + source.x0 + "," + source.y0 + ")";
+        return "translate(" + source.y0 + "," + source.x0 + ")";
     })
 
   // Add Circle for the nodes
@@ -203,7 +205,7 @@ function update(source) {
     //.transition().ease(d3.easeSin)
     //.duration(duration)
     nodeUpdate.attr("transform", function(d) { 
-        return "translate(" + d.x + "," + d.y + ")";
+        return "translate(" + d.y + "," + d.x + ")";
      });
 
   // Update the node attributes and style
@@ -240,7 +242,7 @@ function update(source) {
 
         /* barchart(marker_name, d.data[plot_info[old_choice[0]]],title_list[old_choice[0]])
         barchart(marker_name, d.data[plot_info[old_choice[1]]],title_list[old_choice[1]], "plt2") */
-        click_node.transition().duration(250).attr('r',node_radius*2.0).style("fill",node_color_select);
+        click_node.transition().duration(250).attr('r',node_radius*3.0).style("fill",node_color_select);
     })
 
     nodeUpdate.select('circle.node')
@@ -250,10 +252,10 @@ function update(source) {
             cd = d3.select(this)
             //console.log("clicknode")
             if(typeof click_node == 'undefined'){
-                cd.transition().duration(100).style("fill", "brown").attr('r', node_radius*1.5);
+                cd.transition().duration(100).style("fill", "brown").attr('r', node_radius*2.0);
             }
             else if(click_node._groups[0][0].__data__ != cd._groups[0][0].__data__){
-                cd.transition().duration(100).style("fill", "brown").attr('r', node_radius*1.5);
+                cd.transition().duration(100).style("fill", "brown").attr('r', node_radius*2.0);
             };
             tip.show(d);
         })
@@ -277,7 +279,7 @@ function update(source) {
         //.transition()
       //.duration(duration)
       .attr("transform", function(d) {
-          return "translate(" + source.x + "," + source.y + ")";
+          return "translate(" + source.y + "," + source.x + ")";
       })
       .remove();
 
@@ -299,7 +301,7 @@ function update(source) {
   var linkEnter = link.enter().insert('path', "g")
       .attr("class", "link")
       .attr('d', function(d){
-        var o = {x: source.x0, y: source.y0}
+        var o = {x: source.y0, y: source.x0}
         return diagonal(o, o)
       });
 
@@ -323,17 +325,23 @@ function update(source) {
 
   // Store the old positions for transition.
   nodes.forEach(function(d){
-    d.x0 = d.x;
-    d.y0 = d.y;
+    d.x0 = d.y;
+    d.y0 = d.x;
   });
 
   // Creates a curved (diagonal) path from parent to the child nodes
   function diagonal(s, d) { 
     // (hint) These are like the bars you get for curves in keynote
-    path = `M ${s.x} ${s.y}
-            C ${s.x} ${(s.y + d.y)/2}, 
+    path = `M ${s.y} ${s.x}
+    C ${(s.y + d.y) / 2} ${s.x},
+      ${(s.y + d.y) / 2} ${d.x},
+      ${d.y} ${d.x}`
+
+    /* path = `M ${s.y} ${s.x}
+            C ${s.y} ${(s.x + d.x)/2}, 
               ${d.x} ${(s.y + d.y)/2},
-              ${d.x} ${d.y}`
+              ${d.y} ${d.x}` */
+
     return path
   }
 
