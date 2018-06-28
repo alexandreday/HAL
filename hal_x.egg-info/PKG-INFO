@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: hal-x
-Version: 0.64
+Version: 0.70
 Summary: Clustering via hierarchical agglomerative learning
 Home-page: https://alexandreday.github.io/
 Author: Alexandre Day
@@ -8,6 +8,9 @@ Author-email: alexandre.day1@gmail.com
 License: MIT
 Description: # Hierarchical Agglomerative Learning (HAL)
         Package for performing clustering for high-dimensional data. This packages uses heavily scikit-learn and fft accelerated t-SNE. 
+        
+        # Requirement:
+        Python 3.6 or later versions.
         
         # Installing (once)
         Activate an [Anaconda](https://conda.io/docs/user-guide/tasks/manage-environments.html) Python 3 environment
@@ -46,7 +49,7 @@ Description: # Hierarchical Agglomerative Learning (HAL)
         ```
         
 Platform: UNKNOWN
-Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.6
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
 Description-Content-Type: text/markdown

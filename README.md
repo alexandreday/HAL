@@ -8,7 +8,7 @@ Python 3.6 or later versions.
 Activate an [Anaconda](https://conda.io/docs/user-guide/tasks/manage-environments.html) Python 3 environment
 ```
 conda config --add channels conda-forge
-conda install cython numpy fftw
+conda install cython numpy fftw scipy
 pip install hal-x
 ```
 # Updating

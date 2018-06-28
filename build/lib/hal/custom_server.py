@@ -36,7 +36,7 @@ def run_cp_kill():
     time.sleep(2.0) # wait for server to launch
     url = "http://localhost:8499/%s"%("index.html".strip(".html") +"_"+ random_tag + ".html")
     os.system('open %s'%url)
-    time.sleep(2.0)
+    time.sleep(15.0)
     os.system('rm %s'%new_tag)
 
     # Now kill serverls

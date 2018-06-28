@@ -4,8 +4,10 @@ from .tree import TREE
 from .utility import make_file_name, print_param, find_position_idx_center
 from .purify import DENSITY_PROFILER
 from .plotjs import runjs
+from .plotting import cluster_w_label
 
-from fdc import FDC, plotting
+from fdc import FDC
+
 from fitsne import FItSNE
 from sklearn.preprocessing import StandardScaler
 
@@ -186,7 +188,7 @@ class HAL():
 
         # plotting intermediate results
         if self.plot_inter is True:
-            plotting.cluster_w_label(X_tsne, self.ypred)
+            cluster_w_label(X_tsne, self.ypred)
 
         self.ypred_init = np.copy(self.ypred) # important for later
 
