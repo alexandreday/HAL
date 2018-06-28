@@ -66,7 +66,7 @@ class HAL():
         min_size_cluster=0,
         perplexity = 40,    
         n_iteration_tsne =  1000,
-        late_exag = 900,
+        late_exag = 1000, # default is no late  exageration
         tsne_type = 'fft', # default is FFTW t-SNE
         alpha_late = 2.0,
         n_cluster_init = 30,
@@ -84,7 +84,8 @@ class HAL():
         clf_args = None,
         n_bootstrap = 30,
         clf_test_size_ratio = 0.8,
-        n_edge_kNN = 4 
+        n_edge_kNN = 4,
+        verbose = 1
     ):
         
         # t-SNE parameters
@@ -92,6 +93,7 @@ class HAL():
         self.n_iteration_tsne = n_iteration_tsne
         self.n_jobs = n_jobs
         self.tsne_type = tsne_type
+
         self.late_exag = late_exag
         self.alpha_late = alpha_late
 

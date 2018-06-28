@@ -7,7 +7,7 @@ Created on Jan 16, 2017
 import numpy as np
 import matplotlib as mpl
 mpl.use('TkAgg') # makes it better, so doesn't have to deal with framework, etc.
-from mpl import pyplot as plt
+from matplotlib import pyplot as plt
 
 import matplotlib.patheffects as PathEffects
 from fdc.mycolors import COLOR_PALETTE
@@ -90,8 +90,9 @@ def cluster_w_label(X, y, Xcluster=None, show=True, savefile = None, fontsize =1
             plt.savefig(savefile,dpi=dpi)
 
     if show is True:
-        plt.draw()
-        plt.pause(0.5)
+        """ plt.draw()
+        plt.pause(0.5) """
+        plt.show()
         plt.clf()
         plt.close()
         
