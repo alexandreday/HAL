@@ -253,9 +253,12 @@ class HAL():
     def predict(self, X, cv=0.5):
         return self.kNN_graph.predict(self.ss.transform(X), cv=cv) # predict on full set !
 
-    def plot_tree(self):
+    def plot_tree(self, feature_name = None):
+        """ Renders a dashboard with the hierarchical tree
+        and bar charts of feature information for each cluster
+        """
         Xtsne = pickle.load(open(self.file_name['tsne'],'rb'))
-        self.kNN_graph.tree.plot_tree(Xtsne, self.ypred_init)
+        self.kNN_graph.tree.plot_tree(Xtsne, self.ypred_init, feature_name)
         runjs('js/')
 
     def purify(self, X):

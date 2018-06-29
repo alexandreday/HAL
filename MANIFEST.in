@@ -1,1 +1,2 @@
-include hal/js/*
+include hal/js/haltree.js
+include hal/js/index.html

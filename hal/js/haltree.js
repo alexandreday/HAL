@@ -6,8 +6,8 @@ var idx_merge;
 
 // Let's clean this up !
 d3.json("tree.json", function(error1, treeData) { // read tree data => some information is not good  
-    d3.json('tsne.json',function(error2, tSNEdata){ // read t-SNE data -> maybe we can do better here
-        d3.json('idx_merge.json', function(error3, idx_merge_){
+    d3.json("tsne.json",function(error2, tSNEdata){ // read t-SNE data -> maybe we can do better here
+        d3.json("idx_merge.json", function(error3, idx_merge_){
         if (error1) throw error1;
         if (error2) throw error2;
         if (error3) throw error3;
@@ -17,10 +17,18 @@ d3.json("tree.json", function(error1, treeData) { // read tree data => some info
     var tsne_is_rendered = false;
     var node_label = "cv";
     idx_merge = idx_merge_;
-    var easement = "easeCubic";
+
     var plot_choice = ['plt1','plt2'];
     var title_list = ["Median marker expression","Feature importance score"];
-    var marker_name = range(0, treeData["median_markers"].length);
+
+    // Read in feature names
+    var nestedTree = treeData['nestedTree']
+    if(treeData['feature_name'].length == 0){
+        var feature_name = range(0, treeData["median_markers"].length);
+    }
+    else{
+        var feature_name = treeData['feature_name'];
+    };
     
     var node_radius = 20;
     var node_color_default = "white", node_color_select = "#6acef2";
@@ -33,14 +41,12 @@ d3.json("tree.json", function(error1, treeData) { // read tree data => some info
     var width = 1000;// in the future, should set those according to max width and depth of tree
     var height = 1000; 
 
-// Set the dimensions and margins of the diagram
+    // Set the dimensions and margins of the diagram
     var margin = {top: 50, right: 50, bottom: 30, left: 50};
     /* width = width - margin.left - margin.right,
     height = height - margin.top - margin.bottom; */
 
-// append the svg object to the body of the page
-// appends a 'group' element to 'svg'
-// moves the 'group' element to the top left margin
+
 var svg = d3.select("body #tree")
     .append("svg").attr("width",1.5*width).attr("height",1.5*height) // the rest of drawing should not exceed this bounding box
     //.attr("width", width + margin.right + margin.left)
@@ -50,7 +56,7 @@ var svg = d3.select("body #tree")
 
 svg.append("text").attr("class","plot-title").attr("transform", "translate(" + 250 + " ," + -20 + ")")
           .style("text-anchor", "middle")
-          .text("Hierarchical structure");
+          .text("Hierarchical structure")
 
 var i = 0, duration = 100;
 
@@ -65,7 +71,7 @@ tip = d3.tip().attr('class', 'd3-tip').html(function(d) {
 var treemap = d3.tree().size([width, height]);
 
 // Assigns parent, children, height, depth
-var root = d3.hierarchy(treeData, function(d) { return d.children; });
+var root = d3.hierarchy(nestedTree, function(d) { return d.children; });
 /* root.x0 = width / 2;
 root.y0 = 0; */
 root.x0 = 0;
@@ -124,7 +130,7 @@ function update_2(menu, menu_number=1){
     old_choice[menu_number-1]=new_choice;
 
     if(render_plot){
-        //@barchart(marker_name, d.data[plot_info[old_choice[1]]],title_list[old_choice[1]], "plt2")
+
         if(new_choice == 2){
             if(!tsne_is_rendered){
                 scatter(tSNEdata["x"],tSNEdata["y"], tSNEdata["idx"], title_list[new_choice], plot_choice[menu_number-1])
@@ -137,7 +143,7 @@ function update_2(menu, menu_number=1){
             }
         }
         else{
-            barchart(marker_name, click_node._groups[0][0].__data__.data[plot_info[new_choice]], title_list[new_choice], plot_choice[menu_number-1])
+            barchart(feature_name, click_node._groups[0][0].__data__.data[plot_info[new_choice]], title_list[new_choice], plot_choice[menu_number-1])
         }
     }
 }
@@ -236,12 +242,10 @@ function update(source) {
                 //scatter(tSNEdata["x"],tSNEdata["y"],tSNEdata["idx"], title_list[old_choice[i]], plot_choice[i])
             }
             else{
-                barchart(marker_name, d.data[plot_info[old_choice[i]]], title_list[old_choice[i]], plot_choice[i])
+                barchart(feature_name, d.data[plot_info[old_choice[i]]], title_list[old_choice[i]], plot_choice[i])
             }
         }
 
-        /* barchart(marker_name, d.data[plot_info[old_choice[0]]],title_list[old_choice[0]])
-        barchart(marker_name, d.data[plot_info[old_choice[1]]],title_list[old_choice[1]], "plt2") */
         click_node.transition().duration(250).attr('r',node_radius*3.0).style("fill",node_color_select);
     })
 
@@ -369,18 +373,24 @@ function range(start, end) {
 
 function barchart(x_, y_, title, pos="plt1"){
     var trace1 = {
-        x: x_,
+        x: x_, // feature names
         y: y_,
         type: 'bar',
         marker: {
-          color: 'rgb(18, 209, 41)'
+          color: 'rgb(16, 88, 204)',
+          line: {
+            color:'rgb(0,0,0)',
+            width:0.5
+        }
         }
     };
     var data = [trace1];
 
     var layout = {
-        font:{
-          family: 'Roboto Mono' 
+        font: {
+            family: 'Helvetica',
+            size: 14,
+            color: '#7f7f7f'
         },
         showlegend: false,
         xaxis: {
@@ -406,19 +416,17 @@ function barchart(x_, y_, title, pos="plt1"){
     Plotly.newPlot(pos, data, layout, {displaylogo: false, showLink:false});
 }
 
-
-var color_list = ["#30a2da","#fc4f30","#e5ae38","#6d904f","#8b8b8b","#006FA6", "#A30059","#af8dc3","#922329","#1E6E00","#FF34FF", "#FF4A46","#008941", "#006FA6", "#A30059", "#0000A6", "#63FFAC","#B79762", "#004D43", "#8FB0FF", "#997D87","#5A0007", "#809693", 
-"#1B4400", "#4FC601", "#3B5DFF", "#4A3B53", "#FF2F80","#61615A", "#BA0900","#6B7900", "#00C2A0", "#FFAA92", "#FF90C9", "#B903AA", "#D16100","#DDEFFF",
-"#000035", "#7B4F4B", "#A1C299", "#300018", "#0AA6D8", "#013349", "#00846F","#372101", "#FFB500", "#C2FFED", "#A079BF", "#CC0744", "#C0B9B2", "#C2FF99",
-"#001E09","#00489C", "#6F0062", "#0CBD66", "#EEC3FF", "#456D75", "#B77B68", "#7A87A1", "#788D66","#885578", "#FAD09F", "#FF8A9A", "#D157A0", "#BEC459",
-"#456648", "#0086ED", "#886F4C","#34362D", "#B4A8BD", "#00A6AA", "#452C2C","#636375", "#A3C8C9", "#FF913F", "#938A81","#575329", "#00FECF", "#B05B6F",
-"#8CD0FF", "#3B9700", "#04F757", "#C8A1A1", "#1E6E00","#7900D7", "#A77500","#6367A9", "#A05837", "#6B002C", "#772600", "#D790FF", "#9B9700","#549E79",
-"#FFF69F", "#201625", "#72418F","#BC23FF","#99ADC0","#3A2465","#922329","#5B4534", "#FDE8DC", "#404E55", "#0089A3", "#CB7E98", "#A4E804", "#324E72", "#6A3A4C","#7A4900"];
+var color_list = ['rgb(48, 162, 218)', 'rgb(252, 79, 48)', 'rgb(229, 174, 56)', 'rgb(109, 144, 79)', 'rgb(139, 139, 139)', 'rgb(0, 111, 166)', 'rgb(163, 0, 89)', 'rgb(175, 141, 195)', 'rgb(146, 35, 41)', 'rgb(30, 110, 0)', 'rgb(255, 52, 255)', 'rgb(255, 74, 70)', 'rgb(0, 137, 65)', 'rgb(0, 111, 166)', 'rgb(163, 0, 89)', 'rgb(0, 0, 166)', 'rgb(99, 255, 172)', 'rgb(183, 151, 98)', 'rgb(0, 77, 67)', 'rgb(143, 176, 255)', 'rgb(153, 125, 135)', 'rgb(90, 0, 7)', 'rgb(128, 150, 147)', 'rgb(27, 68, 0)', 'rgb(79, 198, 1)', 'rgb(59, 93, 255)', 'rgb(74, 59, 83)', 'rgb(255, 47, 128)', 'rgb(97, 97, 90)', 'rgb(186, 9, 0)', 'rgb(107, 121, 0)', 'rgb(0, 194, 160)', 'rgb(255, 170, 146)', 'rgb(255, 144, 201)', 'rgb(185, 3, 170)', 'rgb(209, 97, 0)', 'rgb(221, 239, 255)', 'rgb(0, 0, 53)', 'rgb(123, 79, 75)', 'rgb(161, 194, 153)', 'rgb(48, 0, 24)', 'rgb(10, 166, 216)', 'rgb(1, 51, 73)', 'rgb(0, 132, 111)', 'rgb(55, 33, 1)', 'rgb(255, 181, 0)', 'rgb(194, 255, 237)', 'rgb(160, 121, 191)', 'rgb(204, 7, 68)', 'rgb(192, 185, 178)', 'rgb(194, 255, 153)', 'rgb(0, 30, 9)', 'rgb(0, 72, 156)', 'rgb(111, 0, 98)', 'rgb(12, 189, 102)', 'rgb(238, 195, 255)', 'rgb(69, 109, 117)', 'rgb(183, 123, 104)', 'rgb(122, 135, 161)', 'rgb(120, 141, 102)', 'rgb(136, 85, 120)', 'rgb(250, 208, 159)', 'rgb(255, 138, 154)', 'rgb(209, 87, 160)', 'rgb(190, 196, 89)', 'rgb(69, 102, 72)', 'rgb(0, 134, 237)', 'rgb(136, 111, 76)', 'rgb(52, 54, 45)', 'rgb(180, 168, 189)', 'rgb(0, 166, 170)', 'rgb(69, 44, 44)', 'rgb(99, 99, 117)', 'rgb(163, 200, 201)', 'rgb(255, 145, 63)', 'rgb(147, 138, 129)', 'rgb(87, 83, 41)', 'rgb(0, 254, 207)', 'rgb(176, 91, 111)', 'rgb(140, 208, 255)', 'rgb(59, 151, 0)', 'rgb(4, 247, 87)', 'rgb(200, 161, 161)', 'rgb(30, 110, 0)', 'rgb(121, 0, 215)', 'rgb(167, 117, 0)', 'rgb(99, 103, 169)', 'rgb(160, 88, 55)', 'rgb(107, 0, 44)', 'rgb(119, 38, 0)', 'rgb(215, 144, 255)', 'rgb(155, 151, 0)', 'rgb(84, 158, 121)', 'rgb(255, 246, 159)', 'rgb(32, 22, 37)', 'rgb(114, 65, 143)', 'rgb(188, 35, 255)', 'rgb(153, 173, 192)', 'rgb(58, 36, 101)', 'rgb(146, 35, 41)', 'rgb(91, 69, 52)', 'rgb(253, 232, 220)', 'rgb(64, 78, 85)', 'rgb(0, 137, 163)', 'rgb(203, 126, 152)', 'rgb(164, 232, 4)', 'rgb(50, 78, 114)', 'rgb(106, 58, 76)', 'rgb(122, 73, 0)'];
 
 function translate(z){
     var col = new Array(z.length);
     for(var i=0;i<z.length;i++){
-        col[i]=color_list[z[i]];
+        if(z[i] < 0){
+            col[i] = 'rgba(114, 255, 247, 0.3)';
+        }
+        else{
+            col[i]=color_list[z[i]];
+        };
     }
     return col;
 }
@@ -446,8 +454,10 @@ function scatter(x_, y_, z_, title, pos="plt1"){
 
     var layout = {
         hovermode:'off',
-        font:{
-          family: 'Roboto Mono' 
+        font: {
+            family: 'Helvetica',
+            size: 14,
+            color: '#7f7f7f'
         },
         showlegend: false,
         xaxis: {
@@ -463,7 +473,7 @@ function scatter(x_, y_, z_, title, pos="plt1"){
         margin: {
             l: 0.08*plot_width,
             r: 0.08*plot_width,
-            b: 0.1*plot_width,
+            b: 0.12*plot_width,
             t: 0.05*plot_width
         },
         bargap :0.05,
@@ -483,8 +493,10 @@ function makeArrayOf(value, length) {
 
 function restyle(idx, new_idx,pos="plt1"){
     idx_within = idx_merge[new_idx]
+    var highlight_color = 'rgb(119, 255, 167)'
     //console.log(idx_within)
     var color = new Array(idx.length);
+    var opacity = new Array(idx.length);
     var Qcolor_red;
     for(var i=0;i<idx.length;i++){
         Qcolor_red=false;
@@ -494,11 +506,19 @@ function restyle(idx, new_idx,pos="plt1"){
             }
         }
         if(Qcolor_red){
-            color[i] = 'red';
+            opacity[i] = 1.0;
+            //color[i] = highlight_color;
         }
         else{
-            color[i] = color_list[idx[i]];
-        }
+            opacity[i] = 0.05;
+            /* if(idx[i] < 0){
+                color[i] = 'rgba(114, 255, 247, 0.3)';
+            }
+            else{
+                color[i]=color_list[idx[i]];
+            }; */
+        };
     }
-    Plotly.restyle(pos, 'marker.color',[color])
+    //Plotly.restyle(pos, 'marker.color',[color]) // everything stays the same except transparency !
+    Plotly.restyle(pos, 'marker.opacity',[opacity]);
 }

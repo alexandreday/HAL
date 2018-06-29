@@ -70,6 +70,11 @@ class TREE:
 
     def fit(self, X, y_pred, n_bootstrap=10): 
         """ Fits hierarchical model"""
+
+        from .plotting import cluster_w_label
+
+        #cluster_w_label(X,y_pred)
+        #exit()
         
         pos = (y_pred > -1)
         y_unique = np.unique(y_pred[pos]) # fit only on the non-outliers
@@ -113,6 +118,8 @@ class TREE:
         self.compute_feature_importance_dict(X)
         self.compute_node_info()
         self.find_idx_in_each_node()
+
+        print(self.node_dict[46].info)
 
 
         """ print("Computing f1-scores")
@@ -193,21 +200,24 @@ class TREE:
 
         return F1  """
         
-    def plot_tree(self, Xtsne, idx): # plot tree given the specified cv score 
+    def plot_tree(self, Xtsne, idx, feature_name): # plot tree given the specified cv score 
         """ Construct a nested dictionary representing the tree along with principal information
         and exports the nested dictornary in a json file (to be read by javascript program)
         """
         import json
-        nested_dict = {}
 
-        self.construct_nested_dict(nested_dict, self.root.id_)
+        if feature_name is not None:
+            dashboard_information = {'feature_name':feature_name,'nestedTree':{}}
+        else:
+            dashboard_information = {'feature_name':[],'nestedTree':{}}
 
-        #print(self.node_dict[51].info)
+        self.construct_nested_dict(dashboard_information['nestedTree'], self.root.id_)
+
         if not os.path.exists("js"):
             os.makedirs("js")
 
         with open('js/tree.json','w') as f:
-            f.write(json.dumps(nested_dict))
+            f.write(json.dumps(dashboard_information))
         
         with open('js/idx_merge.json','w') as f:
             tmp = {str(k) : list(map(int,node.info['idx_merged'])) for k, node in self.node_dict.items()}
@@ -223,7 +233,12 @@ class TREE:
         nested_dict["info"] = "size=%.4f, cv=%.3f"%(self.cluster_statistics[node_id]["ratio"],node.info["cv"])
         nested_dict["median_markers"] = list(node.info["median_marker"]["mu"])
         nested_dict["std_markers"] = list(node.info["median_marker"]["std"])
-        nested_dict["cv"] = "-" if (node.info["cv"] < 0) else "%.3f"%node.info["cv"]
+        if node.info["cv"] < 0:
+            nested_dict["cv"] = "leaf"
+        elif node.info["cv"] > 0.99:
+            nested_dict["cv"] = "1.0"
+        else:
+            nested_dict["cv"] = ("%.3f"%node.info["cv"])[1:]
         nested_dict["f1"] = 0 #"%.3f"%node.info["f1"] # this is not quite working
 
         if len(node.info["children_id"]) == 0:
@@ -253,12 +268,6 @@ class TREE:
                 std_scores = np.std(importance_matrix, axis=0)
                 self.feature_importance_dict[node_id] = [scores, std_scores]
     
-    def save_JS_info(self):
-        """
-        Outputs information for javascript interface 
-        """
-        return
-
     def compute_node_info(self):
 
         for node_id, node in self.node_dict.items():
