@@ -9,7 +9,6 @@ def main():
     node_pos = {1:[0.1,0.1],2:[0.1,0.293],3:[-0.5,-0.2],4:[0.9,0.1]}
     node_score = {1:0.2993,2:0.333,3:0.999,4:0.87373}
     plot_graph(graph, node_pos, node_score)
-    return
 
 def scatter_data(X, opacity=0.2, n_sample=10000, scatter_obj=Scatter):
     nn= min([len(X), n_sample])
