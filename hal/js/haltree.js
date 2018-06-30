@@ -35,6 +35,7 @@ d3.json("tree.json", function(error1, treeData) { // read tree data => some info
     var node_radius = 20;
     var node_color_default = "white", node_color_select = "#6acef2";
     var depth_height = 100;
+    var dilate_spacing = 1.0;
 
     /* var chartDiv = document.getElementById("dragscroll"); // Adjustable !
     var width = chartDiv.clientWidth;
@@ -44,13 +45,13 @@ d3.json("tree.json", function(error1, treeData) { // read tree data => some info
     var height = 1000; 
 
     // Set the dimensions and margins of the diagram
-    var margin = {top: 50, right: 50, bottom: 30, left: 50};
+    var margin = {top: 50, right: 50, bottom: 30, left: 80};
     /* width = width - margin.left - margin.right,
     height = height - margin.top - margin.bottom; */
 
 
 var svg = d3.select("body #tree")
-    .append("svg").attr("width",1.5*width).attr("height",1.5*height) // the rest of drawing should not exceed this bounding box
+    .append("svg").attr("width",1.5*width).attr("height",2.0*height) // the rest of drawing should not exceed this bounding box
     //.attr("width", width + margin.right + margin.left)
     //.attr("height", height + margin.top + margin.bottom)
     .append("g")
@@ -58,7 +59,7 @@ var svg = d3.select("body #tree")
 
 svg.append("text").attr("class","plot-title").attr("transform", "translate(" + 250 + " ," + -20 + ")")
           .style("text-anchor", "middle")
-          .text("Hierarchical structure")
+          .text("Hierarchical Structure")
 
 var i = 0, duration = 100;
 
@@ -76,8 +77,9 @@ var treemap = d3.tree().size([width, height]);
 var root = d3.hierarchy(nestedTree, function(d) { return d.children; });
 /* root.x0 = width / 2;
 root.y0 = 0; */
-root.x0 = 0;
-root.y0 = height / 2;
+root.x0 = 0; // does not change anything somehow
+root.y0 = height/2;
+//console.log(root);
 
 /* Invoke the tip in the context of your visualization */
 svg.call(tip);
@@ -137,7 +139,7 @@ function update(source) {
       links = treeData.descendants().slice(1);
 
   // Normalize for fixed-depth.
-  nodes.forEach(function(d){ d.y = d.depth * depth_height});
+  nodes.forEach(function(d){ d.y = d.depth * depth_height; d.x = dilate_spacing*d.x;});
 
   // ****************** Nodes section ***************************
 
@@ -189,7 +191,12 @@ function update(source) {
         //console.log("here1");
         if(typeof click_node != 'undefined'){
             click_node.transition().duration(250).attr('r',node_radius).style("fill",node_color_default);
+            if(d3.select(this).property("__data__")==click_node.property("__data__")){ // double clicking node
+                d3.select(this).transition().duration(100).attr('r', node_radius).style('fill', node_color_default);
+                return;
+            }
         }
+        
         click_node = d3.select(this); // save current node
         click_node_info = click_node._groups[0][0].__data__
 

@@ -21,6 +21,9 @@ pip install hal-x --upgrade
 from hal import HAL  # this imports the class HAL() 
 from sklearn.datasets import make_blobs
 
+# Setting random seed, in case you want to re-run example but keep saved data in info_hal/ 
+np.random.seed(0)
+
 # Generate some data. 
 X,y = make_blobs(10000,12,10) # 10 gaussians in 12 dimensions, 10000 data points
 

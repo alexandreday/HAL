@@ -6,5 +6,6 @@ from .utility import *
 from .pipeline import HAL
 from .classify import CLF
 from .purify import DENSITY_PROFILER
+from .utility import decode
 
 __all__ = ['kNN_Graph', 'HAL', 'TupleDict', 'TREE', 'CLF']

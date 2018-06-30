@@ -119,13 +119,6 @@ class TREE:
         self.compute_node_info()
         self.find_idx_in_each_node()
 
-        print(self.node_dict[46].info)
-
-
-        """ print("Computing f1-scores")
-        for node_id in self.node_dict.keys():
-            self.node_dict[node_id].info['f1'] = self.compute_f1_score(X, node_id, self.y_pred_init) """
-        
         return self
         
     def predict(self, X_, cv = 0.9, option='fast'):

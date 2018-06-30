@@ -1,4 +1,4 @@
-import os
+import os, sys
 import numpy as np
 
 class FOUT:
@@ -16,6 +16,20 @@ def compute_cluster_stats(Xsubset, size):
     median = np.median(Xsubset,axis=0)
     std = np.std(Xsubset,axis=0)
     return  {"mu":median, "std":std, "size":len(Xsubset), "ratio":len(Xsubset)/size}
+
+def float_fmt(param_name, nbr, decimal_place = 2):
+    nbr_fmt = ("{:0<%s.%sf}"%(decimal_place+2, decimal_place)).format(nbr);
+    return param_name + "=" + nbr_fmt
+
+def int_fmt(param_name, nbr, max_value = 1000):
+    assert nbr < max_value, "Wrong integer parameter value, must be smaller than %i"%max_value
+    n_max = len(str(max_value))
+    nbr_fmt = str(nbr).zfill(n_max)
+    return param_name + "=" + nbr_fmt
+
+def str_fmt(param_name, my_str, width = 10):
+    assert len(my_str)<width, "string parameter is too big"
+
     
 def make_file_name(param):
     out = [
@@ -59,3 +73,16 @@ def find_position_idx_center(X_tsne, ypred, idx_center, rho):
         idx_center_pos[idx] = X_tsne[pos[pos_center]]
 
     return idx_center_pos
+
+def decode():
+    file_name = sys.argv[1]
+    #check file name is in ok format
+    ls_parameters = file_name.split('_')
+    param_dict = {}
+    for param in ls_parameters:
+        name, value = param.split("=")
+        param_dict[name] = format_str(name, value)
+    print("----> File information <------- \n")
+    print(param_dict)
+    return param_dict
+

@@ -124,7 +124,7 @@ class HAL():
             self.clf_args = clf_args
         self.n_edge_kNN = n_edge_kNN
 
-        # Misc.
+        # Misc. ==> need to find a way to fix that for fitsne ...
         self.seed = seed
 
         if not os.path.exists(root):
@@ -228,6 +228,18 @@ class HAL():
 
         if check_exist(self.file_name['kNN_tree']):
             self.ss, self.kNN_graph = pickle.load(open(self.file_name['kNN_tree'],'rb'))
+            """ from .plotting import cluster_w_label
+            #cluster_w_label(self.load('tsne'), self.ypred)
+            #exit()
+            from .classify import CLF
+            test = CLF()
+            pos = (self.ypred == 1) | (self.ypred == 12)
+            test.fit(self.ss.transform(X)[pos], self.ypred[pos])
+            print(test.cv_score)
+            exit() """
+            # after coarse-graining should be able to output kNN graph, right ?
+            
+            #self.plot_kNN_graph(self.load('tsne'))
         else:
             self.kNN_graph.coarse_grain(X, ypred)
             pickle.dump([self.ss, self.kNN_graph], open(self.file_name['kNN_tree'],'wb'))
@@ -247,6 +259,13 @@ class HAL():
             return pickle.load(open(self.file_name[s],'rb'))
 
     def plot_kNN_graph(self, X_tsne):
+        """ Plots kNN graph using plotly package """
+        """ print(np.unique(self.ypred))
+        #from .plotting import cluster_w_label
+        #cluster_w_label(X_tsne, self.ypred)
+        print(self.kNN_graph.graph)
+
+        exit() """
         idx_center = find_position_idx_center(X_tsne, self.ypred, np.unique(self.ypred), self.density_cluster.rho)
         self.kNN_graph.plot_kNN_graph(idx_center, X=X_tsne)
 
