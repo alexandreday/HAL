@@ -12,14 +12,16 @@ d3.json("tree.json", function(error1, treeData) { // read tree data => some info
         if (error2) throw error2;
         if (error3) throw error3;
 
-    var plot_info = ["median_markers","feature_importance"];
-    var plot_type = ["barchart","scatter"];
+    var plot_info = {1:"median_markers",2:"feature_importance"};
+    var title_list = {1:"Median marker expression",2:"Feature importance score"};
+    //var plot_info = ["median_markers","feature_importance"];
+    var plot_type = ["barchart", "scatter"];
     var tsne_is_rendered = false;
     var node_label = "cv";
     idx_merge = idx_merge_;
 
     var plot_choice = ['plt1','plt2'];
-    var title_list = ["Median marker expression","Feature importance score"];
+    //var title_list = ["Median marker expression","Feature importance score"];
 
     // Read in feature names
     var nestedTree = treeData['nestedTree']
@@ -82,83 +84,47 @@ svg.call(tip);
 
 /* // Collapse after the second level
 root.children.forEach(collapse); */
-var menu1 = d3.select("#menu1");
-var menu2 = d3.select("#menu2");
+var menu1 = d3.selectAll("#menu1.custom-select");
+var menu2 = d3.selectAll("#menu2.custom-select");
 
-menu1.selectAll(".myCheck").call(init);
-menu2.selectAll(".myCheck").call(init);
-//console.log(d3.select("body menu1 myCheck"))
 
-var old_choice=[0,0], render_plot=false, click_node; // this is tricky .. !
+var render_plot=false, click_node_info=root, click_node;
+var old_selection = {'menu1':[0,false],'menu2':[0,false]};
+var selection = {'menu1':[0,false],'menu2':[0,false]}; // variable keeping track of selections and rendering
+var options = {"Plot option:\n":0, "Median expression\n":1, "Feature importance\n":2, "t-SNE\n":3}
 
-menu1.selectAll(".myCheck").on("change", function(d){
-    update_2(menu1,1);
+menu1.on("click", function(d){
+    var t = d3.select(this).selectAll("select-selected");
+    var option_selected = t._parents[0]["innerText"];
+    update_menu('menu1', 0, option_selected)
 });
 
-menu2.selectAll(".myCheck").on("change", function(d){
-    update_2(menu2, menu_number=2);
+menu2.on("click", function(d){
+    var t = d3.select(this).selectAll("select-selected");
+    var option_selected = t._parents[0]["innerText"];
+    update_menu('menu2', 1, option_selected)
 });
-//console.log('Old choice\t'+old_choice)
 
-function init(d){
-    d._groups[0][0]["checked"]=true;
-}
+function update_menu(name, pos, option_selected){
 
-function update_2(menu, menu_number=1){
-    var new_choice, i=0, old_choice_ = old_choice[menu_number-1];
-    menu.selectAll(".myCheck").each(function(d){
-      var cb = d3.select(this);
-      if(cb.property("checked")){
-        if(i!=old_choice_){new_choice = i;}
-      }
-      i++;
-    });
+    var current_selection = selection[name][0];
+    
+    if(option_selected!=current_selection){
+        var opt = options[option_selected];
 
-    i=0;
-    menu.selectAll(".myCheck").each(function(d){
-      var cb = d3.select(this);
-      if(cb.property("checked")){
-        if(i==old_choice_){
-            cb._groups[0][0]["checked"]=false;}
-      }
-      i++;
-    });
+        old_selection[name] = selection[name]; // save previous selection
+        selection[name] = [opt, true]; // update selection
 
-    if(old_choice[menu_number-1] == 2){
-        tsne_is_rendered=false;
-    }
-    old_choice[menu_number-1]=new_choice;
-
-    if(render_plot){
-
-        if(new_choice == 2){
-            if(!tsne_is_rendered){
-                scatter(tSNEdata["x"],tSNEdata["y"], tSNEdata["idx"], title_list[new_choice], plot_choice[menu_number-1])
-                tsne_is_rendered =  true;
-            }
-            else{
-
-                //console.log('restyling 2')
-                restyle(tSNEdata["idx"], 1)
-            }
+        if(opt == 1 || opt == 2){
+            barchart(feature_name, click_node_info.data[plot_info[opt]], title_list[opt], plot_choice[pos])
         }
-        else{
-            barchart(feature_name, click_node._groups[0][0].__data__.data[plot_info[new_choice]], title_list[new_choice], plot_choice[menu_number-1])
+        else if(opt == 3){
+            scatter(tSNEdata["x"], tSNEdata["y"], tSNEdata["idx"], title_list[opt], plot_choice[pos])
         }
     }
 }
 
 update(root);
-
-
-/* // Collapse the node and all it's children
-function collapse(d) {
-  if(d.children) {
-    d._children = d.children
-    d._children.forEach(collapse)
-    d.children = null
-  }
-} */
 
 function update(source) {
 
@@ -206,13 +172,9 @@ function update(source) {
   // UPDATE 
   var nodeUpdate = nodeEnter.merge(node);
 
-  // Transition to the proper position for the node
-  //nodeUpdate
-    //.transition().ease(d3.easeSin)
-    //.duration(duration)
     nodeUpdate.attr("transform", function(d) { 
         return "translate(" + d.y + "," + d.x + ")";
-     });
+        });
 
   // Update the node attributes and style
   nodeUpdate.select('circle.node')
@@ -229,23 +191,29 @@ function update(source) {
             click_node.transition().duration(250).attr('r',node_radius).style("fill",node_color_default);
         }
         click_node = d3.select(this); // save current node
-        // should be triggered if something is ticked
-        render_plot = true;
+        click_node_info = click_node._groups[0][0].__data__
+
+        var menu_ls = ['menu1','menu2']
         for(var i=0;i<2;i++){
-            if(old_choice[i] == 2){
-                //console.log('restyling')
-                var node_name = +click_node._groups[0][0].__data__['data']['name']
-                //click_node._groups[0][0].
-                //console.log(click_node.selectAll('name'))
-                restyle(tSNEdata["idx"], node_name, plot_choice[i])
-                // here replot only new points // subset of data ... 
-                //scatter(tSNEdata["x"],tSNEdata["y"],tSNEdata["idx"], title_list[old_choice[i]], plot_choice[i])
+            menu = menu_ls[i]
+
+            old_selection[menu] = selection[menu]
+            opt = selection[menu][0]
+
+            if(opt == 1 || opt == 2){
+                barchart(feature_name, click_node_info.data[plot_info[opt]], title_list[opt], plot_choice[i])
             }
-            else{
-                barchart(feature_name, d.data[plot_info[old_choice[i]]], title_list[old_choice[i]], plot_choice[i])
+            else if(opt == 3){
+                var node_name = +click_node_info.data['name']
+                if(old_selection[menu][0] != 3){
+                    scatter(tSNEdata["x"], tSNEdata["y"], tSNEdata["idx"], title_list[opt], plot_choice[i]);
+                    restyle(tSNEdata["idx"], node_name, plot_choice[i]);
+                }
+                else{
+                    restyle(tSNEdata["idx"], node_name, plot_choice[i]);
+                }
             }
         }
-
         click_node.transition().duration(250).attr('r',node_radius*3.0).style("fill",node_color_select);
     })
 
@@ -274,8 +242,6 @@ function update(source) {
         }
         tip.hide(d);
     })
-
-
 
 
   // Remove any exiting nodes
@@ -511,12 +477,6 @@ function restyle(idx, new_idx,pos="plt1"){
         }
         else{
             opacity[i] = 0.05;
-            /* if(idx[i] < 0){
-                color[i] = 'rgba(114, 255, 247, 0.3)';
-            }
-            else{
-                color[i]=color_list[idx[i]];
-            }; */
         };
     }
     //Plotly.restyle(pos, 'marker.color',[color]) // everything stays the same except transparency !
