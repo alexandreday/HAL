@@ -119,8 +119,7 @@ class TREE:
         self.compute_node_info()
         self.find_idx_in_each_node()
 
-        print(self.node_dict[46].info)
-
+        #print(self.node_dict[46].info)
 
         """ print("Computing f1-scores")
         for node_id in self.node_dict.keys():
