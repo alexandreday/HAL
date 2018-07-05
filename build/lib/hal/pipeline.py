@@ -171,6 +171,7 @@ class HAL():
         
         # Standardizes data -> important for cross-sample classification
         self.ss = StandardScaler()
+        self.n_feature = data.shape[1]
         X_zscore = self.ss.fit_transform(data)
 
         # run t-SNE
@@ -260,13 +261,10 @@ class HAL():
 
     def plot_kNN_graph(self, X_tsne):
         """ Plots kNN graph using plotly package """
-        """ print(np.unique(self.ypred))
-        #from .plotting import cluster_w_label
-        #cluster_w_label(X_tsne, self.ypred)
-        print(self.kNN_graph.graph)
-
-        exit() """
         idx_center = find_position_idx_center(X_tsne, self.ypred, np.unique(self.ypred), self.density_cluster.rho)
+        print(idx_center)
+        print(np.unique(self.ypred))
+        exit()
         self.kNN_graph.plot_kNN_graph(idx_center, X=X_tsne)
 
     def predict(self, X, cv=0.5):
@@ -277,7 +275,14 @@ class HAL():
         and bar charts of feature information for each cluster
         """
         Xtsne = pickle.load(open(self.file_name['tsne'],'rb'))
-        self.kNN_graph.tree.plot_tree(Xtsne, self.ypred_init, feature_name)
+        
+        if feature_name is None:
+            feature_name_ = list(range(self.n_feature))
+        else:
+            assert len(feature_name) == self.n_feature, "Feature name list must have the same number of element as the number of features"
+            feature_name_ = feature_name_
+
+        self.kNN_graph.tree.plot_tree(Xtsne, self.ypred_init, feature_name_)
         runjs('js/')
 
     def purify(self, X):

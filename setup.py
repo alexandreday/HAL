@@ -9,7 +9,7 @@ with open("README.md", "r") as fh:
 
 setup(
       name='hal-x',
-      version='0.76',
+      version='0.77',
       description='Clustering via hierarchical agglomerative learning',
       author='Alexandre Day',
       author_email='alexandre.day1@gmail.com',
