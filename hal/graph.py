@@ -337,7 +337,6 @@ class kNN_Graph:
 
     def plot_kNN_graph(self, idx_pos, X=None, savefile=None):
         from .plotlygraph import plot_graph
-        #print(idx_pos)
         plot_graph(self.edge, idx_pos, self.node, X=X, title='k-NN graph', savefile=savefile, n_sample=20000)
 
 def edge_info_raw(edge_list, score, cout=print):

@@ -5,6 +5,19 @@ import os
 import copy, time
 from collections import OrderedDict as OD
 from .utility import compute_cluster_stats
+import json
+
+
+class MyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(MyEncoder, self).default(obj)
 
 class TREENODE:
 
@@ -197,27 +210,24 @@ class TREE:
         """ Construct a nested dictionary representing the tree along with principal information
         and exports the nested dictornary in a json file (to be read by javascript program)
         """
-        import json
 
-        if feature_name is not None:
-            dashboard_information = {'feature_name':feature_name,'nestedTree':{}}
-        else:
-            dashboard_information = {'feature_name':[],'nestedTree':{}}
-
+        
+        dashboard_information = {'feature_name':feature_name,'nestedTree':{}}
+        
         self.construct_nested_dict(dashboard_information['nestedTree'], self.root.id_)
 
         if not os.path.exists("js"):
             os.makedirs("js")
 
         with open('js/tree.json','w') as f:
-            f.write(json.dumps(dashboard_information))
+            f.write(json.dumps(dashboard_information, cls=MyEncoder))
         
         with open('js/idx_merge.json','w') as f:
             tmp = {str(k) : list(map(int,node.info['idx_merged'])) for k, node in self.node_dict.items()}
-            f.write(json.dumps(tmp))
+            f.write(json.dumps(tmp,cls=MyEncoder))
 
         with open('js/tsne.json','w') as f:
-            f.write(json.dumps({"x":list(Xtsne[:,0]),"y":list(Xtsne[:,1]),"idx":list(map(int,idx))}))
+            f.write(json.dumps({"x":list(Xtsne[:,0]),"y":list(Xtsne[:,1]),"idx":list(map(int,idx))},cls=MyEncoder))
         
     def construct_nested_dict(self, nested_dict, node_id):
         ## Need a more structured approach here, but for now it's ok 

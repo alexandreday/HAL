@@ -27,14 +27,15 @@ np.random.seed(0)
 # Generate some data. 
 X,y = make_blobs(10000,12,10) # 10 gaussians in 12 dimensions, 10000 data points
 
-# The HAL constructor has many optional parameters, documentation coming soon
+# The HAL constructor has many optional parameters (documentation coming soon)
 model = HAL(clf_type='svm') # using linear SVMs (fastest) for agglomeration. Other options are 'rf' and 'nb' (random forest, and naive bayes)
 
 # builds model -> will save data in file info_hal
 model.fit(X)
 
-# rendering of results using javascript
-model.plot_tree()
+# rendering of results using javascript (with optional feature naming)
+feature_name = ['feat_%i'%i for i in range(12)]
+model.plot_tree(feature_name = feature_name)
 
 # Now that your model is fitted, can predict on data (either new or old), using a cross-validation score of 0.95
 ypred = model.predict(X, cv=0.95)
