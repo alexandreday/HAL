@@ -41,7 +41,7 @@ d3.json("tree.json", function(error1, treeData) { // read tree data => some info
     var width = chartDiv.clientWidth;
     var height = chartDiv.clientHeight; */
 
-    var width = 1000;// in the future, should set those according to max width and depth of tree
+    var width = 3000;// in the future, should set those according to max width and depth of tree
     var height = 1000; 
 
     // Set the dimensions and margins of the diagram
