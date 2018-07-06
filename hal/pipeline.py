@@ -280,7 +280,7 @@ class HAL():
             feature_name_ = list(range(self.n_feature))
         else:
             assert len(feature_name) == self.n_feature, "Feature name list must have the same number of element as the number of features"
-            feature_name_ = feature_name_
+            feature_name_ = feature_name
 
         self.kNN_graph.tree.plot_tree(Xtsne, self.ypred_init, feature_name_)
         runjs('js/')
