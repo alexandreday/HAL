@@ -3,6 +3,7 @@ import http.server
 import socketserver
 import sys, os, random, string, signal, subprocess
 import time, random, string
+import platform
 
 # run a subprocess to create server
 def random_string(n=50):
@@ -35,7 +36,16 @@ def run_cp_kill():
 
     time.sleep(2.0) # wait for server to launch
     url = "http://localhost:8499/%s"%("index.html".strip(".html") +"_"+ random_tag + ".html")
-    os.system('open %s'%url)
+
+    print('xdgggg')
+    if platform.system() == 'Linux':
+        os.system('xdg-open %s'%url)
+    elif platform.system() == 'Darwin':
+        os.system('open %s'%url)
+    else:
+        print('OS not yet implemented.')
+        raise OSError
+
     time.sleep(2.0)
     os.system('rm %s'%new_tag)
 
