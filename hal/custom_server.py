@@ -37,7 +37,6 @@ def run_cp_kill():
     time.sleep(2.0) # wait for server to launch
     url = "http://localhost:8499/%s"%("index.html".strip(".html") +"_"+ random_tag + ".html")
 
-    print('xdgggg')
     if platform.system() == 'Linux':
         os.system('xdg-open %s'%url)
     elif platform.system() == 'Darwin':
