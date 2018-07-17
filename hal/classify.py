@@ -1,7 +1,7 @@
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import GaussianNB
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import ShuffleSplit
 import numpy as np
 from collections import Counter
 import time
@@ -86,9 +86,13 @@ class CLF:
         assert len(self.y_unique) > 1, "Cluster provided only has a unique label, can't classify !"
         
         dt = 0
-        for _ in range(self.n_bootstrap):
-            
-            xtrain, xtest, ytrain, ytest = self.train_test_split(X, y)
+
+        idx_bootstrap_split = self.idx_train_test_split(y, test_size =self.test_size, n_split=self.n_bootstrap)
+
+        for s in range(self.n_bootstrap):
+            idx_train, idx_test = idx_bootstrap_split[s]
+            xtrain, xtest, ytrain, ytest = X[idx_train], X[idx_test], y[idx_train], y[idx_test] 
+            #= self.train_test_split(X, y)
             
             std = np.std(xtrain, axis = 0)    
             std[std < zero_eps] = 1.0 # get rid of zero variance data.
@@ -199,11 +203,52 @@ class CLF:
         return X[idx_train],X[idx_test],y[idx_train],y[idx_test]
 
 
+    def idx_train_test_split(self, y, test_size = 0.8, n_sample_max = 1000, n_split=1):
+        """ Splitting function of uneven populations (can be extremely unbalanced)
 
+        Split the unique values in y into a training and test set with
+        proportion given by test_size. Also takes into account that for each
+        category in both the training and test set, the number of samples cannot exceed
+        n_sample_max. The number of splits (different folds is specified by n_split)
 
+        """
+        train_size = 1. - test_size
+        y_unique, counts = np.unique(y, return_counts=True)
+        idx_pos = {}
+        class_count = {}
+        for i, yu in enumerate(y_unique):
+            idx_pos[yu] = np.where(y==yu)[0]
+            class_count[yu] = counts[i]
 
+        idx_per_split = [[] for i in range(n_split)]
         
+        for yc in y_unique:
+            n_yc = class_count[yc]
+            if n_yc < 200: # for take as many training samples as possible
+                n_yc_test = min([int(0.5 * n_yc), n_sample_max])
+                n_yc_train = min([int(0.5 * n_yc), n_sample_max])
+            else:
+                n_yc_test = min([int(test_size * n_yc), n_sample_max])
+                n_yc_train = min([int(train_size * n_yc), n_sample_max])
+
+            skf = ShuffleSplit(n_splits=n_split, test_size = n_yc_test, train_size = n_yc_train)
+
+            for split_idx, idx_split in enumerate(skf.split(idx_pos[yc])):
+                p = idx_pos[yc][idx_split[0]], idx_pos[yc][idx_split[1]]
+                idx_per_split[split_idx].append(p)
         
+        idx_per_split_concat = []
+        for i in range(n_split):
+            idx_train=[]
+            idx_test = []
+            for p in idx_per_split[i]:
+                idx_train.append(p[0])
+                idx_test.append(p[1])
+            idx_train=np.concatenate(idx_train)
+            idx_test=np.concatenate(idx_test)
+            
+            np.random.shuffle(idx_train)
+            np.random.shuffle(idx_test)
+            idx_per_split_concat.append([idx_train, idx_test])
 
-
-
+        return idx_per_split_concat
