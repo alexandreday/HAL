@@ -41,7 +41,7 @@ d3.json("tree.json", function(error1, treeData) { // read tree data => some info
     var width = chartDiv.clientWidth;
     var height = chartDiv.clientHeight; */
 
-    var width = 3000;// in the future, should set those according to max width and depth of tree
+    var width = 1000;// in the future, should set those according to max width and depth of tree
     var height = 1000; 
 
     // Set the dimensions and margins of the diagram
@@ -51,7 +51,7 @@ d3.json("tree.json", function(error1, treeData) { // read tree data => some info
 
 
 var svg = d3.select("body #tree")
-    .append("svg").attr("width",1.5*width).attr("height",2.0*height) // the rest of drawing should not exceed this bounding box
+    .append("svg").attr("width",3.5*width).attr("height",2.0*height) // the rest of drawing should not exceed this bounding box
     //.attr("width", width + margin.right + margin.left)
     //.attr("height", height + margin.top + margin.bottom)
     .append("g")
