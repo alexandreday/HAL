@@ -1,5 +1,13 @@
 import os, sys
 import numpy as np
+from decimal import *
+import hashlib
+
+
+def float_to_str(f, prec):
+    rule = "%."+str(prec+1)+"f"
+    s = rule%f
+    return s[:-1]
 
 class FOUT:
     def __init__(self, fname='tmp.txt'):
@@ -30,18 +38,95 @@ def int_fmt(param_name, nbr, max_value = 1000):
 def str_fmt(param_name, my_str, width = 10):
     assert len(my_str)<width, "string parameter is too big"
 
+# When recomputing different steps, should you care about changing parameters ? => not at all steps 
+
+def make_hash_name(param, file=None):
+    if file == "tsne":
+        out = [
+            ['perplexity', float], # how to make this stable ?
+            ['n_iteration_tsne', int],
+            ['alpha_late', float],
+            ['late_exag',int]
+        ]
+        prefix = "tsne"
+    elif file =="fdc":
+        out = [
+            [['file_name','tsne'], str], # how to make this stable ?
+            ['outlier_ratio', float],
+            ['nn_pure_ratio', float],
+            ['min_size_cluster',int],
+            ['nh_size', int],
+            ['eta', float],
+            ['fdc_test_ratio_size',float],
+            ['n_cluster_init',int]
+        ]
+        prefix = "fdc"
+
+    elif file =="kNN_precoarse":
+        out = [
+            [['file_name','fdc'], str], # how to make this stable ?
+            ['clf_test_size_ratio', float],
+            ['clf_type', str],
+            ['n_clf_sample_max',int],
+            ['clf_args', str],
+            ['n_edge_kNN', int]
+        ]
+        prefix = "kNNPRE"
+
+    elif file =="kNN_coarse":
+        out = [
+            [['file_name','kNN_precoarse'], str]
+        ]
+        prefix = "kNN"
+
+    elif file =="hal":
+        out = [
+            [['file_name','kNN_coarse'], str]
+        ]
+        prefix = "hal"
     
-def make_file_name(param):
-    out = [
-        ['perplexity', 'perp',int],
-        ['n_iteration_tsne', 'niter', int],
-        ['outlier_ratio', 'outratio', float],
-        ['nn_pure_ratio', 'pureratio', float],
-        ['min_size_cluster', 'minsize', int],
-        ['nh_size', 'nhsize', int],
-        ['eta', 'eta', float],
-        ['fdc_test_ratio_size', 'testfdcsize', float]
-    ]
+    file_name = prefix
+    info_str = ""
+    for e in out:
+        if type(e[0]) is list:
+            element_name = e[0][1]
+            value = param[e[0][0]][e[0][1]]
+        else:
+            value = param[e[0]]
+            element_name = e[0]
+        Type = e[1]
+
+        if Type is float:
+            info_str += '%s=%s_'%(element_name, float_to_str(value,3))
+        else:
+            info_str += '%s=%s_'%(element_name, str(value))
+
+    print(info_str)
+    return file_name+"_"+hashlib.sha1(info_str.encode('utf-8')).hexdigest()+".pkl"
+    
+def make_file_name(param, type=None):
+    if type is None:
+        out = [
+            ['perplexity', 'perp',int],
+            ['n_iteration_tsne', 'nIterTsne', int],
+            ['outlier_ratio', 'outRatio', float],
+            ['nn_pure_ratio', 'pureRatio', float],
+            ['min_size_cluster', 'minSize', int],
+            ['nh_size', 'nhSize', int],
+            ['eta', 'eta', float],
+            ['fdc_test_ratio_size', 'testFdcSize', float],
+            ['n_edge_kNN','edgekNN',int]
+        ]
+    elif type == "fdc":
+        out = [
+            ['outlier_ratio', 'outRatio', float],
+            ['nn_pure_ratio', 'pureRatio', float],
+            ['min_size_cluster', 'minSize', int],
+            ['nh_size', 'nhSize', int],
+            ['eta', 'eta', float],
+            ['fdc_test_ratio_size', 'testFdcSize', float]
+        ]
+
     info_str = ''
     for e in out:
         v = param[e[0]]
@@ -54,6 +139,7 @@ def make_file_name(param):
             info_str += '%s=%.2f_'%(n, float(v))
 
     return info_str[:-1]
+
 
 def print_param(my_dict):
     for k, v in my_dict.items():

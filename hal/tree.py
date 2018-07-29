@@ -270,6 +270,9 @@ class TREE:
                 scores = np.mean(importance_matrix, axis=0)
                 std_scores = np.std(importance_matrix, axis=0)
                 self.feature_importance_dict[node_id] = [scores, std_scores]
+        else:
+            for node_id, clf in self.clf_dict.items():
+                self.feature_importance_dict[node_id] = [np.ones(X.shape[1]),np.ones(X.shape[1])]
     
     def compute_node_info(self):
 
@@ -289,7 +292,8 @@ class TREE:
             else:
                 node.info['feature_importance'] = self.feature_importance_dict[node_id]
                 node.info['children_id'] = [c.id_ for c in node.child]
- 
+        #print(node.info[)
+
     def feature_path_predict(self, x, cv=0.9):
 
         c_node = self.root

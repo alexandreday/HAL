@@ -37,7 +37,8 @@ class CLF:
         self.y_unique = None
         self.class_count = None
         self.idx_pos = {}
-
+        
+    #@profile
     def fit(self, X, y):
         """ Fit clf to data.
 
@@ -75,7 +76,7 @@ class CLF:
                     self.clf_kwargs['max_features'] = min([X.shape[1],self.clf_kwargs['max_features']])
                 clf = RandomForestClassifier(**self.clf_kwargs)
         elif self.clf_type == 'nb':
-                clf = GaussianNB(**self.clf_kwargs)
+                clf = GaussianNB()#**self.clf_kwargs)
         else:
             assert False
 
@@ -87,8 +88,8 @@ class CLF:
         
         dt = 0
 
-        idx_bootstrap_split = self.idx_train_test_split(y, test_size =self.test_size, n_split=self.n_bootstrap)
-
+        idx_bootstrap_split = self.idx_train_test_split(y, test_size =self.test_size, n_split=self.n_bootstrap, n_sample_max=self.n_sample_max)
+        print(len(idx_bootstrap_split[0][0]),'\t', len(idx_bootstrap_split[0][1]))
         for s in range(self.n_bootstrap):
             idx_train, idx_test = idx_bootstrap_split[s]
             xtrain, xtest, ytrain, ytest = X[idx_train], X[idx_test], y[idx_train], y[idx_test] 
@@ -109,8 +110,9 @@ class CLF:
             
             training_score.append(t_score)
 
-            # predict on test set
-            p_score = clf.score(xtest[:1000], ytest[:1000])
+            # predict on test set # maybe this is a noisy estimate ?
+            # 
+            p_score = clf.score(xtest[:500], ytest[:500])
             predict_score.append(p_score)
 
             clf_list.append(clf)
@@ -203,16 +205,38 @@ class CLF:
         return X[idx_train],X[idx_test],y[idx_train],y[idx_test]
 
 
-    def idx_train_test_split(self, y, test_size = 0.8, n_sample_max = 1000, n_split=1):
-        """ Splitting function of uneven populations (can be extremely unbalanced)
-
+    def idx_train_test_split(self, y, test_size = 0.8, n_sample_max = 1000, n_split=1): 
+        """ 
+        Splitting function of uneven populations (can be extremely unbalanced)
+        
         Split the unique values in y into a training and test set with
         proportion given by test_size. Also takes into account that for each
         category in both the training and test set, the number of samples cannot exceed
-        n_sample_max. The number of splits (different folds is specified by n_split)
+        n_sample_max. This is used to drastically speed-up the error process.
+        The number of splits (different folds is specified by n_split)
 
+        Parameters 
+        -----------
+        y: numpy array (shape = (n_sample))
+            labels to split
+
+        test_size: float (default = 0.8)
+            Ratio size of the test set
+        
+        n_sample_max: int (default = 1000)
+            Maximum number of samples for either the training or test set
+        
+        n_split: int (default = 1)
+            Number of splits to compute.
+
+        Return 
+        -----------
+        idx_per_split_concat: list of lenght n_split
+            Each element of the returned list is [idx_train, idx_test], the location of the training samples and test samples to use
         """
+
         train_size = 1. - test_size
+
         y_unique, counts = np.unique(y, return_counts=True)
         idx_pos = {}
         class_count = {}
@@ -224,18 +248,20 @@ class CLF:
         
         for yc in y_unique:
             n_yc = class_count[yc]
-            if n_yc < 200: # for take as many training samples as possible
+            if n_yc < 200: 
+                # For small clusters take 50/50 splits
                 n_yc_test = min([int(0.5 * n_yc), n_sample_max])
                 n_yc_train = min([int(0.5 * n_yc), n_sample_max])
             else:
+                # For large clusters take specified cluster splits
                 n_yc_test = min([int(test_size * n_yc), n_sample_max])
                 n_yc_train = min([int(train_size * n_yc), n_sample_max])
 
             skf = ShuffleSplit(n_splits=n_split, test_size = n_yc_test, train_size = n_yc_train)
 
-            for split_idx, idx_split in enumerate(skf.split(idx_pos[yc])):
-                p = idx_pos[yc][idx_split[0]], idx_pos[yc][idx_split[1]]
-                idx_per_split[split_idx].append(p)
+            for enum_idx, idx_split in enumerate(skf.split(idx_pos[yc])):
+                p = idx_pos[yc][idx_split[0]], idx_pos[yc][idx_split[1]] # train and test set splits
+                idx_per_split[enum_idx].append(p)
         
         idx_per_split_concat = []
         for i in range(n_split):

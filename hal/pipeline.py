@@ -1,7 +1,7 @@
 from .graph import kNN_Graph
 from .tupledict import TupleDict
 from .tree import TREE
-from .utility import make_file_name, print_param, find_position_idx_center
+from .utility import make_file_name, print_param, find_position_idx_center, make_hash_name
 from .purify import DENSITY_PROFILER
 from .plotjs import runjs
 from .plotting import cluster_w_label
@@ -68,18 +68,18 @@ class HAL():
         n_iteration_tsne =  1000,
         late_exag = 1000, # default is no late  exageration
         tsne_type = 'fft', # default is FFTW t-SNE
-        alpha_late = 2.0,
+        alpha_late = 1.0,
         n_cluster_init = 30,
         seed = 0,
+        warm_start = False,
         nh_size = 40,
         eta = 2.0,
         fdc_test_ratio_size = 0.8,
         run_tSNE = True, # if not True, put in a file name for reading
         plot_inter = False,
         root = "info_hal", # default directory where information will be dumped
-        try_load = True,
         n_jobs = 0, # All available processors will be used
-        n_clf_sample_max = 1000,
+        n_clf_sample_max = 500,
         clf_type = 'svm',
         clf_args = None,
         n_bootstrap = 30,
@@ -109,7 +109,7 @@ class HAL():
         self.fdc_test_ratio_size = fdc_test_ratio_size
         self.n_cluster_init = n_cluster_init
 
-        # kNN graph parameters
+        # kNN graph parameters (=> probably I don't want any of this <=)
         self.clf_test_size_ratio = clf_test_size_ratio
         self.n_bootstrap = n_bootstrap
         self.clf_type = clf_type
@@ -130,25 +130,21 @@ class HAL():
         if not os.path.exists(root):
             os.makedirs(root)
 
-
         if root[-1] != "/":
             root+="/"
 
         self.root = root
         self.tsne = run_tSNE
         self.plot_inter = plot_inter 
-        self.try_load = try_load
-        info_str = make_file_name(self.__dict__)
+        self.warm_start = warm_start
 
         self.file_name = {}
-        self.file_name['kNN'] = quick_name(root, 'kNN', info_str)
-        self.file_name['kNN_tree'] = quick_name(root, 'kNN_tree', info_str)
-        self.file_name['hal_model'] = quick_name(root, 'hal_model', info_str)
-        self.file_name['fdc'] = quick_name(root, 'fdc', info_str)
-        self.file_name['robust'] = quick_name(root, 'robust', info_str)
-        self.file_name['tree'] = quick_name(root, 'tree', info_str)
-        self.file_name['tsne'] = root + 'tsne_perp=%i_niter=%i_alphaLate=%.1f.pkl'%(self.perplexity, self.n_iteration_tsne, self.alpha_late)
-
+        self.file_name['tsne'] = make_hash_name(self.__dict__, file='tsne')
+        self.file_name['fdc'] = make_hash_name(self.__dict__, file='fdc')
+        self.file_name['kNN_precoarse'] = make_hash_name(self.__dict__, file='kNN_precoarse')
+        self.file_name['kNN_coarse'] = make_hash_name(self.__dict__, file='kNN_coarse')
+        self.file_name['hal'] = make_hash_name(self.__dict__, file='hal')
+        
     def fit(self, data):
         """ Clustering and fitting random forest classifier ...
         Processing steps:
@@ -183,7 +179,6 @@ class HAL():
             eta=self.eta,
             test_ratio_size=self.fdc_test_ratio_size,
             n_cluster_init=self.n_cluster_init
-
         )
 
         self.purify(X_tsne)
@@ -207,8 +202,8 @@ class HAL():
 
     def fit_kNN_graph(self, X, ypred):
         # Left it here ... need to update this to run graph clustering
-        if check_exist(self.file_name['kNN']):
-            self.kNN_graph = pickle.load(open(self.file_name['kNN'],'rb'))
+        if check_exist(self.file_name['kNN_precoarse'], self.root) & self.warm_start:
+            self.kNN_graph = pickle.load(open(self.root+self.file_name['kNN_precoarse'],'rb'))
             return self
 
         self.kNN_graph = kNN_Graph(
@@ -222,49 +217,34 @@ class HAL():
         )
 
         self.kNN_graph.fit(X, ypred, n_bootstrap_shallow=5)
-        pickle.dump(self.kNN_graph, open(self.file_name['kNN'],'wb'))
+        pickle.dump(self.kNN_graph, open(self.root+ self.file_name['kNN_precoarse'],'wb'))
         return self
 
     def coarse_grain_kNN_graph(self, X, ypred):
 
-        if check_exist(self.file_name['kNN_tree']):
-            self.ss, self.kNN_graph = pickle.load(open(self.file_name['kNN_tree'],'rb'))
-            """ from .plotting import cluster_w_label
-            #cluster_w_label(self.load('tsne'), self.ypred)
-            #exit()
-            from .classify import CLF
-            test = CLF()
-            pos = (self.ypred == 1) | (self.ypred == 12)
-            test.fit(self.ss.transform(X)[pos], self.ypred[pos])
-            print(test.cv_score)
-            exit() """
-            # after coarse-graining should be able to output kNN graph, right ?
-            
-            #self.plot_kNN_graph(self.load('tsne'))
+        if check_exist(self.file_name['kNN_coarse'], self.root) & self.warm_start:
+            self.ss, self.kNN_graph = pickle.load(open(self.root+self.file_name['kNN_coarse'],'rb'))
         else:
             self.kNN_graph.coarse_grain(X, ypred)
-            pickle.dump([self.ss, self.kNN_graph], open(self.file_name['kNN_tree'],'wb'))
+            pickle.dump([self.ss, self.kNN_graph], open(self.root+ self.file_name['kNN_coarse'],'wb'))
         return self
         
     def construct_model(self, X):
-        if check_exist(self.file_name['hal_model']):
-            self.ss, self.kNN_graph = pickle.load(open(self.file_name['hal_model'],'rb'))
+        if check_exist(self.file_name['hal'], self.root) & self.warm_start:
+            self.ss, self.kNN_graph = pickle.load(open(self.root+self.file_name['hal'],'rb'))
         else:
             self.kNN_graph.build_tree(X, self.ypred_init)
-            pickle.dump([self.ss, self.kNN_graph], open(self.file_name['hal_model'],'wb'))
+            pickle.dump([self.ss, self.kNN_graph], open(self.root+self.file_name['hal'],'wb'))
 
     def load(self, s=None):
         if s is None:
-            self.ss, self.kNN_graph = pickle.load(open(self.file_name['hal_model'],'rb'))
+            self.ss, self.kNN_graph = pickle.load(open(self.root+self.file_name['hal'],'rb'))
         else:
             return pickle.load(open(self.file_name[s],'rb'))
 
     def plot_kNN_graph(self, X_tsne):
         """ Plots kNN graph using plotly package """
         idx_center = find_position_idx_center(X_tsne, self.ypred, np.unique(self.ypred), self.density_cluster.rho)
-        print(idx_center)
-        print(np.unique(self.ypred))
-        exit()
         self.kNN_graph.plot_kNN_graph(idx_center, X=X_tsne)
 
     def predict(self, X, cv=0.5):
@@ -274,7 +254,7 @@ class HAL():
         """ Renders a dashboard with the hierarchical tree
         and bar charts of feature information for each cluster
         """
-        Xtsne = pickle.load(open(self.file_name['tsne'],'rb'))
+        Xtsne = pickle.load(open(self.root+self.file_name['tsne'],'rb'))
         
         if feature_name is None:
             feature_name_ = list(range(self.n_feature))
@@ -289,8 +269,8 @@ class HAL():
         """
         Tries to purify clusters by removing outliers, boundary terms and small clusters
         """
-        if check_exist(self.file_name['fdc']):
-            self.dp_profile = pickle.load(open(self.file_name['fdc'],'rb'))
+        if check_exist(self.file_name['fdc'], self.root) & self.warm_start:
+            self.dp_profile = pickle.load(open(self.root+self.file_name['fdc'],'rb'))
             self.density_cluster = self.dp_profile.density_model
             print_param(self.dp_profile.__dict__)
             self.ypred = self.dp_profile.y
@@ -308,9 +288,10 @@ class HAL():
         print_param(self.dp_profile.__dict__)
 
         self.dp_profile.fit(StandardScaler().fit_transform(X))
+        
         self.ypred = self.dp_profile.y
 
-        pickle.dump(self.dp_profile, open(self.file_name['fdc'],'wb'))
+        pickle.dump(self.dp_profile, open(self.root+ self.file_name['fdc'],'wb'))
 
     def run_tSNE(self, X):
         """
@@ -333,9 +314,9 @@ class HAL():
         print('[pipeline.py]    Running t-SNE for X.shape = (%i,%i)'%X.shape)
     
         tsnefile = self.file_name['tsne']
-
-        if check_exist(tsnefile):
-            return pickle.load(open(tsnefile,'rb'))
+       
+        if check_exist(tsnefile, self.root) & self.warm_start:
+            return pickle.load(open(self.root+tsnefile,'rb'))
         else:
             assert self.tsne_type == 'fft' # for now just use this one
             Xtsne = FItSNE(
@@ -345,7 +326,7 @@ class HAL():
                 perplexity= self.perplexity,
                 rand_seed=self.seed
             )
-            pickle.dump(Xtsne, open(tsnefile,'wb')) # Saving data in with useful name tag
+            pickle.dump(Xtsne, open(self.root+ tsnefile,'wb')) # Saving data in with useful name tag
             print('[HAL]    t-SNE data saved in %s' % tsnefile)
             return Xtsne
     

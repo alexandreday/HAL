@@ -77,6 +77,8 @@ class kNN_Graph:
             clf_args_pre = {'class_weight':'balanced', 'n_estimators': 30, 'max_features': min([X.shape[1],200])}
         elif self.clf_type == 'svm':
             clf_args_pre = {'class_weight':'balanced', 'kernel': 'linear'}
+        elif self.clf_type == "nb":
+            clf_args_pre = {}
         
         info = 'CLF pre-parameters:\t'+("n_bootstrap = %i"%n_bootstrap_shallow)+',clf_args='+str(clf_args_pre)
         self.cout(info)
@@ -195,7 +197,7 @@ class kNN_Graph:
         edges = list(self.edge.keys())
 
         # amongst worst edges -> take the node with the largest gap
-        idx = np.argsort(cv_scores)[:max([int(0.15*len(edges)),15])] # worst edges indices
+        idx = np.argsort(cv_scores)[:10]#(self.n_edge*3)] # worst edges indices
         
         gap = -1
         for i in idx:
@@ -314,7 +316,7 @@ class kNN_Graph:
         pos_subset = np.where((self.y_pred == edge_tuple[0]) | (self.y_pred == edge_tuple[1]))
         
         Xsubset = X[pos_subset] # original space coordinates
-        ysubset = y[pos_subset] # labels
+        ysubset = y[pos_subset] # labels ---
 
         return CLF(clf_type=clf_type, n_bootstrap=n_bootstrap, n_sample_max=n_sample_max, test_size=test_size_ratio, clf_kwargs=clf_args).fit(Xsubset, ysubset)
     
