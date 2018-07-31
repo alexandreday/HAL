@@ -89,7 +89,7 @@ class CLF:
         dt = 0
 
         idx_bootstrap_split = self.idx_train_test_split(y, test_size =self.test_size, n_split=self.n_bootstrap, n_sample_max=self.n_sample_max)
-        print(len(idx_bootstrap_split[0][0]),'\t', len(idx_bootstrap_split[0][1]))
+        #print(len(idx_bootstrap_split[0][0]),'\t', len(idx_bootstrap_split[0][1]))
         for s in range(self.n_bootstrap):
             idx_train, idx_test = idx_bootstrap_split[s]
             xtrain, xtest, ytrain, ytest = X[idx_train], X[idx_test], y[idx_train], y[idx_test] 
@@ -99,7 +99,7 @@ class CLF:
             std[std < zero_eps] = 1.0 # get rid of zero variance data.
             mu, inv_sigma = np.mean(xtrain, axis=0), 1./std
 
-            xtrain = (xtrain - mu)*inv_sigma # zscoring the data 
+            xtrain = (xtrain - mu)*inv_sigma # zscoring the data cd
             xtest = (xtest - mu)*inv_sigma
             s2 = time.time()
             clf.fit(xtrain, ytrain)

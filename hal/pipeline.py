@@ -4,7 +4,6 @@ from .tree import TREE
 from .utility import make_file_name, print_param, find_position_idx_center, make_hash_name
 from .purify import DENSITY_PROFILER
 from .plotjs import runjs
-from .plotting import cluster_w_label
 
 from fdc import FDC
 
@@ -61,9 +60,9 @@ class HAL():
     # {'class_weight':'balanced','n_estimators': 50, 'max_features': min([X_down_sample.shape[1],200])}
 
     def __init__(self,
-        outlier_ratio=0.2,
-        nn_pure_ratio=0.99,
-        min_size_cluster=0,
+        outlier_ratio=0.05,
+        nn_pure_ratio=0.0,
+        min_size_cluster=40,
         perplexity = 40,    
         n_iteration_tsne =  1000,
         late_exag = 1000, # default is no late  exageration
@@ -76,7 +75,6 @@ class HAL():
         eta = 2.0,
         fdc_test_ratio_size = 0.8,
         run_tSNE = True, # if not True, put in a file name for reading
-        plot_inter = False,
         root = "info_hal", # default directory where information will be dumped
         n_jobs = 0, # All available processors will be used
         n_clf_sample_max = 500,
@@ -135,7 +133,6 @@ class HAL():
 
         self.root = root
         self.tsne = run_tSNE
-        self.plot_inter = plot_inter 
         self.warm_start = warm_start
 
         self.file_name = {}
@@ -184,16 +181,10 @@ class HAL():
         self.purify(X_tsne)
         self.dp_profile.describe()
 
-        # plotting intermediate results
-        if self.plot_inter is True:
-            cluster_w_label(X_tsne, self.ypred)
 
         self.ypred_init = np.copy(self.ypred) # important for later
 
         self.fit_kNN_graph(X_zscore, self.ypred)
-
-        if self.plot_inter is True:
-            self.plot_kNN_graph(X_tsne)
 
         self.coarse_grain_kNN_graph(X_zscore, self.ypred) # coarse grain
 
@@ -240,12 +231,7 @@ class HAL():
         if s is None:
             self.ss, self.kNN_graph = pickle.load(open(self.root+self.file_name['hal'],'rb'))
         else:
-            return pickle.load(open(self.file_name[s],'rb'))
-
-    def plot_kNN_graph(self, X_tsne):
-        """ Plots kNN graph using plotly package """
-        idx_center = find_position_idx_center(X_tsne, self.ypred, np.unique(self.ypred), self.density_cluster.rho)
-        self.kNN_graph.plot_kNN_graph(idx_center, X=X_tsne)
+            return pickle.load(open(self.root+self.file_name[s],'rb'))
 
     def predict(self, X, cv=0.5):
         return self.kNN_graph.predict(self.ss.transform(X), cv=cv) # predict on full set !
@@ -332,6 +318,3 @@ class HAL():
     
 def check_exist(file_name, root = ""):
     return os.path.exists(root+file_name)
-
-def quick_name(root, object_name, para, ext=".pkl"):
-    return root + object_name+"_"+para+".pkl"
