@@ -84,11 +84,6 @@ class TREE:
     def fit(self, X, y_pred, n_bootstrap=10): 
         """ Fits hierarchical model"""
 
-        from .plotting import cluster_w_label
-
-        #cluster_w_label(X,y_pred)
-        #exit()
-        
         pos = (y_pred > -1)
         y_unique = np.unique(y_pred[pos]) # fit only on the non-outliers
         idx_subset = np.where(pos)[0]

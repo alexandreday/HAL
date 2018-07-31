@@ -197,7 +197,7 @@ class kNN_Graph:
         edges = list(self.edge.keys())
 
         # amongst worst edges -> take the node with the largest gap
-        idx = np.argsort(cv_scores)[:10]#(self.n_edge*3)] # worst edges indices
+        idx = np.argsort(cv_scores)[:20]#(self.n_edge*3)] # worst edges indices
         
         gap = -1
         for i in idx:
@@ -337,9 +337,9 @@ class kNN_Graph:
         print('Predicting on %i points'%len(X))
         return self.tree.predict(X, cv=cv)
 
-    def plot_kNN_graph(self, idx_pos, X=None, savefile=None):
-        from .plotlygraph import plot_graph
-        plot_graph(self.edge, idx_pos, self.node, X=X, title='k-NN graph', savefile=savefile, n_sample=20000)
+    #def plot_kNN_graph(self, idx_pos, X=None, savefile=None):
+    #    from .plotlygraph import plot_graph
+    #    plot_graph(self.edge, idx_pos, self.node, X=X, title='k-NN graph', savefile=savefile, n_sample=20000)
 
 def edge_info_raw(edge_list, score, cout=print):
     cout("Edges that will be used ...")

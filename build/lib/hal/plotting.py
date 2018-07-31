@@ -97,3 +97,14 @@ def cluster_w_label(X, y, Xcluster=None, show=True, savefile = None, fontsize =1
         plt.close()
         
     return ax
+
+def plot_graph(X_tsne, Aij, node_label, node_center, node_value):
+    return
+    """ def plot_kNN_graph(self, X_tsne):
+        idx_center = find_position_idx_center(X_tsne, self.ypred, np.unique(self.ypred), self.density_cluster.rho)
+        self.kNN_graph.plot_kNN_graph(idx_center, X=X_tsne) """
+        # plotting intermediate results
+        #if self.plot_inter is True:
+        #    cluster_w_label(X_tsne, self.ypred)
+        #if self.plot_inter is True:
+        #    self.plot_kNN_graph(X_tsne)

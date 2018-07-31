@@ -23,6 +23,7 @@ pip install hal-x --upgrade
 ```
 from hal import HAL  # this imports the class HAL() 
 from sklearn.datasets import make_blobs
+import numpy as np
 
 # Setting random seed, in case you want to re-run example but keep saved data in info_hal/ 
 np.random.seed(0)

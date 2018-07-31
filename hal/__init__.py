@@ -1,4 +1,4 @@
-from .plotting import *
+#from .plotting import *
 from .graph import kNN_Graph
 from .tree import TREE
 from .tupledict import TupleDict

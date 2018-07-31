@@ -101,7 +101,7 @@ def make_hash_name(param, file=None):
         else:
             info_str += '%s=%s_'%(element_name, str(value))
 
-    print(info_str)
+    #print(info_str)
     return file_name+"_"+hashlib.sha1(info_str.encode('utf-8')).hexdigest()+".pkl"
     
 def make_file_name(param, type=None):

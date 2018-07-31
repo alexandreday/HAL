@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: hal-x
-Version: 0.83
+Version: 0.86
 Summary: Clustering via hierarchical agglomerative learning
 Home-page: https://alexandreday.github.io/
 Author: Alexandre Day
@@ -31,6 +31,7 @@ Description: # Hierarchical Agglomerative Learning (HAL)
         ```
         from hal import HAL  # this imports the class HAL() 
         from sklearn.datasets import make_blobs
+        import numpy as np
         
         # Setting random seed, in case you want to re-run example but keep saved data in info_hal/ 
         np.random.seed(0)
