@@ -310,7 +310,6 @@ class HAL():
         if check_exist(tsnefile, self.root) & self.warm_start:
             return pickle.load(open(self.root+tsnefile,'rb'))
         else:
-            exit()
             assert self.tsne_type == 'fft' # for now just use this one
             Xtsne = FItSNE(
                 np.ascontiguousarray(X.astype(np.float)),

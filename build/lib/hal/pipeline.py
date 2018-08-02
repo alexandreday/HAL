@@ -28,7 +28,7 @@ class HAL():
     nn_pure_ratio: float (default=0.99)
         Ratio of the neighborhood that has to be in the same cluster to be considered pure
     
-    min_size_cluster: int (default=0)
+    min_size_cluster: int (default=25)
         Minimum size of a cluster
     
     perplexity: float (default=30)
@@ -44,7 +44,7 @@ class HAL():
         Exageration factor used
 
     tsne_type: str (default='fft')
-        Type of t-SNE used (for now only FFT is used)
+        Type of t-SNE used (for now only fft is available)
     
     n_cluster_init: int (default=30)
         Number of initial cluster to start with (approx.)
@@ -52,7 +52,7 @@ class HAL():
     seed : int (default =0)
         Random seed
     
-    nh_size : int (default=40)
+    nh_size : int (default='auto')
         Neighborhood size for density clustering
 
     ...
@@ -62,7 +62,7 @@ class HAL():
     def __init__(self,
         outlier_ratio=0.05,
         nn_pure_ratio=0.0,
-        min_size_cluster=40,
+        min_size_cluster=25,
         perplexity = 40,    
         n_iteration_tsne =  1000,
         late_exag = 1000, # default is no late  exageration
@@ -141,6 +141,9 @@ class HAL():
         self.file_name['kNN_precoarse'] = make_hash_name(self.__dict__, file='kNN_precoarse')
         self.file_name['kNN_coarse'] = make_hash_name(self.__dict__, file='kNN_coarse')
         self.file_name['hal'] = make_hash_name(self.__dict__, file='hal')
+
+        #print(self.file_name)
+        #exit()
         
     def fit(self, data):
         """ Clustering and fitting random forest classifier ...
@@ -233,8 +236,11 @@ class HAL():
         else:
             return pickle.load(open(self.root+self.file_name[s],'rb'))
 
-    def predict(self, X, cv=0.5):
-        return self.kNN_graph.predict(self.ss.transform(X), cv=cv) # predict on full set !
+    def predict(self, X, cv=0.5, zscore=True):
+        if zscore is True:
+            return self.kNN_graph.predict(StandardScaler().fit_transform(X), cv=cv) # predict on full set !
+        else:
+            return self.kNN_graph.predict(X, cv=cv) # predict on full set !
 
     def plot_tree(self, feature_name = None):
         """ Renders a dashboard with the hierarchical tree
