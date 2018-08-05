@@ -1,4 +1,4 @@
-from .graph import kNN_Graph
+from .graph import l
 from .tupledict import TupleDict
 from .tree import TREE
 from .utility import make_file_name, print_param, find_position_idx_center, make_hash_name
@@ -245,13 +245,14 @@ class HAL():
         else:
             return pickle.load(open(self.root+self.file_name[s],'rb'))
 
-    def predict(self, X, cv=0.5, preprocess_option="same", option='fast'):
+    def predict(self, X, cv=0.5, preprocess_option="same", option="fast"):
         if preprocess_option is "same":
             print("Preprocessing with same methods as during training\t", self.preprocess_option)
             X_preprocess = self.preprocess(X, **self.preprocess_option, verbose=False)
         else: # other options could be implemented 
             print("Preprocessing with methods\t", preprocess_option)
             X_preprocess = self.preprocess(X, **preprocess_option, verbose=False)
+        
         return self.kNN_graph.predict(X_preprocess, cv=cv, option=option) # predict on full set !
 
     def preprocess(self, X, whiten=False, zscore = True, verbose=True):

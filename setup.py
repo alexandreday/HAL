@@ -14,7 +14,7 @@ FDC_MIN_VERSION='1.14'
 
 setup(
       name='hal-x',
-      version='0.92',
+      version='0.93',
       description='Clustering via hierarchical agglomerative learning',
       author='Alexandre Day',
       author_email='alexandre.day1@gmail.com',
