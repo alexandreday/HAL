@@ -18,19 +18,19 @@ class MyEncoder(json.JSONEncoder):
 
 class TREENODE:
 
-    def __init__(self, id_ = -1, parent = None, child = None, cv = -1):
+    def __init__(self, id_ = -1, parent = None, child = None, cv_clf = -1):
         if child is None:
             self.child = [] # has to be list of TreeNode
         else:
             self.child = child
-        self.cv_clf = cv
-        self.cv_clf_all = 0 
+        self.cv_clf = cv_clf
+        self.cv_clf_all = -1 
         self.parent = parent
         self.id_ = id_
         self.info = {} # extra information !
 
     def __repr__(self):
-        return ("Node: [%s] @ s = %.3f" % (self.id_,self.cv_clf)) 
+        return ("Node: [%s] @ s = %.3f" % (self.id_,self.cv_clf_all)) 
 
     def is_leaf(self):
         return len(self.child) == 0
@@ -124,15 +124,16 @@ class TREE:
         self.compute_feature_importance_dict(X)
         self.compute_propagate_cv() # full probabilities
 
+        #rint(self.node_dict)
+        #exit()
+
         self.compute_node_info()
         self.find_idx_in_each_node()
 
         return self
         
     def predict(self, X_, cv = 0.9, option='fast'):
-        """
-        Vectorized predictor on the original data points
-        """
+        """Vectorized predictor on the original data points"""
 
         if X_.ndim == 1:
             X = X_.reshape(-1,1)

@@ -179,11 +179,37 @@ def decode():
 
 def parse_command_line(argv):
     """ argv should be sys.argv """
+    
+    param_type = {
+        "nh_size": int,
+        "nn_pure_ratio": float,
+        "outlier_ratio": float,
+        "min_size_cluster":int,
+        "perplexity":int,
+        "n_iteration_tsne":int,
+        "late_exag":int,
+        "alpha_late":float,
+        "n_cluster_init":int,
+        "eta":float,
+        "fdc_test_ratio_size":float,
+        "root":str,
+        "n_clf_sample_max":int,
+        "clf_type":str,
+        "n_bootstrap":str,
+        "clf_test_size_ratio":float,
+        "n_edge_kNN":int
+    }
     parameters = {}
+    
     for arg in argv[1:]:
         param, value = arg.strip(" ").strip("\n").split("=")
-        if any(c.isalpha() for c in value): # must be a boolean input
-            parameters[param] = (value == "True")
+        tmp_type = param_type[param]
+        if tmp_type is int:
+            parameters[param]  = int(float(value))
+        else:
+            parameters[param]  = tmp_type(value)
+    
+    return parameters
         
 def load_json_parameters(file="para.json"):
     if os.path.exists(file):
