@@ -10,11 +10,11 @@ with open("README.md", "r") as fh:
 
 FITSNE_MIN_VERSION = '0.2.5'
 SCIKIT_MIN_VERSION = '0.19'
-FDC_MIN_VERSION='1.12'
+FDC_MIN_VERSION='1.14'
 
 setup(
       name='hal-x',
-      version='0.89',
+      version='0.92',
       description='Clustering via hierarchical agglomerative learning',
       author='Alexandre Day',
       author_email='alexandre.day1@gmail.com',

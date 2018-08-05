@@ -101,9 +101,9 @@ class CLF:
 
             xtrain = (xtrain - mu)*inv_sigma # zscoring the data cd
             xtest = (xtest - mu)*inv_sigma
-            s2 = time.time()
+            #s2 = time.time()
             clf.fit(xtrain, ytrain)
-            dt += (time.time() - s2)
+            #dt += (time.time() - s2)
     
             # predict on train set
             t_score = clf.score(xtrain, ytrain) 
@@ -150,8 +150,6 @@ class CLF:
         for i in range(n_clf):
             clf = self.clf_list[i]
             mu, inv_sigma = self.scaler_list[i]
-            xstandard = inv_sigma*(X-mu)
-
             vote.append(clf.predict(inv_sigma*(X-mu)))
 
         vote = np.vstack(vote).T

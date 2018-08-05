@@ -1,12 +1,9 @@
 from .classify import CLF
 import numpy as np
-import pickle
-import os
-import copy, time
+import pickle, os, copy, time
 from collections import OrderedDict as OD
 from .utility import compute_cluster_stats
 import json
-
 
 class MyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -21,18 +18,19 @@ class MyEncoder(json.JSONEncoder):
 
 class TREENODE:
 
-    def __init__(self, id_ = -1, parent = None, child = None, scale = -1):
+    def __init__(self, id_ = -1, parent = None, child = None, cv = -1):
         if child is None:
             self.child = [] # has to be list of TreeNode
         else:
             self.child = child
-        self.scale = scale
+        self.cv_clf = cv
+        self.cv_clf_all = 0 
         self.parent = parent
         self.id_ = id_
         self.info = {} # extra information !
 
     def __repr__(self):
-        return ("Node: [%s] @ s = %.3f" % (self.id_,self.scale)) 
+        return ("Node: [%s] @ s = %.3f" % (self.id_,self.cv_clf)) 
 
     def is_leaf(self):
         return len(self.child) == 0
@@ -51,8 +49,8 @@ class TREENODE:
         else:
             return [c.id_ for c in self.child]
 
-    def get_scale(self):
-        return self.scale
+    def get_cv(self):
+        return self.cv_clf
 
     def get_id(self):
         return self.id_
@@ -90,7 +88,7 @@ class TREE:
         y_new_tmp = y_unique[-1]+1
 
         clf_root = CLF(clf_type=self.clf_type, n_bootstrap=n_bootstrap, test_size=self.test_size_ratio, clf_kwargs=self.clf_args).fit(X[idx_subset], y_pred[idx_subset])
-        self.root = TREENODE(id_ = y_new_tmp , scale=clf_root.cv_score)
+        self.root = TREENODE(id_ = y_new_tmp , cv_clf=clf_root.cv_score)
     
         # cluster statistics for the root 
         self.cluster_statistics[self.root.get_id()]  = compute_cluster_stats(X[idx_subset], len(y_pred))
@@ -111,7 +109,7 @@ class TREE:
             idx_1, idx_2 = edge
 
             self.clf_dict[y_new] = clf
-            self.node_dict[y_new].scale = clf.cv_score
+            self.node_dict[y_new].cv_clf = clf.cv_score
 
             for idx in edge:
                 c_node = TREENODE(id_ = idx, parent = self.node_dict[y_new])
@@ -122,8 +120,10 @@ class TREE:
 
         # constructs the structures that have the information about the tree 
 
-        ### Left it here ... how to update this thing ?
+        # Use propagated node score
         self.compute_feature_importance_dict(X)
+        self.compute_propagate_cv() # full probabilities
+
         self.compute_node_info()
         self.find_idx_in_each_node()
 
@@ -131,8 +131,7 @@ class TREE:
         
     def predict(self, X_, cv = 0.9, option='fast'):
         """
-        Prediction on the original space data points
-
+        Vectorized predictor on the original data points
         """
 
         if X_.ndim == 1:
@@ -147,14 +146,27 @@ class TREE:
             child = self.node_dict[stack[0].get_id()].child # node list (not integers)
             stack = stack[1:]
             for c in child:
-                if c.scale > cv: # c.scale (unpropagated scores)
+                if c.cv_clf_all > cv: #  (unpropagated scores)
                     stack.append(c)
                     idx = np.where(ypred == c.get_id())[0]
                     if len(idx) > 0:
                         ypred[idx] = self.clf_dict[c.get_id()].predict(X[idx], option=option)
                     
         return ypred
-
+    
+    def possible_clusters(self, cv=0.9):
+        clusters = []
+        stack = [self.root]
+        while stack:
+            child = self.node_dict[stack[0].get_id()].child # node list (not integers)
+            stack = stack[1:]
+            for c in child:
+                if c.cv_clf_all > cv: # (propagated scores)
+                    stack.append(c)
+                else:
+                    clusters.append(c.get_id())
+        return clusters
+                
     """ def compute_f1_score(self, X, node_id, ypred_init):
         # to relabel points according to nodes ... just start from ypred init and apply mergers
         ytmp = np.copy(ypred_init)
@@ -205,7 +217,6 @@ class TREE:
         """ Construct a nested dictionary representing the tree along with principal information
         and exports the nested dictornary in a json file (to be read by javascript program)
         """
-
         
         dashboard_information = {'feature_name':feature_name,'nestedTree':{}}
         
@@ -225,15 +236,17 @@ class TREE:
             f.write(json.dumps({"x":list(Xtsne[:,0]),"y":list(Xtsne[:,1]),"idx":list(map(int,idx))},cls=MyEncoder))
         
     def construct_nested_dict(self, nested_dict, node_id):
-        ## Need a more structured approach here, but for now it's ok 
+        # Constructs a nested dictionary representation of the tree to be exported into a json file 
+
         node = self.node_dict[node_id]
         nested_dict["name"] = str(node_id)
         nested_dict["info"] = "size=%.4f, cv=%.3f"%(self.cluster_statistics[node_id]["ratio"],node.info["cv"])
         nested_dict["median_markers"] = list(node.info["median_marker"]["mu"])
         nested_dict["std_markers"] = list(node.info["median_marker"]["std"])
+
         if node.info["cv"] < 0:
             nested_dict["cv"] = "leaf"
-        elif node.info["cv"] > 0.99:
+        elif node.info["cv"] > 0.999:
             nested_dict["cv"] = "1.0"
         else:
             nested_dict["cv"] = ("%.3f"%node.info["cv"])[1:]
@@ -250,22 +263,23 @@ class TREE:
             return nested_dict
 
     def compute_feature_importance_dict(self, X):
-        """ -> feature importance computation <--  (valid for rf and linear svm) """
+        """ -> feature importance computation <--  (Valid for RF and linear SVM) """
+
         self.feature_importance_dict = {}
 
-        if self.clf_type == "rf": #"Need to use random forest ('rf' option)"
+        if self.clf_type == "rf": # random forest
             for node_id, clf in self.clf_dict.items():
                 importance_matrix = np.vstack([c.feature_importances_ for c in clf.clf_list])
                 scores = np.mean(importance_matrix, axis=0)
                 std_scores = np.std(importance_matrix, axis=0)
                 self.feature_importance_dict[node_id] = [scores, std_scores]
-        elif self.clf_type == "svm":
+        elif self.clf_type == "svm": # need to add options here for other kernels
             for node_id, clf in self.clf_dict.items():
                 importance_matrix = np.vstack([c.coef_ for c in clf.clf_list]) # linear weights ... 
                 scores = np.mean(importance_matrix, axis=0)
                 std_scores = np.std(importance_matrix, axis=0)
                 self.feature_importance_dict[node_id] = [scores, std_scores]
-        else:
+        else: 
             for node_id, clf in self.clf_dict.items():
                 self.feature_importance_dict[node_id] = [np.ones(X.shape[1]),np.ones(X.shape[1])]
     
@@ -274,7 +288,7 @@ class TREE:
         for node_id, node in self.node_dict.items():
 
             node.info = {
-                'cv': node.scale, # need to update this to reflect the fact that depth propagates errors
+                'cv': node.cv_clf_all, # need to update this to reflect the fact that depth propagates errors
                 'leaf': (len(node.child) == 0),
                 'name': node_id,
                 'extra': [],
@@ -289,18 +303,28 @@ class TREE:
                 node.info['children_id'] = [c.id_ for c in node.child]
         #print(node.info[)
 
-    def feature_path_predict(self, x, cv=0.9):
+    def compute_propagate_cv(self):
+        """ Computes actually probabilities taken into account all compounded errors """
+        for node_id, node in self.node_dict.items():
+            if len(node.child) != 0: # all clf nodes (excludes leaves)
+                propagate_score = node.cv_clf
+                tmp_node = node
+                while tmp_node.parent != None: # reached the root
+                    tmp_node = tmp_node.parent
+                    propagate_score*= tmp_node.cv_clf
+                node.cv_clf_all = propagate_score
 
+    def feature_path_predict(self, x, cv=0.9):
         c_node = self.root
         feature_important = []
         c_node = self.root
-        score = c_node.scale
+        score = c_node.cv_clf
 
         while score > cv :
             new_id = self.clf_dict[c_node.get_id()].predict([x], option='fast')
             feature_important.append(self.clf_dict[c_node.get_id()].feature_importance())
             c_node = self.node_dict[new_id[0]]
-            score = c_node.scale
+            score = c_node.cv_clf
 
         return c_node.parent.get_id(), feature_important
         
@@ -367,12 +391,6 @@ def float_equal(a,b,eps = 1e-6):
         return True
     return False
 
-
-def get_scale(Z, c_1, c_2):
-    for z in Z:
-        if (z[0],z[1]) == (c_1,c_2) or (z[0],z[1]) == (c_2,c_1):
-            return z[2]
-    return -1
         
 def breath_first_search(root):
     """

@@ -1,7 +1,7 @@
 import os, sys
 import numpy as np
-from decimal import *
 import hashlib
+import json
 
 
 def float_to_str(f, prec):
@@ -46,7 +46,9 @@ def make_hash_name(param, file=None):
             ['perplexity', float], # how to make this stable ?
             ['n_iteration_tsne', int],
             ['alpha_late', float],
-            ['late_exag',int]
+            ['late_exag',int],
+            [['preprocess_option',"whiten"],str],
+            [['preprocess_option',"zscore"],str]
         ]
         prefix = "tsne"
     elif file =="fdc":
@@ -146,19 +148,22 @@ def print_param(my_dict):
         print("[HAL] {0:<20s}{1:<4s}{2:<20s}".format(str(k),":",str(v)))
     print('\n')
 
-def find_position_idx_center(X_tsne, ypred, idx_center, rho):
+def find_position_idx_center(X_tsne, ypred, unique_cluster_label, rho):
     """
     Returns dict of idx_center to cartesian Xtsne coordinates
     """
     assert len(X_tsne) == len(ypred)
 
-    idx_center_pos = {}
-    for idx in idx_center:
+    X_center = []
+    for idx in unique_cluster_label:
         pos = np.where(ypred == idx)[0]
-        pos_center = np.argmax(rho[pos])
-        idx_center_pos[idx] = X_tsne[pos[pos_center]]
+        a=X_tsne[pos]
+        b=np.exp(rho[pos]).flatten()
+        X_center.append(np.sum((a.T*b).T, axis=0)/np.sum(b))
+        #pos_center = np.argmax(rho[pos])
+        #X_center.append(X_tsne[pos[pos_center]])
 
-    return idx_center_pos
+    return np.vstack(X_center) # ---> 
 
 def decode():
     file_name = sys.argv[1]
@@ -172,3 +177,17 @@ def decode():
     print(param_dict)
     return param_dict
 
+def parse_command_line(argv):
+    """ argv should be sys.argv """
+    parameters = {}
+    for arg in argv[1:]:
+        param, value = arg.strip(" ").strip("\n").split("=")
+        if any(c.isalpha() for c in value): # must be a boolean input
+            parameters[param] = (value == "True")
+        
+def load_json_parameters(file="para.json"):
+    if os.path.exists(file):
+        param = json.load(open(file,'r'))
+    else:
+        param = {}
+    return param

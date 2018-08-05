@@ -197,7 +197,7 @@ class kNN_Graph:
         edges = list(self.edge.keys())
 
         # amongst worst edges -> take the node with the largest gap
-        idx = np.argsort(cv_scores)[:20]#(self.n_edge*3)] # worst edges indices
+        idx = np.argsort(cv_scores)[:10]#(self.n_edge*3)] # worst edges indices
         
         gap = -1
         for i in idx:
@@ -333,9 +333,9 @@ class kNN_Graph:
         self.tree = TREE(self.merger_history,self.cluster_statistics,self.clf_type,self.clf_args, ypred_init, test_size_ratio=self.test_size_ratio)
         self.tree.fit(X, self.y_pred)
 
-    def predict(self, X, cv=0.5):
+    def predict(self, X, cv=0.5, option="fast"):
         print('Predicting on %i points'%len(X))
-        return self.tree.predict(X, cv=cv)
+        return self.tree.predict(X, cv=cv, option=option)
 
     #def plot_kNN_graph(self, idx_pos, X=None, savefile=None):
     #    from .plotlygraph import plot_graph

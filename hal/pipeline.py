@@ -8,7 +8,7 @@ from .plotjs import runjs
 from fdc import FDC
 
 from fitsne import FItSNE
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import RobustScaler
 
 from collections import Counter
 import numpy as np
@@ -63,15 +63,16 @@ class HAL():
         outlier_ratio=0.05,
         nn_pure_ratio=0.0,
         min_size_cluster=25,
+        preprocess_option=None,
         perplexity = 40,    
         n_iteration_tsne =  1000,
         late_exag = 1000, # default is no late  exageration
         tsne_type = 'fft', # default is FFTW t-SNE
-        alpha_late = 1.0,
+        alpha_late = 2.0,
         n_cluster_init = 30,
         seed = 0,
         warm_start = False,
-        nh_size = 40,
+        nh_size = "auto",
         eta = 2.0,
         fdc_test_ratio_size = 0.8,
         run_tSNE = True, # if not True, put in a file name for reading
@@ -85,7 +86,16 @@ class HAL():
         n_edge_kNN = 4,
         verbose = 1
     ):
-        
+        # Preprocessing:
+        if preprocess_option is None:
+            self.preprocess_option={"whiten":False,"zscore":True}
+        else:
+            self.preprocess_option = preprocess_option
+            if "whiten" not in self.preprocess_option.keys():
+                self.preprocess_option["whiten"]=False
+            if "zscore" not in self.preprocess_option.keys():
+                self.preprocess_option["zscore"]=True
+            
         # t-SNE parameters
         self.perplexity = perplexity
         self.n_iteration_tsne = n_iteration_tsne
@@ -142,9 +152,7 @@ class HAL():
         self.file_name['kNN_coarse'] = make_hash_name(self.__dict__, file='kNN_coarse')
         self.file_name['hal'] = make_hash_name(self.__dict__, file='hal')
 
-        #print(self.file_name)
-        #exit()
-        
+
     def fit(self, data):
         """ Clustering and fitting random forest classifier ...
         Processing steps:
@@ -155,24 +163,23 @@ class HAL():
             5. fit random forest, and coarse-grain, until desired level
             6. predict on data given cv score
 
-        Returns
-        -------
-        tree classifier, zscore scaler
+        Returns:
+
+        self
         """
 
         """ if clf_args is None:
             clf_args = {'class_weight':'balanced','n_estimators': 50, 'max_features': min([data.shape[1],200])} """
 
         np.random.seed(self.seed)
-        
-        # Standardizes data -> important for cross-sample classification
-        self.ss = StandardScaler()
+
         self.n_feature = data.shape[1]
-        X_zscore = self.ss.fit_transform(data)
+
+        X_preprocess = self.preprocess(data, **self.preprocess_option)
 
         # run t-SNE
-        X_tsne = self.run_tSNE(X_zscore)
-        
+        X_tsne = self.run_tSNE(X_preprocess)
+   
         # purifies clusters
         self.density_cluster = FDC(
             nh_size=self.nh_size,
@@ -182,16 +189,18 @@ class HAL():
         )
 
         self.purify(X_tsne)
-        self.dp_profile.describe()
 
+        self.dp_profile.describe()
 
         self.ypred_init = np.copy(self.ypred) # important for later
 
-        self.fit_kNN_graph(X_zscore, self.ypred)
+        self.fit_kNN_graph(X_preprocess, self.ypred)
 
-        self.coarse_grain_kNN_graph(X_zscore, self.ypred) # coarse grain
+        self.coarse_grain_kNN_graph(X_preprocess, self.ypred) # coarse grain
 
-        self.construct_model(X_zscore) # links all classifiers together in a hierarchical model
+        self.construct_model(X_preprocess) # links all classifiers together in a hierarchical model
+
+        return self
 
 
     def fit_kNN_graph(self, X, ypred):
@@ -217,30 +226,54 @@ class HAL():
     def coarse_grain_kNN_graph(self, X, ypred):
 
         if check_exist(self.file_name['kNN_coarse'], self.root) & self.warm_start:
-            self.ss, self.kNN_graph = pickle.load(open(self.root+self.file_name['kNN_coarse'],'rb'))
+            self.kNN_graph = pickle.load(open(self.root+self.file_name['kNN_coarse'],'rb'))
         else:
             self.kNN_graph.coarse_grain(X, ypred)
-            pickle.dump([self.ss, self.kNN_graph], open(self.root+ self.file_name['kNN_coarse'],'wb'))
+            pickle.dump(self.kNN_graph, open(self.root+ self.file_name['kNN_coarse'],'wb'))
         return self
         
     def construct_model(self, X):
         if check_exist(self.file_name['hal'], self.root) & self.warm_start:
-            self.ss, self.kNN_graph = pickle.load(open(self.root+self.file_name['hal'],'rb'))
+            self.kNN_graph = pickle.load(open(self.root+self.file_name['hal'],'rb'))
         else:
             self.kNN_graph.build_tree(X, self.ypred_init)
-            pickle.dump([self.ss, self.kNN_graph], open(self.root+self.file_name['hal'],'wb'))
+            pickle.dump(self.kNN_graph, open(self.root+self.file_name['hal'],'wb'))
 
     def load(self, s=None):
         if s is None:
-            self.ss, self.kNN_graph = pickle.load(open(self.root+self.file_name['hal'],'rb'))
+            self.kNN_graph = pickle.load(open(self.root+self.file_name['hal'],'rb'))
         else:
             return pickle.load(open(self.root+self.file_name[s],'rb'))
 
-    def predict(self, X, cv=0.5, zscore=True):
+    def predict(self, X, cv=0.5, preprocess_option="same", option='fast'):
+        if preprocess_option is "same":
+            print("Preprocessing with same methods as during training\t", self.preprocess_option)
+            X_preprocess = self.preprocess(X, **self.preprocess_option, verbose=False)
+        else: # other options could be implemented 
+            print("Preprocessing with methods\t", preprocess_option)
+            X_preprocess = self.preprocess(X, **preprocess_option, verbose=False)
+        return self.kNN_graph.predict(X_preprocess, cv=cv, option=option) # predict on full set !
+
+    def preprocess(self, X, whiten=False, zscore = True, verbose=True):
+        if verbose:
+            print("Preprocessing data, whiten = %s, zscore = %s"%(str(whiten), str(zscore)))
+        X_tmp = X
+        from sklearn.decomposition import PCA
+        if whiten is True:
+            X_tmp = PCA(whiten=True).fit_transform(X)
         if zscore is True:
-            return self.kNN_graph.predict(StandardScaler().fit_transform(X), cv=cv) # predict on full set !
-        else:
-            return self.kNN_graph.predict(X, cv=cv) # predict on full set !
+            X_tmp = RobustScaler().fit_transform(X_tmp)
+        return X_tmp
+
+    def possible_clusters(self, cv):
+        return np.sort(self.kNN_graph.tree.possible_clusters(cv=cv))
+
+    def feature_importance(self, cluster_idx):
+        p_id = self.kNN_graph.tree.node_dict[cluster_idx].parent.get_id()
+        return self.kNN_graph.tree.feature_importance_dict[p_id]
+    
+    def feature_median(self, cluster_idx):
+        return self.kNN_graph.tree.node_dict['median_marker']['mu']
 
     def plot_tree(self, feature_name = None):
         """ Renders a dashboard with the hierarchical tree
@@ -257,6 +290,14 @@ class HAL():
         self.kNN_graph.tree.plot_tree(Xtsne, self.ypred_init, feature_name_)
         runjs('js/')
 
+    def cluster_w_label(self, X_tsne, y, rho=None, **kwargs):
+        from .plotting import cluster_w_label
+        if rho =="auto":
+            idx_center = find_position_idx_center(X_tsne, y, np.unique(y), self.density_cluster.rho)
+            cluster_w_label(X_tsne, y, idx_center, **kwargs)
+        else:
+            cluster_w_label(X_tsne, y,  *kwargs)
+        
     def purify(self, X):
         """
         Tries to purify clusters by removing outliers, boundary terms and small clusters
@@ -279,9 +320,14 @@ class HAL():
         )
         print_param(self.dp_profile.__dict__)
 
-        self.dp_profile.fit(StandardScaler().fit_transform(X))
+        self.dp_profile.fit(RobustScaler().fit_transform(X))
         
         self.ypred = self.dp_profile.y
+
+        del self.dp_profile.density_model.nn_dist # No need to save this ..., can always be recomputed extremely fast
+        del self.dp_profile.density_model.nn_list
+        del self.dp_profile.density_model.density_model
+        del self.dp_profile.density_model.density_graph
 
         pickle.dump(self.dp_profile, open(self.root+ self.file_name['fdc'],'wb'))
 

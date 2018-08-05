@@ -6,7 +6,7 @@ Created on Jan 16, 2017
 
 import numpy as np
 import matplotlib as mpl
-mpl.use('TkAgg') # makes it better, so doesn't have to deal with framework, etc.
+#mpl.use('TkAgg') # makes it better, so doesn't have to deal with framework, etc.
 from matplotlib import pyplot as plt
 
 import matplotlib.patheffects as PathEffects
@@ -39,14 +39,11 @@ def cluster_w_label(X, y, Xcluster=None, show=True, savefile = None, fontsize =1
     for i, yu in enumerate(y_unique):
         pos=(y==yu)
         Xsub = X[pos]
-        plt.scatter(Xsub[:,0], Xsub[:,1],c=palette[i], s=psize, alpha=alpha, edgecolors=edgecolors, label = yu)
+        plt.scatter(Xsub[:,0], Xsub[:,1], c=palette[i], s=psize, alpha=alpha, edgecolors=edgecolors, label = yu)
         
-        if Xcluster is not None:
-            Xmean = Xcluster[i]
-        else:
+        if Xcluster is None:
             Xmean = np.mean(Xsub, axis=0)
-        #Xmean = np.mean(Xsub,axis=0)
-        idx_centers.append(all_idx[pos][np.argmin(np.linalg.norm(Xsub - Xmean, axis=1))])
+            idx_centers.append(all_idx[pos][np.argmin(np.linalg.norm(Xsub - Xmean, axis=1))])
 
     if outlier is True:
         color_out = {-3 : '#ff0050', -2 : '#9eff49', -1 : '#89f9ff'}
@@ -58,12 +55,15 @@ def cluster_w_label(X, y, Xcluster=None, show=True, savefile = None, fontsize =1
             
 
     if w_label is True:
-        centers = X[idx_centers]
+        if Xcluster is not None:
+            centers = Xcluster
+        else:
+            centers = X[idx_centers]
         for xy, i in zip(centers, y_unique) :
             # Position of each label.
             txt = ax.annotate(str(i),xy,
             xytext=(0,0), textcoords='offset points',
-            fontsize=fontsize,horizontalalignment='center', verticalalignment='center'
+            fontsize=fontsize,horizontalalignment='left', verticalalignment='left'
             )
             txt.set_path_effects([
                 PathEffects.Stroke(linewidth=5, foreground="w"),
