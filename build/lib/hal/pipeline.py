@@ -1,4 +1,4 @@
-from .graph import l
+from .graph import kNN_Graph
 from .tupledict import TupleDict
 from .tree import TREE
 from .utility import make_file_name, print_param, find_position_idx_center, make_hash_name
