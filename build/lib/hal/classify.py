@@ -73,7 +73,7 @@ class CLF:
                 clf = SVC(**self.clf_kwargs)
         elif self.clf_type == 'rf':
                 if 'max_features' not in self.clf_kwargs.keys():
-                    self.clf_kwargs['max_features'] = min([X.shape[1],self.clf_kwargs['max_features']])
+                    self.clf_kwargs['max_features'] = min([X.shape[1], 200])
                 clf = RandomForestClassifier(**self.clf_kwargs)
         elif self.clf_type == 'nb':
                 clf = GaussianNB()#**self.clf_kwargs)

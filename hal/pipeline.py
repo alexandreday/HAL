@@ -77,7 +77,7 @@ class HAL():
         fdc_test_ratio_size = 0.8,
         run_tSNE = True, # if not True, put in a file name for reading
         root = "info_hal", # default directory where information will be dumped
-        n_jobs = 0, # All available processors will be used
+        n_job = "auto", # All available processors will be used
         n_clf_sample_max = 500,
         clf_type = 'svm',
         clf_args = None,
@@ -99,13 +99,13 @@ class HAL():
         # t-SNE parameters
         self.perplexity = perplexity
         self.n_iteration_tsne = n_iteration_tsne
-        self.n_jobs = n_jobs
         self.tsne_type = tsne_type
 
         self.late_exag = late_exag
         self.alpha_late = alpha_late
 
         # Purification parameters 
+        self.n_job = n_job
         self.outlier_ratio = outlier_ratio
         self.nn_pure_ratio = nn_pure_ratio
         self.min_size_cluster = min_size_cluster
@@ -185,7 +185,8 @@ class HAL():
             nh_size=self.nh_size,
             eta=self.eta,
             test_ratio_size=self.fdc_test_ratio_size,
-            n_cluster_init=self.n_cluster_init
+            n_cluster_init=self.n_cluster_init,
+            n_job=self.n_job
         )
 
         self.purify(X_tsne)
