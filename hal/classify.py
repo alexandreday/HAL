@@ -121,9 +121,10 @@ class CLF:
         self.scaler_list = xtrain_scaler_list # scaling transformations (zero mean, unit std)
         self.cv_score = np.mean(predict_score)
         self.cv_score_std = np.std(predict_score)  
+        self.cv_score_median = np.median(predict_score)
         self.mean_train_score = np.mean(training_score)
         self.std_train_score = np.std(training_score)
-        self.clf_list = clf_list # classifier list for majority voting !
+        self.clf_list = clf_list # > > classifier list for majority voting !
         self.n_sample_ = len(y)
         self.idx_pos.clear()
 

@@ -144,6 +144,7 @@ class HAL():
         self.root = root
         self.tsne = run_tSNE
         self.warm_start = warm_start
+        self.compute_process=[True]*6
 
         self.file_name = {}
         self.file_name['tsne'] = make_hash_name(self.__dict__, file='tsne')
@@ -152,7 +153,7 @@ class HAL():
         self.file_name['kNN_coarse'] = make_hash_name(self.__dict__, file='kNN_coarse')
         self.file_name['hal'] = make_hash_name(self.__dict__, file='hal')
 
-
+        
     def fit(self, data):
         """ Clustering and fitting random forest classifier ...
         Processing steps:
@@ -175,10 +176,12 @@ class HAL():
 
         self.n_feature = data.shape[1]
 
-        X_preprocess = self.preprocess(data, **self.preprocess_option)
+        if self.compute_process[0]:
+            X_preprocess = self.preprocess(data, **self.preprocess_option)
 
         # run t-SNE
-        X_tsne = self.run_tSNE(X_preprocess)
+        if self.compute_process[1]:
+            X_tsne = self.run_tSNE(X_preprocess)
    
         # purifies clusters
         self.density_cluster = FDC(
@@ -189,17 +192,19 @@ class HAL():
             n_job=self.n_job
         )
 
-        self.purify(X_tsne)
+        if self.compute_process[2]:
+            self.purify(X_tsne)
+            self.dp_profile.describe()
+            self.ypred_init = np.copy(self.ypred) # important for later
 
-        self.dp_profile.describe()
+        if self.compute_process[3]:
+            self.fit_kNN_graph(X_preprocess, self.ypred)
+        
+        if self.compute_process[4]:
+            self.coarse_grain_kNN_graph(X_preprocess, self.ypred) # coarse grain
 
-        self.ypred_init = np.copy(self.ypred) # important for later
-
-        self.fit_kNN_graph(X_preprocess, self.ypred)
-
-        self.coarse_grain_kNN_graph(X_preprocess, self.ypred) # coarse grain
-
-        self.construct_model(X_preprocess) # links all classifiers together in a hierarchical model
+        if self.compute_process[5]:
+            self.construct_model(X_preprocess) # links all classifiers together in a hierarchical model
 
         return self
 
