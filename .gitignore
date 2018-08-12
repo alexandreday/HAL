@@ -9,7 +9,6 @@ example
 *.DS*
 vac/__pycache__*
 test*
-dev/*
 MNIST/*
 BIO_examples/*
 testing/*
