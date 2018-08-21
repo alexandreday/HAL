@@ -12,15 +12,21 @@ from .utility import FOUT, compute_cluster_stats
 
 class SINGLE_EDGE:
 
-    def __init__(self, i, j, score, score_error):
+    def __init__(self, i, j, clf):
         self.edge = (i, j)
-        self.score = score
-        self.score_error = score_error
+        self.score = clf.cv_score
+        self.score_median = clf.cv_score_median
+        self.score_error = clf.cv_score_std
+        self.score_error_iqr = clf.cv_score_iqr
     
     def LCB(self):
         # Lower confidence bound
         return self.score - self.score_error
-
+    
+    def LCB_robust(self):
+        return self.score_median - self.score_error_iqr
+    
+    
 class kNN_Graph:
     """ Validation graph class - builds a graph with nodes corresponding
     to clusters and draws edges between clusters that have a low validation score
@@ -54,7 +60,7 @@ class kNN_Graph:
         self.clf_type = clf_type
         self.n_sample_max = n_sample_max
         self.recomputed = False
-
+    
         if clf_args is None:
             if clf_type == 'svm':
                 self.clf_args = {'kernel':'linear','class_weight':'balanced'}
@@ -65,12 +71,13 @@ class kNN_Graph:
 
         self.fout = None#/FOUT('out.txt')
         self.n_edge = n_edge
-        self.gap_min = 0.01
+        self.gap_min = 0.01 # self-consistent way of determining this ?
+        self.gap_option = "standard"
         self.y_murky = y_murky
         self.cluster_statistics = {} # node_id to median markers ... should be part of graph stuff ?
         self.merger_history = []
         self.cout = graph_cout if verbose is 1 else lambda *a, **k: None
-        print(self.__dict__)
+        print("kNN-graph options:", self.__dict__)
         
     def fit(self, X, y_pred, n_bootstrap_shallow = 5):  
         """ Constructs a low connectivity graph by joining clusters that have low edge scores.
@@ -197,7 +204,7 @@ class kNN_Graph:
             nn_yu = self.graph.get_nn(yu)
             for nn in nn_yu:
                 clf = self.graph[(yu, nn)]
-                self.edge_graph[(yu, nn)] = SINGLE_EDGE(yu, nn, clf.cv_score_median, clf.cv_score_std)
+                self.edge_graph[(yu, nn)] = SINGLE_EDGE(yu, nn, clf)
 
     def compute_node_score(self):
         # Computes edge 
@@ -209,23 +216,26 @@ class kNN_Graph:
             nn_idx_from_yu = list(self.edge_graph.get_nn(yu))
             edge_score_from_yu = []
             for nn in nn_idx_from_yu:
-                edge_score_from_yu.append(self.edge_graph[(yu,nn)].LCB())
+                edge_score_from_yu.append(self.edge_graph[(yu,nn)].LCB_robust())
         
             if len(edge_score_from_yu) > 1:
                 asort=np.argsort(edge_score_from_yu)
                 nn_from_yu = nn_idx_from_yu[asort[0]]
                 nn2_from_yu = nn_idx_from_yu[asort[1]]
 
-                gap = self.edge_graph[(yu, nn2_from_yu)].score - self.edge_graph[(yu, nn_from_yu)].score
-                gap_error = self.edge_graph[(yu, nn2_from_yu)].score_error + self.edge_graph[(yu,nn_from_yu)].score_error
+                gap = self.edge_graph[(yu, nn2_from_yu)].score_median - self.edge_graph[(yu, nn_from_yu)].score_median
+                gap_error = self.edge_graph[(yu, nn2_from_yu)].score_error_iqr + self.edge_graph[(yu,nn_from_yu)].score_error_iqr
                 gap_error_prop = gap - gap_error
-                gap_LCB = self.edge_graph[(yu, nn2_from_yu)].LCB() - self.edge_graph[(yu, nn_from_yu)].LCB() # -> seems better behaved ?
+                gap_LCB = self.edge_graph[(yu, nn2_from_yu)].LCB_robust() - self.edge_graph[(yu, nn_from_yu)].LCB_robust() # -> seems better behaved ?
 
             else: # what to do if you have only one edge left ?
                 gap_LCB = -1
+                gap_error_prop = -1
 
-            self.node[yu] = gap_LCB
-        #print(self.node)
+            if self.gap_option is "standard":
+                self.node[yu] = gap_LCB
+            else:
+                self.node[yu] = gap_error_prop
 
     def find_next_merger(self):
         """ Finds the edge that should be merged next based on node score (gap)
@@ -237,13 +247,14 @@ class kNN_Graph:
         """
         #node_list, cv_scores = list(self.node.keys()), list(self.node.values())
 
-        tmp = [[k, v.LCB()] for k,v in self.edge_graph.items()]
+        tmp = [[k, v.LCB_robust()] for k,v in self.edge_graph.items()]
         edge_tuples = np.array(tmp)[:,0]
         edge_scores = np.array(tmp)[:,1]
+        n_edge_current = len(tmp)
         #edge_tuples = list(self.edge_graph.keys())
 
         # amongst worst edges -> take the node with the largest gap
-        idx = np.argsort(edge_scores)[:20]#(self.n_edge*3)] # worst edges indices
+        idx = np.argsort(edge_scores)[:max([15, int(0.1*n_edge_current)])] #(self.n_edge*3)] # worst edges indices
 
         # Step 1. Find largest gap, loop over nodes.
         gap = -1
@@ -255,12 +266,13 @@ class kNN_Graph:
 
         # Step 2, merges nodes connected to node with largest gap !
 
-        nn_idx_from_node = list(self.edge_graph.get_nn(node))
-        edge_score_from_node = []
-        edge_error_score_from_node = []
+        gap_array, idx_argsort, nn_idx_from_node, edge_score_from_node = self.compute_gaps(node)
+        
+        """ #, nn_idx_from_node)
 
         for nn in nn_idx_from_node:
-            edge_score_from_node.append(self.edge_graph[(node ,nn)].score)
+
+            edge_score_from_node.append(self.edge_graph[(node ,nn)].score_median)
             edge_error_score_from_node.append(self.edge_graph[(node ,nn)].score_error)
 
         edge_score_from_node=np.array(edge_score_from_node)
@@ -270,20 +282,50 @@ class kNN_Graph:
         #------------- interchangeable lines ------------
         asort = np.argsort(edge_LCB)
         gap_array = np.diff(edge_LCB[asort]) # don't forget to sort first, (worst edges merged first) 
-        #################################################
+        ################################################# """
 
         gap_merge = 0
         hyper_edge_to_merge = [node]
         score_edge = []
+
         for i_, gap_ in enumerate(gap_array):
-            node_idx = nn_idx_from_node[asort[i_]]
+            node_idx = nn_idx_from_node[idx_argsort[i_]]
             hyper_edge_to_merge.append(node_idx)
-            score_edge.append(edge_score_from_node[asort[i_]])
+            score_edge.append(edge_score_from_node[idx_argsort[i_]])
             gap_merge += gap_
             if gap_merge > self.gap_min:
                 break
                 
         return hyper_edge_to_merge, score_edge, gap_merge
+    
+    def compute_gaps(self, node):
+
+        nn_idx_from_node = list(self.edge_graph.get_nn(node))
+        
+        edge_score = [] 
+        edge_error = []
+
+        for nn in nn_idx_from_node:
+
+            """ if self.gap_option is "standard":
+                edge_score.append(self.edge_graph[(node ,nn)].LCB())
+                edge_error.append(self.edge_graph[(node ,nn)].score_error)
+            else: """
+            edge_score.append(self.edge_graph[(node ,nn)].LCB_robust())
+            edge_error.append(self.edge_graph[(node ,nn)].score_error_iqr)
+        
+        edge_score=np.array(edge_score)
+        edge_error=np.array(edge_error)
+
+        asort = np.argsort(edge_score)
+        gap_array = np.diff(edge_score[asort])
+        gap_errors = edge_error[asort][:-1]+edge_error[asort][1:]
+
+        if self.gap_option is "standard":
+            return gap_array, asort, nn_idx_from_node, edge_score
+        else:
+            return gap_array-gap_errors, asort, nn_idx_from_node, edge_score
+
 
     def merge_edge(self, edge_tuple, X, y_pred):
 
