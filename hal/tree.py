@@ -106,8 +106,7 @@ class TREE:
 
         # building full tree here
         for edge, y_new, clf in reversed(self.merge_history):
-            idx_1, idx_2 = edge
-
+            
             self.clf_dict[y_new] = clf
             self.node_dict[y_new].cv_clf = clf.cv_score
 

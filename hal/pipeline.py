@@ -176,12 +176,12 @@ class HAL():
 
         self.n_feature = data.shape[1]
 
-        if self.compute_process[0]:
+        if self.compute_process[0]: # standardized data for training
             X_preprocess = self.preprocess(data, **self.preprocess_option)
 
         # run t-SNE
-        if self.compute_process[1]:
-            X_tsne = self.run_tSNE(X_preprocess)
+        if self.compute_process[1]: # when running t-SNE, use raw data, it's to the user to provide his data in a correct format.
+            X_tsne = self.run_tSNE(data)
    
         # purifies clusters
         self.density_cluster = FDC(

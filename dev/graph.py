@@ -65,7 +65,7 @@ class kNN_Graph:
 
         self.fout = None#/FOUT('out.txt')
         self.n_edge = n_edge
-        self.gap_min = 0.005
+        self.gap_min = 0.01
         self.y_murky = y_murky
         self.cluster_statistics = {} # node_id to median markers ... should be part of graph stuff ?
         self.merger_history = []
@@ -243,7 +243,7 @@ class kNN_Graph:
         #edge_tuples = list(self.edge_graph.keys())
 
         # amongst worst edges -> take the node with the largest gap
-        idx = np.argsort(edge_scores)[:30]#(self.n_edge*3)] # worst edges indices
+        idx = np.argsort(edge_scores)[:20]#(self.n_edge*3)] # worst edges indices
 
         # Step 1. Find largest gap, loop over nodes.
         gap = -1
@@ -266,16 +266,14 @@ class kNN_Graph:
         edge_score_from_node=np.array(edge_score_from_node)
         edge_error_score_from_node=np.array(edge_error_score_from_node)
         edge_LCB = edge_score_from_node - edge_error_score_from_node
-
     
-
         #------------- interchangeable lines ------------
         asort = np.argsort(edge_LCB)
         gap_array = np.diff(edge_LCB[asort]) # don't forget to sort first, (worst edges merged first) 
         #################################################
 
         gap_merge = 0
-        hyper_edge_to_merge = [node]
+        hyper_edge_to_merge = [node]
         score_edge = []
         for i_, gap_ in enumerate(gap_array):
             node_idx = nn_idx_from_node[asort[i_]]
@@ -284,15 +282,17 @@ class kNN_Graph:
             gap_merge += gap_
             if gap_merge > self.gap_min:
                 break
-
+                
         return hyper_edge_to_merge, score_edge, gap_merge
 
-    def merge_edge(self,edge_tuple, X, y_pred):
+    def merge_edge(self, edge_tuple, X, y_pred):
 
         # Need to be able to merge hyper edge
 
-        if len(edge_tuple) > 2:
+        if len(edge_tuple) > 2: # compute multi-class classifier 
             clf_hyper_edge = self.classify_edge(edge_tuple, X, self.y_pred)
+        else: # has already been computed, no need to recompute ...
+            clf_hyper_edge = self.graph[tuple(edge_tuple)]
 
         # When merging, need to recompute scores for new edges.
         # Step 0. Find a new label
@@ -303,27 +303,14 @@ class kNN_Graph:
 
         for node_idx in edge_tuple:
             self.y_pred[self.y_pred == node_idx] = y_new
-            #node_1, node_2 = edge_tuple
 
         # Step 1. Relabel edge nodes
-        """ pos_idx_1 = np.where(self.y_pred == node_1)[0]
-        pos_idx_2 = np.where(self.y_pred == node_2)[0] """
-        """ self.y_pred[pos_idx_1] = y_new
-        self.y_pred[pos_idx_2] = y_new """
 
         if self.y_murky is not None:
             # Add back in intra (unpure) cluster elements
             for node_idx in edge_tuple:
                 pos_idx = np.where(self.y_murky == node_idx)[0]
                 self.y_pred[pos_idx] = y_new
-                self.y_murky[pos_idx] = -1
-            """ pos_idx_1 = np.where(self.y_murky == node_1)[0]
-            pos_idx_2 = np.where(self.y_murky == node_2)[0]
-
-            self.y_pred[pos_idx_1] = y_new
-            self.y_pred[pos_idx_2] = y_new
-            self.y_murky[pos_idx_1] = -1
-            self.y_murky[pos_idx_2] = -1 """
         
         nodes_to_be_merged = set(edge_tuple)
         neighboring_nodes = set([])
@@ -344,17 +331,9 @@ class kNN_Graph:
                 if node in self.graph.get_nn(node_tbm):
                     del self.graph[(node_tbm, node)]
         
-        # Would be nice to elimnate "edge" cases !! 
-        if len(edge_tuple) > 2:
-            print("Multi-merger !!!!")
-            self.merger_history.append([list(edge_tuple), y_new, deepcopy(clf_hyper_edge)]) # this saves the classifiers for later
-            for node_1 in edge_tuple:
-                for node_2 in edge_tuple:
-                    if (node_1, node_2) in self.graph.keys():
-                        del self.graph[(node_1, node_2)] # clearing memory
-        else:
-            self.merger_history.append([list(edge_tuple), y_new, deepcopy(self.graph[tuple(edge_tuple)])]) # this saves the classifiers for later
-            del self.graph[edge_tuple] # &#!
+        self.merger_history.append([edge_tuple, y_new, deepcopy(clf_hyper_edge)]) # this saves the classifiers for later
+
+        self.remove_edge_tuple(edge_tuple)
 
         for node_idx in edge_tuple:
             self.cluster_idx.remove(node_idx)
@@ -367,6 +346,13 @@ class kNN_Graph:
         self.cluster_statistics[y_new] = compute_cluster_stats(X[self.y_pred==y_new], len(self.y_pred))
 
         return self
+
+    def remove_edge_tuple(self, edge_tuple):
+        """ Deletes edges in graph (frees up memory) """
+        for node_1 in list(edge_tuple):
+            for node_2 in list(edge_tuple):
+                if (node_1, node_2) in self.graph.keys():
+                    del self.graph[(node_1, node_2)] # clearing memory
 
     def classify_edge(self, edge_tuple, X, y, clf_type=None, clf_args=None, 
         n_bootstrap=None, test_size_ratio=None, n_sample_max = None):

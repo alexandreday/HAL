@@ -65,6 +65,7 @@ class kNN_Graph:
 
         self.fout = None#/FOUT('out.txt')
         self.n_edge = n_edge
+        self.gap_min = 0.01
         self.y_murky = y_murky
         self.cluster_statistics = {} # node_id to median markers ... should be part of graph stuff ?
         self.merger_history = []
@@ -198,9 +199,9 @@ class kNN_Graph:
                 clf = self.graph[(yu, nn)]
                 self.edge_graph[(yu, nn)] = SINGLE_EDGE(yu, nn, clf.cv_score_median, clf.cv_score_std)
 
-    def compute_node_score(self, clip=None):
+    def compute_node_score(self):
         # Computes edge 
-        
+    
         self.node = dict() # nodes with only one edge have gap of -1.
 
         for yu in self.cluster_idx:
@@ -215,124 +216,143 @@ class kNN_Graph:
                 nn_from_yu = nn_idx_from_yu[asort[0]]
                 nn2_from_yu = nn_idx_from_yu[asort[1]]
 
-                gap = self.edge_graph[(yu,nn2_from_yu)].score - self.edge_graph[(yu, nn_from_yu)].score
-                gap_error = self.edge_graph[(yu,nn2_from_yu)].score_error + self.edge_graph[(yu,nn_from_yu)].score_error
-                gap_LCB = gap - gap_error
-                # Possibly here we can clip small gaps ?
+                gap = self.edge_graph[(yu, nn2_from_yu)].score - self.edge_graph[(yu, nn_from_yu)].score
+                gap_error = self.edge_graph[(yu, nn2_from_yu)].score_error + self.edge_graph[(yu,nn_from_yu)].score_error
+                gap_error_prop = gap - gap_error
+                gap_LCB = self.edge_graph[(yu, nn2_from_yu)].LCB() - self.edge_graph[(yu, nn_from_yu)].LCB() # -> seems better behaved ?
 
             else: # what to do if you have only one edge left ?
                 gap_LCB = -1
+
             self.node[yu] = gap_LCB
+        #print(self.node)
 
     def find_next_merger(self):
         """ Finds the edge that should be merged next based on node score (gap)
         and edge score (edge with minimum score)
 
-        // Non-greedy optimization here ... and keep information about mergers !
-
         Return
         -------
         edge_to_merge, score_edge, node_gap
         """
-        
-        cv_scores = [single_edge.score for single_edge in self.edge_graph.values()]#[element[0] - element[1] for element in self.edge.values()]
-        
-        edges = list(self.edge_graph.keys())
+        #node_list, cv_scores = list(self.node.keys()), list(self.node.values())
+
+        tmp = [[k, v.LCB()] for k,v in self.edge_graph.items()]
+        edge_tuples = np.array(tmp)[:,0]
+        edge_scores = np.array(tmp)[:,1]
+        #edge_tuples = list(self.edge_graph.keys())
 
         # amongst worst edges -> take the node with the largest gap
-        idx = np.argsort(cv_scores)[:20]#(self.n_edge*3)] # worst edges indices
-        
+        idx = np.argsort(edge_scores)[:20]#(self.n_edge*3)] # worst edges indices
+
+        # Step 1. Find largest gap, loop over nodes.
         gap = -1
         for i in idx:
-            ni, nj = edges[i]
-            if self.node[ni] > gap:
-                gap = self.node[ni]
-                node = ni
-            if self.node[nj] > gap:
-                gap = self.node[nj]
-                node = nj
-        
-        #node, gap = max(self.node.items(), key=lambda x:x[1]) # max gap
+            for n in edge_tuples[i]:
+                if self.node[n] > gap:
+                    gap = self.node[n] 
+                    node = n
 
-        if gap < 0: # only two nodes left --> not true anymore
-            node_2 = list(self.edge_graph.get_nn(node))[0]
-            edge_to_merge = (node, node_2)
-            score_edge = self.edge_graph[(node, node_2)].LCB()
-            gap = -1
-        else:
-            # if gap smaller than a certain threshold, ==> Flatten structure, multi-merger
-            # CORRECTION HERE !
-            nn_yu = list(self.edge_graph.get_nn(node))
+        # Step 2, merges nodes connected to node with largest gap !
 
-            edge_ij = []
-            for nn in nn_yu:
-                    edge_ij.append(self.edge_graph[(node,nn)].LCB())
-            asort_minscore_edge = np.argsort(edge_ij)
+        nn_idx_from_node = list(self.edge_graph.get_nn(node))
+        edge_score_from_node = []
+        edge_error_score_from_node = []
 
-            """ if gap < 0.01:
-                edge_to_merge = [(node, nn_yu[asort_minscore_edge[0]]), (node, nn_yu[asort_minscore_edge[1]])]
-                score_edge_0 = edge_ij[asort_minscore_edge[0]]
-                score_edge_1 = edge_ij[asort_minscore_edge[1]]
-            else: """
-            edge_to_merge = (node, nn_yu[asort_minscore_edge[0]])
+        for nn in nn_idx_from_node:
+            edge_score_from_node.append(self.edge_graph[(node ,nn)].score)
+            edge_error_score_from_node.append(self.edge_graph[(node ,nn)].score_error)
 
-            score_edge = edge_ij[asort_minscore_edge[0]]
+        edge_score_from_node=np.array(edge_score_from_node)
+        edge_error_score_from_node=np.array(edge_error_score_from_node)
+        edge_LCB = edge_score_from_node - edge_error_score_from_node
+    
+        #------------- interchangeable lines ------------
+        asort = np.argsort(edge_LCB)
+        gap_array = np.diff(edge_LCB[asort]) # don't forget to sort first, (worst edges merged first) 
+        #################################################
 
-        return edge_to_merge, score_edge, gap
+        gap_merge = 0
+        hyper_edge_to_merge = [node]
+        score_edge = []
+        for i_, gap_ in enumerate(gap_array):
+            node_idx = nn_idx_from_node[asort[i_]]
+            hyper_edge_to_merge.append(node_idx)
+            score_edge.append(edge_score_from_node[asort[i_]])
+            gap_merge += gap_
+            if gap_merge > self.gap_min:
+                break
+                
+        return hyper_edge_to_merge, score_edge, gap_merge
 
-    def merge_edge(self,edge_tuple, X, y_pred):
+    def merge_edge(self, edge_tuple, X, y_pred):
+
+        # Need to be able to merge hyper edge
+
+        if len(edge_tuple) > 2: # compute multi-class classifier 
+            clf_hyper_edge = self.classify_edge(edge_tuple, X, self.y_pred)
+        else: # has already been computed, no need to recompute ...
+            clf_hyper_edge = self.graph[tuple(edge_tuple)]
+
         # When merging, need to recompute scores for new edges.
         # Step 0. Find a new label
+
         self.y_pred = y_pred
         y_new = self.y_max+1
         self.y_max +=1
 
-        node_1, node_2 = edge_tuple
+        for node_idx in edge_tuple:
+            self.y_pred[self.y_pred == node_idx] = y_new
 
         # Step 1. Relabel edge nodes
-        pos_idx_1 = np.where(self.y_pred == node_1)[0]
-        pos_idx_2 = np.where(self.y_pred == node_2)[0]
-        self.y_pred[pos_idx_1] = y_new
-        self.y_pred[pos_idx_2] = y_new
 
         if self.y_murky is not None:
             # Add back in intra (unpure) cluster elements
-            pos_idx_1 = np.where(self.y_murky == node_1)[0]
-            pos_idx_2 = np.where(self.y_murky == node_2)[0]
-
-            self.y_pred[pos_idx_1] = y_new
-            self.y_pred[pos_idx_2] = y_new
-            self.y_murky[pos_idx_1] = -1
-            self.y_murky[pos_idx_2] = -1
+            for node_idx in edge_tuple:
+                pos_idx = np.where(self.y_murky == node_idx)[0]
+                self.y_pred[pos_idx] = y_new
+        
+        nodes_to_be_merged = set(edge_tuple)
+        neighboring_nodes = set([])
+        for node_idx in edge_tuple:
+            neighboring_nodes = neighboring_nodes.union(self.graph.get_nn(node_idx))
+        
+        neighboring_nodes = list(neighboring_nodes - nodes_to_be_merged)
 
         # Step 2. Recompute edges
-        neighbor_node_1 = self.graph.get_nn(node_1) - set([node_2])
-        neighbor_node_2 = self.graph.get_nn(node_2) - set([node_1])
-        node_list = list(neighbor_node_1.union(neighbor_node_2))
 
-        for node in node_list:
+        for node in neighboring_nodes:
             idx_new_edge = (y_new, node)
             clf = self.classify_edge(idx_new_edge, X, self.y_pred) # using constructor parameters here
             self.graph[idx_new_edge] = clf
             edge_info_update(idx_new_edge, self.graph, cout=self.cout) # print results
 
-            if node in neighbor_node_1:
-                del self.graph[(node_1, node)]
-            if node in neighbor_node_2:
-                del self.graph[(node_2, node)]
+            for node_tbm in nodes_to_be_merged:
+                if node in self.graph.get_nn(node_tbm):
+                    del self.graph[(node_tbm, node)]
         
-        self.merger_history.append([[node_1, node_2], y_new, deepcopy(self.graph[(node_1, node_2)])]) # this saves the classifiers for later
-        del self.graph[(node_1, node_2)]
+        self.merger_history.append([edge_tuple, y_new, deepcopy(clf_hyper_edge)]) # this saves the classifiers for later
 
-        self.cluster_idx.remove(node_1)
-        self.cluster_idx.remove(node_2)
+        self.remove_edge_tuple(edge_tuple)
+
+        for node_idx in edge_tuple:
+            self.cluster_idx.remove(node_idx)
+
         self.cluster_idx.add(y_new)
 
         self.compute_edge_score()
         self.compute_node_score()
+
         self.cluster_statistics[y_new] = compute_cluster_stats(X[self.y_pred==y_new], len(self.y_pred))
 
         return self
+
+    def remove_edge_tuple(self, edge_tuple):
+        """ Deletes edges in graph (frees up memory) """
+        for node_1 in list(edge_tuple):
+            for node_2 in list(edge_tuple):
+                if (node_1, node_2) in self.graph.keys():
+                    del self.graph[(node_1, node_2)] # clearing memory
 
     def classify_edge(self, edge_tuple, X, y, clf_type=None, clf_args=None, 
         n_bootstrap=None, test_size_ratio=None, n_sample_max = None):
@@ -364,8 +384,10 @@ class kNN_Graph:
         if n_sample_max is None:
             n_sample_max = self.n_sample_max
 
-        pos_subset = np.where((self.y_pred == edge_tuple[0]) | (self.y_pred == edge_tuple[1]))
-        
+        pos_subset = np.zeros(len(self.y_pred),dtype=bool)
+        for node_idx in edge_tuple:
+            pos_subset = (pos_subset | (self.y_pred == node_idx))
+
         Xsubset = X[pos_subset] # original space coordinates
         ysubset = y[pos_subset] # labels ---
 
@@ -373,7 +395,7 @@ class kNN_Graph:
     
     def coarse_grain(self, X, y_pred):
 
-        while np.max(list(self.node.values())) > 0:
+        while len(self.node) > 2: # merge until at most one edge is left #np.max(list(self.node.values())) > 0:
             edge, score, gap = self.find_next_merger()
             print('Merging edge\t', edge,'\t gap=',gap,'\t score=',score)
             self.merge_edge(edge, X, y_pred)
