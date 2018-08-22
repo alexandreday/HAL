@@ -71,7 +71,7 @@ class kNN_Graph:
 
         self.fout = None#/FOUT('out.txt')
         self.n_edge = n_edge
-        self.gap_min = 0.01 # self-consistent way of determining this ?
+        self.gap_min = 0.005 # self-consistent way of determining this ?
         self.gap_option = "standard"
         self.y_murky = y_murky
         self.cluster_statistics = {} # node_id to median markers ... should be part of graph stuff ?
@@ -257,12 +257,14 @@ class kNN_Graph:
         idx = np.argsort(edge_scores)[:max([15, int(0.1*n_edge_current)])] #(self.n_edge*3)] # worst edges indices
 
         # Step 1. Find largest gap, loop over nodes.
-        gap = -1
+        gap = -10
         for i in idx:
             for n in edge_tuples[i]:
                 if self.node[n] > gap:
-                    gap = self.node[n] 
+                    gap = self.node[n]
                     node = n
+
+        #print(self.node)
 
         # Step 2, merges nodes connected to node with largest gap !
 
@@ -284,17 +286,31 @@ class kNN_Graph:
         gap_array = np.diff(edge_LCB[asort]) # don't forget to sort first, (worst edges merged first) 
         ################################################# """
 
-        gap_merge = 0
-        hyper_edge_to_merge = [node]
-        score_edge = []
-
-        for i_, gap_ in enumerate(gap_array):
-            node_idx = nn_idx_from_node[idx_argsort[i_]]
-            hyper_edge_to_merge.append(node_idx)
-            score_edge.append(edge_score_from_node[idx_argsort[i_]])
-            gap_merge += gap_
+        gap_array = list(gap_array)
+        gap_array.append(0.)
+        
+        hyper_edge_to_merge = [node, nn_idx_from_node[idx_argsort[0]]]
+        score_edge = [edge_score_from_node[idx_argsort[0]]]
+        if len(gap_array) > 1:
+            gap_merge = gap_array[0]
+        else:
+            gap_merge = gap
+        
+        #print("all neighbors of %i"%node, nn_idx_from_node)
+        #print(nn_idx_from_node[idx_argsort[-1]])
+        #print(len(gap_array),'\t', len(idx_argsort))
+        
+        
+        for i in range(1, len(gap_array)):
             if gap_merge > self.gap_min:
+                #print("Reached max gap")
                 break
+            #print(idx_argsort[i])
+            node_idx = nn_idx_from_node[idx_argsort[i]]
+            #print(node_idx)
+            hyper_edge_to_merge.append(node_idx)
+            score_edge.append(edge_score_from_node[idx_argsort[i]])
+            gap_merge += gap_array[i]
                 
         return hyper_edge_to_merge, score_edge, gap_merge
     
@@ -382,8 +398,10 @@ class kNN_Graph:
 
         self.cluster_idx.add(y_new)
 
-        self.compute_edge_score()
-        self.compute_node_score()
+        if len(self.graph.keys()) > 0:
+            self.compute_edge_score()
+
+            self.compute_node_score()
 
         self.cluster_statistics[y_new] = compute_cluster_stats(X[self.y_pred==y_new], len(self.y_pred))
 
@@ -437,15 +455,17 @@ class kNN_Graph:
     
     def coarse_grain(self, X, y_pred):
 
-        while len(self.node) > 2: # merge until at most one edge is left #np.max(list(self.node.values())) > 0:
+        while len(self.graph) > 0: # merge until at most one edge is left #np.max(list(self.node.values())) > 0:
             edge, score, gap = self.find_next_merger()
+            #print(self.graph)
             print('Merging edge\t', edge,'\t gap=',gap,'\t score=',score)
             self.merge_edge(edge, X, y_pred)
+        
             print('\n\n')
 
     def build_tree(self, X, ypred_init):
         print("Building tree")
-        self.tree = TREE(self.merger_history,self.cluster_statistics,self.clf_type,self.clf_args, ypred_init, test_size_ratio=self.test_size_ratio)
+        self.tree = TREE(self.merger_history, self.cluster_statistics,self.clf_type,self.clf_args, ypred_init, test_size_ratio=self.test_size_ratio)
         self.tree.fit(X, self.y_pred)
 
     def predict(self, X, cv=0.5, option="fast"):
