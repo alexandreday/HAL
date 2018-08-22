@@ -1,8 +1,8 @@
 # Hierarchical Agglomerative Learning (HAL)
-Package for performing clustering for high-dimensional data. This packages uses heavily scikit-learn and fft accelerated t-SNE.
+Package for performing clustering for high-dimensional data. This packages uses heavily scikit-learn and FFT accelerated t-SNE.
 
 # System requirement
-* Has been tested on latest version of OS X (Sierra and High Sierra) and on Linux (Ubuntu v 16)
+* Has been tested on latest version of OS X (Sierra and High Sierra) and Linux (Ubuntu v 16)
 * (Optional) The dynamical plotting requires Chrome, Safari or Firefox (without *ad blockers* !).
 # Requirement:
 Python 3.6 or later versions.
@@ -46,4 +46,7 @@ ypred = model.predict(X, cv=0.95)
 
 # The fitted model information is in directory info_hal. To reload that information for later use, just:
 model.load()
+
+# To load t-SNE coordinates:
+model.load('tsne')
 ```

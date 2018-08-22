@@ -82,41 +82,59 @@ class TREE:
     def fit(self, X, y_pred, n_bootstrap=10): 
         """ Fits hierarchical model"""
 
+        self.node_dict = OD()
+        self.clf_dict = OD()
+
         pos = (y_pred > -1)
         y_unique = np.unique(y_pred[pos]) # fit only on the non-outliers
         idx_subset = np.where(pos)[0]
-        y_new_tmp = y_unique[-1]+1
 
-        clf_root = CLF(clf_type=self.clf_type, n_bootstrap=n_bootstrap, test_size=self.test_size_ratio, clf_kwargs=self.clf_args).fit(X[idx_subset], y_pred[idx_subset])
-        self.root = TREENODE(id_ = y_new_tmp , cv_clf=clf_root.cv_score)
+        #y_new_tmp = y_unique[-1]+1
+
+        """ if len(y_unique) > 1:
+            clf_root = CLF(clf_type=self.clf_type, n_bootstrap=n_bootstrap, test_size=self.test_size_ratio, clf_kwargs=self.clf_args).fit(X[idx_subset], y_pred[idx_subset])
+        else:
+             """
+        
+        #edge, y_new, clf_root = self.merge_history[-1] # we have merged until one node remains
+
+        #self.root = TREENODE(id_ = y_new , cv_clf=clf_root.cv_score_median)
     
         # cluster statistics for the root 
-        self.cluster_statistics[self.root.get_id()]  = compute_cluster_stats(X[idx_subset], len(y_pred))
-
-        self.node_dict = OD()
-        self.clf_dict = OD()
+        """ self.cluster_statistics[self.root.get_id()]  = compute_cluster_stats(X[idx_subset], len(y_pred))
         
         self.node_dict[self.root.get_id()] = self.root
-        self.clf_dict[self.root.get_id()] = clf_root
 
-        for yu in y_unique:
+        self.clf_dict[self.root.get_id()] = clf_root """
+
+
+        """ for yu in y_unique:
             c_node = TREENODE(id_=yu, parent=self.root)
             self.root.add_child(c_node)
             self.node_dict[c_node.get_id()] = c_node
 
-        # building full tree here
-        for edge, y_new, clf in reversed(self.merge_history):
-            idx_1, idx_2 = edge
+        # building full tree here """
 
-            self.clf_dict[y_new] = clf
-            self.node_dict[y_new].cv_clf = clf.cv_score
+        """ Creating ROOT """
+        _, y_new, clf_root = self.merge_history[-1]
+        print(y_new)
+        self.root = TREENODE(id_ = y_new , cv_clf=clf_root.cv_score_median)
+        self.node_dict[y_new] = self.root
+        self.clf_dict[y_new] = clf_root
+        
+        """ Adding childs """
+        for edge, y_new, clf in reversed(self.merge_history):
+            
+            if y_new not in self.clf_dict.keys():
+                self.clf_dict[y_new] = clf
 
             for idx in edge:
                 c_node = TREENODE(id_ = idx, parent = self.node_dict[y_new])
                 self.node_dict[c_node.get_id()] = c_node
                 self.node_dict[y_new].add_child(c_node)
+                self.node_dict[y_new].cv_clf = clf.cv_score_median
 
-        self.merge_history.append([list(y_unique), y_new_tmp, copy.deepcopy(clf_root)])
+        #self.merge_history.append([list(y_unique), y_new_tmp, copy.deepcopy(clf_root)])
 
         # constructs the structures that have the information about the tree 
 
@@ -128,6 +146,7 @@ class TREE:
         #exit()
 
         self.compute_node_info()
+        
         self.find_idx_in_each_node()
 
         return self

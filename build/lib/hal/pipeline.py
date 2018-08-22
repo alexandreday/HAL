@@ -16,12 +16,34 @@ import pickle, os
 
 class HAL():
     """HAL-x : clustering via Hierarchial Agglomerative Learning.
-    Construct FFT t-SNE embedding and identify pure clusters. Constructs
+    Construct FFT t-SNE embedding and identif pure clusters. Constructs
     a hierarchical classifer based on coarse-graining a k-NN graph
         
     Parameters
     -------------
+    late_exag: int (default=800)
+        Iteration at which to turn on late exageration
     
+    alpha_late: float (default=2.0)
+        Exageration factor used
+
+    preprocess_option: dict (default = {'whiten':False, 'zscore':True})
+        Preprocessing applied to the data. The resulting preprocessed data
+        is used for training by the classifier. Note that the t-SNE will use the raw input
+        data without further transformations.
+    
+    clf_type: str (default = 'svm')
+        Type of classifier used for determining out-of-sample accuracy. Options
+        are ['svm','rf','nb'], for support vector machine, random forest and naive bayes
+
+    clf_args: dict (default = case dependent):
+        Classifiers parameters. For svm, linear kernels are used by default
+        For rf the maximum number of features used in each split is 200.
+        All populations are weigh balanced in the cost function.
+    
+    clf_test_size_ratio: float (default = 0.8):
+        Split ratio (training is 0.2 and testing is 0.8 by defeault)used for each fold for used in the bagging estimates. 
+
     outlier_ratio: float (default=0.2)
         Ratio of the lowest density points that are considered outliers
     
@@ -37,12 +59,6 @@ class HAL():
     n_iteration_tsne: int (default = 1000)
         Number of t-SNE iteration
 
-    late_exag: int (default=800)
-        Iteration at which to turn on late exageration
-    
-    alpha_late: float (default=2.0)
-        Exageration factor used
-
     tsne_type: str (default='fft')
         Type of t-SNE used (for now only fft is available)
     
@@ -55,34 +71,37 @@ class HAL():
     nh_size : int (default='auto')
         Neighborhood size for density clustering
 
-    ...
-    """
-    # {'class_weight':'balanced','n_estimators': 50, 'max_features': min([X_down_sample.shape[1],200])}
+    warm_start: bool (default = False)
+        Wether to reuse previously computed data from the pipeline. The default storage location is info_hal directory.
 
-    def __init__(self,
-        outlier_ratio=0.05,
-        nn_pure_ratio=0.0,
-        min_size_cluster=25,
-        preprocess_option=None,
-        perplexity = 40,    
-        n_iteration_tsne =  1000,
+    """
+
+    def __init__(self, # parameters are roughly in order of importance or usefuless
         late_exag = 1000, # default is no late  exageration
-        tsne_type = 'fft', # default is FFTW t-SNE
         alpha_late = 2.0,
+        preprocess_option=None,
         n_cluster_init = 30,
-        seed = 0,
+        n_clf_sample_max = 500,
+        clf_type = 'svm',
+        clf_args = None,
         warm_start = False,
+        root = "info_hal", # default directory where information will be dumped
+        clf_test_size_ratio = 0.8,
+
+
+        perplexity = 50,    
+        n_iteration_tsne =  1000,
+        outlier_ratio=0.05,
+        nn_pure_ratio=0.1,
+        min_size_cluster=50,
+        tsne_type = 'fft', # default is FFTW t-SNE
+        seed = 0,
         nh_size = "auto",
         eta = 2.0,
         fdc_test_ratio_size = 0.8,
         run_tSNE = True, # if not True, put in a file name for reading
-        root = "info_hal", # default directory where information will be dumped
         n_job = "auto", # All available processors will be used
-        n_clf_sample_max = 500,
-        clf_type = 'svm',
-        clf_args = None,
         n_bootstrap = 30,
-        clf_test_size_ratio = 0.8,
         n_edge_kNN = 4,
         verbose = 1
     ):
@@ -144,6 +163,7 @@ class HAL():
         self.root = root
         self.tsne = run_tSNE
         self.warm_start = warm_start
+        self.compute_process=[True]*6
 
         self.file_name = {}
         self.file_name['tsne'] = make_hash_name(self.__dict__, file='tsne')
@@ -152,7 +172,7 @@ class HAL():
         self.file_name['kNN_coarse'] = make_hash_name(self.__dict__, file='kNN_coarse')
         self.file_name['hal'] = make_hash_name(self.__dict__, file='hal')
 
-
+        
     def fit(self, data):
         """ Clustering and fitting random forest classifier ...
         Processing steps:
@@ -175,10 +195,12 @@ class HAL():
 
         self.n_feature = data.shape[1]
 
-        X_preprocess = self.preprocess(data, **self.preprocess_option)
+        if self.compute_process[0]: # standardized data for training
+            X_preprocess = self.preprocess(data, **self.preprocess_option)
 
         # run t-SNE
-        X_tsne = self.run_tSNE(X_preprocess)
+        if self.compute_process[1]: # when running t-SNE, use raw data, it's to the user to provide his data in a correct format.
+            X_tsne = self.run_tSNE(data)
    
         # purifies clusters
         self.density_cluster = FDC(
@@ -189,17 +211,19 @@ class HAL():
             n_job=self.n_job
         )
 
-        self.purify(X_tsne)
+        if self.compute_process[2]:
+            self.purify(X_tsne)
+            self.dp_profile.describe()
+            self.ypred_init = np.copy(self.ypred) # important for later
 
-        self.dp_profile.describe()
+        if self.compute_process[3]:
+            self.fit_kNN_graph(X_preprocess, self.ypred)
+        
+        if self.compute_process[4]:
+            self.coarse_grain_kNN_graph(X_preprocess, self.ypred) # coarse grain
 
-        self.ypred_init = np.copy(self.ypred) # important for later
-
-        self.fit_kNN_graph(X_preprocess, self.ypred)
-
-        self.coarse_grain_kNN_graph(X_preprocess, self.ypred) # coarse grain
-
-        self.construct_model(X_preprocess) # links all classifiers together in a hierarchical model
+        if self.compute_process[5]:
+            self.construct_model(X_preprocess) # links all classifiers together in a hierarchical model
 
         return self
 
@@ -359,13 +383,16 @@ class HAL():
             return pickle.load(open(self.root+tsnefile,'rb'))
         else:
             assert self.tsne_type == 'fft' # for now just use this one
-            Xtsne = FItSNE(
-                np.ascontiguousarray(X.astype(np.float)),
-                start_late_exag_iter=self.late_exag, late_exag_coeff=self.alpha_late,
-                max_iter = self.n_iteration_tsne,
-                perplexity= self.perplexity,
-                rand_seed=self.seed
-            )
+            if self.run_tSNE:
+                Xtsne = FItSNE(
+                    np.ascontiguousarray(X.astype(np.float)),
+                    start_late_exag_iter=self.late_exag, late_exag_coeff=self.alpha_late,
+                    max_iter = self.n_iteration_tsne,
+                    perplexity= self.perplexity,
+                    rand_seed=self.seed
+                )
+            else:
+                Xtsne = X #simple trick for now, a bit memory wasteful but not a big deal.
             pickle.dump(Xtsne, open(self.root+ tsnefile,'wb')) # Saving data in with useful name tag
             print('[HAL]    t-SNE data saved in %s' % tsnefile)
             return Xtsne
