@@ -195,7 +195,7 @@ def parse_command_line(argv):
         "root":str,
         "n_clf_sample_max":int,
         "clf_type":str,
-        "n_bootstrap":str,
+        "n_bootstrap":int,
         "clf_test_size_ratio":float,
         "n_edge_kNN":int
     }
