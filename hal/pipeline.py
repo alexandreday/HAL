@@ -253,14 +253,16 @@ class HAL():
         
     def construct_model(self, X):
         if check_exist(self.file_name['hal'], self.root) & self.warm_start:
+            #print(pickle.load(open(self.root+self.file_name['hal'],'rb')))
             [self.robust_scaler, self.kNN_graph] = pickle.load(open(self.root+self.file_name['hal'],'rb'))
+            
         else:
             self.kNN_graph.build_tree(X, self.ypred_init)
             pickle.dump([self.robust_scaler, self.kNN_graph], open(self.root+self.file_name['hal'],'wb'))
 
     def load(self, s=None):
         if s is None:
-            self.kNN_graph = pickle.load(open(self.root+self.file_name['hal'],'rb'))
+            [self.robust_scaler, self.kNN_graph] = pickle.load(open(self.root+self.file_name['hal'],'rb'))
         else:
             return pickle.load(open(self.root+self.file_name[s],'rb'))
 
@@ -282,11 +284,11 @@ class HAL():
         if whiten is True:
             X_tmp = PCA(whiten=True).fit_transform(X)
         if zscore is True:
-            if hasattr(self, robust_scaler):
+            if hasattr(self, 'robust_scaler'):
                 X_tmp = self.robust_scaler.transform(X_tmp)
             else:
                 self.robust_scaler = RobustScaler()
-                X_tmp = self.robust_scaler.transform(X_tmp)
+                X_tmp = self.robust_scaler.fit_transform(X_tmp)
         return X_tmp
 
     def possible_clusters(self, cv):
@@ -315,13 +317,17 @@ class HAL():
 
         runjs('js/')
 
-    def cluster_w_label(self, X_tsne, y, rho=None, **kwargs):
-        from .plotting import cluster_w_label
+    def cluster_w_label(self, X_tsne, y, rho="auto", **kwargs):
+        from .plotting import cluster_w_label_plotly
+        cluster_w_label_plotly(X_tsne, y)
+        
+        """ from .plotting import cluster_w_label
         if rho =="auto":
-            idx_center = find_position_idx_center(X_tsne, y, np.unique(y), self.density_cluster.rho)
+            self.dp_profile = self.load('fdc')
+            idx_center = find_position_idx_center(X_tsne, y, np.unique(y), self.dp_profile.density_model.rho)
             cluster_w_label(X_tsne, y, idx_center, **kwargs)
         else:
-            cluster_w_label(X_tsne, y,  *kwargs)
+            cluster_w_label(X_tsne, y,  **kwargs) """
         
     def purify(self, X):
         """

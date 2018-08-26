@@ -282,11 +282,11 @@ class HAL():
         if whiten is True:
             X_tmp = PCA(whiten=True).fit_transform(X)
         if zscore is True:
-            if hasattr(self, robust_scaler):
+            if hasattr(self, 'robust_scaler'):
                 X_tmp = self.robust_scaler.transform(X_tmp)
             else:
                 self.robust_scaler = RobustScaler()
-                X_tmp = self.robust_scaler.transform(X_tmp)
+                X_tmp = self.robust_scaler.fit_transform(X_tmp)
         return X_tmp
 
     def possible_clusters(self, cv):
