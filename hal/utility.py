@@ -88,6 +88,9 @@ def make_hash_name(param, file=None):
         prefix = "hal"
     
     file_name = prefix
+    if param['file_name_prefix'] is not None:
+        file_name += ('_' + param['file_name_prefix'])
+
     info_str = ""
     for e in out:
         if type(e[0]) is list:

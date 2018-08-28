@@ -96,6 +96,7 @@ class HAL():
         tsne_type = 'fft', # default is FFTW t-SNE
         seed = 0,
         nh_size = "auto",
+        file_name_prefix = None,
         eta = 2.0,
         fdc_test_ratio_size = 0.8,
         run_tSNE = True, # if not True, put in a file name for reading
@@ -152,6 +153,7 @@ class HAL():
 
         # Misc. ==> need to find a way to fix that for fitsne ...
         self.seed = seed
+        self.file_name_prefix = file_name_prefix
 
         if not os.path.exists(root):
             os.makedirs(root)
@@ -341,7 +343,7 @@ class HAL():
             return
 
         if self.density_cluster is None:
-            self.density_cluster = FDC()
+            self.density_cluster = FDC(atol=0.001,rtol=0.00001)
 
         self.dp_profile = DENSITY_PROFILER(
             self.density_cluster,
