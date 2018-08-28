@@ -109,7 +109,7 @@ def plot_graph(X_tsne, Aij, node_label, node_center, node_value):
         #if self.plot_inter is True:
         #    self.plot_kNN_graph(X_tsne)
 
-def cluster_w_label_plotly(X, y):
+def cluster_w_label_plotly(X, y, size=2):
 
     import plotly.plotly as py
     import plotly.graph_objs as go
@@ -128,7 +128,8 @@ def cluster_w_label_plotly(X, y):
         name = 'cluster '+str(yu),
         marker = dict(
             color = palette[i],
-            line = dict(width = 0)
+            line = dict(width = 0),
+            size=size
         )
         )
         data.append(trace)
