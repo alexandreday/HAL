@@ -89,7 +89,7 @@ def make_hash_name(param, file=None):
     
     file_name = prefix
     if param['file_name_prefix'] is not None:
-        file_name += ('_' + param['file_name_prefix'])
+        file_name += ('_' + param['file_name_prefix'].split('.')[0])
 
     info_str = ""
     for e in out:
