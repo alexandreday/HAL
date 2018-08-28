@@ -88,7 +88,6 @@ class HAL():
         root = "info_hal", # default directory where information will be dumped
         clf_test_size_ratio = 0.8,
 
-
         perplexity = 50,    
         n_iteration_tsne =  1000,
         outlier_ratio=0.05,
@@ -163,7 +162,6 @@ class HAL():
         self.root = root
         self.tsne = run_tSNE
         self.warm_start = warm_start
-        self.compute_process=[True]*6
 
         self.file_name = {}
         self.file_name['tsne'] = make_hash_name(self.__dict__, file='tsne')
@@ -195,12 +193,12 @@ class HAL():
 
         self.n_feature = data.shape[1]
 
-        if self.compute_process[0]: # standardized data for training
-            X_preprocess = self.preprocess(data, **self.preprocess_option)
+        # standardized data for training
+        X_preprocess = self.preprocess(data, **self.preprocess_option)
 
         # run t-SNE
-        if self.compute_process[1]: # when running t-SNE, use raw data, it's to the user to provide his data in a correct format.
-            X_tsne = self.run_tSNE(data)
+        # when running t-SNE, use raw data, it's to the user to provide his data in a correct format.
+        X_tsne = self.run_tSNE(data)
    
         # purifies clusters
         self.density_cluster = FDC(
@@ -211,19 +209,15 @@ class HAL():
             n_job=self.n_job
         )
 
-        if self.compute_process[2]:
-            self.purify(X_tsne)
-            self.dp_profile.describe()
-            self.ypred_init = np.copy(self.ypred) # important for later
+        self.purify(X_tsne)
+        self.dp_profile.describe()
+        self.ypred_init = np.copy(self.ypred) # important for later
 
-        if self.compute_process[3]:
-            self.fit_kNN_graph(X_preprocess, self.ypred)
+        self.fit_kNN_graph(X_preprocess, self.ypred)
         
-        if self.compute_process[4]:
-            self.coarse_grain_kNN_graph(X_preprocess, self.ypred) # coarse grain
+        self.coarse_grain_kNN_graph(X_preprocess, self.ypred) # coarse grain
 
-        if self.compute_process[5]:
-            self.construct_model(X_preprocess) # links all classifiers together in a hierarchical model
+        self.construct_model(X_preprocess) # links all classifiers together in a hierarchical model
 
         return self
 
@@ -259,14 +253,16 @@ class HAL():
         
     def construct_model(self, X):
         if check_exist(self.file_name['hal'], self.root) & self.warm_start:
-            self.kNN_graph = pickle.load(open(self.root+self.file_name['hal'],'rb'))
+            #print(pickle.load(open(self.root+self.file_name['hal'],'rb')))
+            [self.robust_scaler, self.kNN_graph] = pickle.load(open(self.root+self.file_name['hal'],'rb'))
+            
         else:
             self.kNN_graph.build_tree(X, self.ypred_init)
-            pickle.dump(self.kNN_graph, open(self.root+self.file_name['hal'],'wb'))
+            pickle.dump([self.robust_scaler, self.kNN_graph], open(self.root+self.file_name['hal'],'wb'))
 
     def load(self, s=None):
         if s is None:
-            self.kNN_graph = pickle.load(open(self.root+self.file_name['hal'],'rb'))
+            [self.robust_scaler, self.kNN_graph] = pickle.load(open(self.root+self.file_name['hal'],'rb'))
         else:
             return pickle.load(open(self.root+self.file_name[s],'rb'))
 
@@ -288,7 +284,11 @@ class HAL():
         if whiten is True:
             X_tmp = PCA(whiten=True).fit_transform(X)
         if zscore is True:
-            X_tmp = RobustScaler().fit_transform(X_tmp)
+            if hasattr(self, 'robust_scaler'):
+                X_tmp = self.robust_scaler.transform(X_tmp)
+            else:
+                self.robust_scaler = RobustScaler()
+                X_tmp = self.robust_scaler.fit_transform(X_tmp)
         return X_tmp
 
     def possible_clusters(self, cv):
@@ -314,15 +314,20 @@ class HAL():
             feature_name_ = feature_name
 
         self.kNN_graph.tree.plot_tree(Xtsne, self.ypred_init, feature_name_)
+
         runjs('js/')
 
-    def cluster_w_label(self, X_tsne, y, rho=None, **kwargs):
-        from .plotting import cluster_w_label
+    def cluster_w_label(self, X_tsne, y, rho="auto", **kwargs):
+        from .plotting import cluster_w_label_plotly
+        cluster_w_label_plotly(X_tsne, y)
+        
+        """ from .plotting import cluster_w_label
         if rho =="auto":
-            idx_center = find_position_idx_center(X_tsne, y, np.unique(y), self.density_cluster.rho)
+            self.dp_profile = self.load('fdc')
+            idx_center = find_position_idx_center(X_tsne, y, np.unique(y), self.dp_profile.density_model.rho)
             cluster_w_label(X_tsne, y, idx_center, **kwargs)
         else:
-            cluster_w_label(X_tsne, y,  *kwargs)
+            cluster_w_label(X_tsne, y,  **kwargs) """
         
     def purify(self, X):
         """
