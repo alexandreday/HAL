@@ -136,7 +136,11 @@ def cluster_w_label_plotly(X, y, size=2):
     
     fig=Figure(data=Data(data),layout=Layout(
     font = {'family' : 'helvetica, sans serif', 'size'   : 12},
-    hovermode='closest'
+    hovermode='closest',
+    legend = dict(
+        size = 20,
+    ####--------------------
+    )
     )
     )
     #py.iplot(data, filename='compare_webgl')

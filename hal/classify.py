@@ -136,7 +136,7 @@ class CLF:
     def predict(self, X, option='fast'):
         """Returns labels for X (-1, 1)"""
         if option is 'fast':
-            mu, inv_sigma = self.scaler_list[0]
+            mu, inv_sigma = self.scaler_list[0] # choose here median
             return self.clf_list[0].predict(inv_sigma*(X-mu))
 
         if self.clf_type == 'trivial':

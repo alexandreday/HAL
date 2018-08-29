@@ -111,7 +111,6 @@ class CLF:
             training_score.append(t_score)
 
             # predict on test set # maybe this is a noisy estimate ?
-            # 
             p_score = clf.score(xtest[:500], ytest[:500])
             predict_score.append(p_score)
 

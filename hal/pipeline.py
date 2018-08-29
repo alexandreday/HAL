@@ -97,7 +97,7 @@ class HAL():
         seed = 0,
         nh_size = "auto",
         file_name_prefix = None,
-        eta = 2.0,
+        eta = 1.5,
         fdc_test_ratio_size = 0.8,
         run_tSNE = True, # if not True, put in a file name for reading
         n_job = "auto", # All available processors will be used
@@ -211,21 +211,29 @@ class HAL():
             n_job=self.n_job
         )
 
+        # Density clustering & finding outliers
         self.purify(X_tsne)
         self.dp_profile.describe()
         self.ypred_init = np.copy(self.ypred) # important for later
 
+        # Fitting kNN graph
         self.fit_kNN_graph(X_preprocess, self.ypred)
         
+        # Coarse graining kNN graph
         self.coarse_grain_kNN_graph(X_preprocess, self.ypred) # coarse grain
 
+        # Constructing predictive model
         self.construct_model(X_preprocess) # links all classifiers together in a hierarchical model
 
         return self
 
 
     def fit_kNN_graph(self, X, ypred):
-        # Left it here ... need to update this to run graph clustering
+        """ Fits a kNN graph to the density clusters. Initially 
+        performs a full (K^2) soft sweep (n_bootstrap small) to identify edges with potentially bad 
+        edges. Then performs a deeper sweep for every cluster worst k edges.
+        """
+
         if check_exist(self.file_name['kNN_precoarse'], self.root) & self.warm_start:
             self.kNN_graph = pickle.load(open(self.root+self.file_name['kNN_precoarse'],'rb'))
             return self
@@ -245,7 +253,8 @@ class HAL():
         return self
 
     def coarse_grain_kNN_graph(self, X, ypred):
-
+        """ Merges edges with worst gaps in a semi-greedy fashion (see source code for definition of what this means !)
+        """
         if check_exist(self.file_name['kNN_coarse'], self.root) & self.warm_start:
             self.kNN_graph = pickle.load(open(self.root+self.file_name['kNN_coarse'],'rb'))
         else:
@@ -254,6 +263,7 @@ class HAL():
         return self
         
     def construct_model(self, X):
+        """ Constructing classifier tree model """
         if check_exist(self.file_name['hal'], self.root) & self.warm_start:
             #print(pickle.load(open(self.root+self.file_name['hal'],'rb')))
             [self.robust_scaler, self.kNN_graph] = pickle.load(open(self.root+self.file_name['hal'],'rb'))
