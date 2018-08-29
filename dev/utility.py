@@ -88,6 +88,9 @@ def make_hash_name(param, file=None):
         prefix = "hal"
     
     file_name = prefix
+    if param['file_name_prefix'] is not None:
+        file_name += ('_' + param['file_name_prefix'].split('.')[0])
+
     info_str = ""
     for e in out:
         if type(e[0]) is list:
@@ -159,7 +162,10 @@ def find_position_idx_center(X_tsne, ypred, unique_cluster_label, rho):
         pos = np.where(ypred == idx)[0]
         a=X_tsne[pos]
         b=np.exp(rho[pos]).flatten()
-        X_center.append(np.sum((a.T*b).T, axis=0)/np.sum(b))
+        #np.argmax(b)
+        c= np.argmin(np.abs(b-(np.median(b)+np.std(b))))
+        X_center.append(X_tsne[pos[c]])
+        #X_center.append(np.sum((a.T*b).T, axis=0)/np.sum(b))
         #pos_center = np.argmax(rho[pos])
         #X_center.append(X_tsne[pos[pos_center]])
 

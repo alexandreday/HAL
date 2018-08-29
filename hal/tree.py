@@ -18,12 +18,13 @@ class MyEncoder(json.JSONEncoder):
 
 class TREENODE:
 
-    def __init__(self, id_ = -1, parent = None, child = None, cv_clf = -1):
+    def __init__(self, id_ = -1, parent = None, child = None, cv_clf = -1, cv_clf_std = -1):
         if child is None:
             self.child = [] # has to be list of TreeNode
         else:
             self.child = child
         self.cv_clf = cv_clf
+        self.cv_clf_std = cv_clf_std
         self.cv_clf_all = -1 
         self.parent = parent
         self.id_ = id_
@@ -118,7 +119,7 @@ class TREE:
         """ Creating ROOT """
         _, y_new, clf_root = self.merge_history[-1]
         print(y_new)
-        self.root = TREENODE(id_ = y_new , cv_clf=clf_root.cv_score_median)
+        self.root = TREENODE(id_ = y_new , cv_clf=clf_root.cv_score_median, cv_clf_std=clf_root.cv_score_std)
         self.node_dict[y_new] = self.root
         self.clf_dict[y_new] = clf_root
         
@@ -133,6 +134,7 @@ class TREE:
                 self.node_dict[c_node.get_id()] = c_node
                 self.node_dict[y_new].add_child(c_node)
                 self.node_dict[y_new].cv_clf = clf.cv_score_median
+                self.node_dict[y_new].cv_clf_std = clf.cv_score_std
 
         #self.merge_history.append([list(y_unique), y_new_tmp, copy.deepcopy(clf_root)])
 
@@ -166,7 +168,7 @@ class TREE:
             child = self.node_dict[stack[0].get_id()].child # node list (not integers)
             stack = stack[1:]
             for c in child:
-                if c.cv_clf_all > cv: #  (unpropagated scores)
+                if c.cv_clf_all > cv: #  (unpropagacv_score_stdted scores)
                     stack.append(c)
                     idx = np.where(ypred == c.get_id())[0]
                     if len(idx) > 0:
@@ -328,11 +330,13 @@ class TREE:
         for node_id, node in self.node_dict.items():
             if len(node.child) != 0: # all clf nodes (excludes leaves)
                 propagate_score = node.cv_clf
+                error_score = node.cv_clf_std
                 tmp_node = node
                 while tmp_node.parent != None: # reached the root
                     tmp_node = tmp_node.parent
                     propagate_score*= tmp_node.cv_clf
-                node.cv_clf_all = propagate_score
+                    error_score +=tmp_node.cv_clf_std
+                node.cv_clf_all = propagate_score - error_score
 
     def feature_path_predict(self, x, cv=0.9):
         c_node = self.root

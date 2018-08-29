@@ -108,3 +108,42 @@ def plot_graph(X_tsne, Aij, node_label, node_center, node_value):
         #    cluster_w_label(X_tsne, self.ypred)
         #if self.plot_inter is True:
         #    self.plot_kNN_graph(X_tsne)
+
+def cluster_w_label_plotly(X, y, size=2):
+
+    import plotly.plotly as py
+    import plotly.graph_objs as go
+    import plotly.offline as of
+    from plotly.graph_objs import Figure, Data, Layout
+    
+    palette = COLOR_PALETTE(style=1)
+
+    data = []
+    for i, yu in enumerate(np.unique(y)):
+        pos = (y == yu)
+        trace = go.Scattergl(
+        x = X[pos,0],
+        y = X[pos,1],
+        mode = 'markers',
+        name = 'cluster '+str(yu),
+        marker = dict(
+            color = palette[i],
+            line = dict(width = 0),
+            size=size
+        )
+        )
+        data.append(trace)
+    
+    fig=Figure(data=Data(data),layout=Layout(
+    font = {'family' : 'helvetica, sans serif', 'size'   : 12},
+    hovermode='closest',
+    legend = dict(
+        size = 20,
+    ####--------------------
+    )
+    )
+    )
+    #py.iplot(data, filename='compare_webgl')
+
+    of.plot(fig)
+
