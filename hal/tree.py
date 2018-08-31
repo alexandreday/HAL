@@ -90,31 +90,6 @@ class TREE:
         y_unique = np.unique(y_pred[pos]) # fit only on the non-outliers
         idx_subset = np.where(pos)[0]
 
-        #y_new_tmp = y_unique[-1]+1
-
-        """ if len(y_unique) > 1:
-            clf_root = CLF(clf_type=self.clf_type, n_bootstrap=n_bootstrap, test_size=self.test_size_ratio, clf_kwargs=self.clf_args).fit(X[idx_subset], y_pred[idx_subset])
-        else:
-             """
-        
-        #edge, y_new, clf_root = self.merge_history[-1] # we have merged until one node remains
-
-        #self.root = TREENODE(id_ = y_new , cv_clf=clf_root.cv_score_median)
-    
-        # cluster statistics for the root 
-        """ self.cluster_statistics[self.root.get_id()]  = compute_cluster_stats(X[idx_subset], len(y_pred))
-        
-        self.node_dict[self.root.get_id()] = self.root
-
-        self.clf_dict[self.root.get_id()] = clf_root """
-
-
-        """ for yu in y_unique:
-            c_node = TREENODE(id_=yu, parent=self.root)
-            self.root.add_child(c_node)
-            self.node_dict[c_node.get_id()] = c_node
-
-        # building full tree here """
 
         """ Creating ROOT """
         _, y_new, clf_root = self.merge_history[-1]
@@ -136,16 +111,12 @@ class TREE:
                 self.node_dict[y_new].cv_clf = clf.cv_score_median
                 self.node_dict[y_new].cv_clf_std = clf.cv_score_std
 
-        #self.merge_history.append([list(y_unique), y_new_tmp, copy.deepcopy(clf_root)])
 
         # constructs the structures that have the information about the tree 
 
         # Use propagated node score
         self.compute_feature_importance_dict(X)
         self.compute_propagate_cv() # full probabilities
-
-        #rint(self.node_dict)
-        #exit()
 
         self.compute_node_info()
         
@@ -193,6 +164,10 @@ class TREE:
                         terminal_clf.add(c.get_id())
             
             queue = [self.root]
+
+            if self.root.get_id() in terminal_clf:
+                return self.clf_dict[self.root.get_id()].predict(X, option=option)
+            
             while queue:
                 child = self.node_dict[queue[0].get_id()].child # node list (not integers)
                 queue = queue[1:]
@@ -200,70 +175,24 @@ class TREE:
                     if c.get_id() not in terminal_clf: #  (unpropagated_score_std scores)
                         if len(c.child) != 0:
                             queue.append(c)
-                    idx = np.where(ypred == c.get_id())[0]
-                    if len(idx) > 0:
-                        ypred[idx] = self.clf_dict[c.get_id()].predict(X[idx], option=option)
+                            idx = np.where(ypred == c.get_id())[0]
+                            if len(idx) > 0:
+                                ypred[idx] = self.clf_dict[c.get_id()].predict(X[idx], option=option)
         return ypred
     
     def possible_clusters(self, cv=0.9):
         clusters = []
-        stack = [self.root]
-        while stack:
-            child = self.node_dict[stack[0].get_id()].child # node list (not integers)
-            stack = stack[1:]
+        queue = [self.root]
+        while queue:
+            child = self.node_dict[queue[0].get_id()].child # node list (not integers)
+            queue = queue[1:]
             for c in child:
                 if c.cv_clf_all > cv: # (propagated scores)
-                    stack.append(c)
+                    queue.append(c)
                 else:
                     clusters.append(c.get_id())
         return clusters
-                
-    """ def compute_f1_score(self, X, node_id, ypred_init):
-        # to relabel points according to nodes ... just start from ypred init and apply mergers
-        ytmp = np.copy(ypred_init)
-        stack = [node_id]
-        leaf_list = []
-
-        while stack:
-            current_node = stack[0]
-            stack = stack[1:]
-
-            if self.node_dict[current_node].info['leaf']:
-                leaf_list.append(current_node)
-            else:
-                for c in self.node_dict[current_node].info['children_id']:
-                    stack.append(c)
-        
-        pos = np.zeros(len(ypred_init), dtype=bool)
-        leaf_list = np.array(leaf_list, dtype=int)
-
-        for leaf in leaf_list:
-            pos = (pos | (ytmp == leaf))
-
-        idx_true = np.where(pos)[0]
-        idx_false = np.where(pos ^ np.ones(len(ypred_init), dtype=bool))[0]
-
-        idx_true_sample = np.random.choice(idx_true, size=min([200,len(idx_true)]), replace=False)
-        idx_false_sample = np.random.choice(idx_false, size=min([200,len(idx_false)]), replace=False)
-
-        ypred_true = self.predict(X[idx_true_sample], cv=-1)
-        ypred_false = self.predict(X[idx_false_sample], cv=-1)
-
-        for leaf in leaf_list:
-            ypred_true[ypred_true == leaf] = node_id
-            ypred_false[ypred_false == leaf] = node_id
-        
-        TP = np.count_nonzero(ypred_true == node_id)/len(ypred_true)   # true positives
-        FN = np.count_nonzero(ypred_true != node_id)/len(ypred_true) # false negative
-        FP = np.count_nonzero(ypred_false == node_id)/len(ypred_false) # false positives
-
-        R = TP/(TP + FN)
-        P = TP/(TP + FP)
-
-        F1 = 0.5*(R*P)/(R+P)
-
-        return F1  """
-        
+                        
     def plot_tree(self, Xtsne, idx, feature_name): # plot tree given the specified cv score 
         """ Construct a nested dictionary representing the tree along with principal information
         and exports the nested dictornary in a json file (to be read by javascript program)
@@ -365,7 +294,7 @@ class TREE:
                     tmp_node = tmp_node.parent
                     propagate_score*= tmp_node.cv_clf
                     error_score +=tmp_node.cv_clf_std
-                node.cv_clf_all = propagate_score - error_score
+                node.cv_clf_all = propagate_score - error_score # propagate full error (lower bound)
 
     def feature_path_predict(self, x, cv=0.9):
         c_node = self.root
@@ -452,17 +381,17 @@ def breath_first_search(root):
     node_list : list of node id contained in root 
     """
 
-    stack = [root]
+    queue = [root]
     node_list = []
     # breath-first search
-    while stack:
-        current_node = stack[0]
-        stack = stack[1:]
+    while queue:
+        current_node = queue[0]
+        queue = queue[1:]
         node_list.append(current_node.get_id()) 
 
         if not current_node.is_leaf():
             for node in current_node.get_child():
-                stack.append(node)
+                queue.append(node)
 
     return node_list
     

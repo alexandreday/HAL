@@ -164,6 +164,10 @@ class TREE:
                         terminal_clf.add(c.get_id())
             
             queue = [self.root]
+
+            if self.root.get_id() in terminal_clf:
+                return self.clf_dict[self.root.get_id()].predict(X, option=option)
+            
             while queue:
                 child = self.node_dict[queue[0].get_id()].child # node list (not integers)
                 queue = queue[1:]

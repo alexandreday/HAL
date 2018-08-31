@@ -149,7 +149,7 @@ def HUNG_score(y_true_, y_pred_):
     """F score is computed via the Hungarian algorithm which
     determined the optimal match of populations to clusters
     If there are more clusters than populations, then some clusters are left unassigned
-    If there are more populations than clusters, than some populations are unassigned ... (problem !?)  
+    If there are more populations than clusters, then some populations are unassigned ... (problem !?)  
     """
     y_true, maptrue, invmaptrue = reindex(y_true_)
     y_pred, mappred, invmappred = reindex(y_pred_)

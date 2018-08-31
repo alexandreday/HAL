@@ -121,7 +121,6 @@ class CLF:
         self.scaler_list = xtrain_scaler_list # scaling transformations (zero mean, unit std)
         self.cv_score = np.mean(predict_score)
         self.cv_score_median = np.median(predict_score)
-        self.clf_median_idx =  np.argmin(np.abs(predict_score - self.cv_score_median))
         self.cv_score_iqr = np.percentile(predict_score, 80) - self.cv_score_median
         self.cv_score_std = np.std(predict_score)  
         self.mean_train_score = np.mean(training_score)
@@ -137,8 +136,8 @@ class CLF:
     def predict(self, X, option='fast'):
         """Returns labels for X (-1, 1)"""
         if option is 'fast':
-            mu, inv_sigma = self.scaler_list[self.clf_median_idx] # choose here median
-            return self.clf_list[self.clf_median_idx].predict(inv_sigma*(X-mu))
+            mu, inv_sigma = self.scaler_list[0] # choose here median
+            return self.clf_list[0].predict(inv_sigma*(X-mu))
 
         if self.clf_type == 'trivial':
             self._n_sample = len(X)
