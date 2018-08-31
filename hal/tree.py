@@ -153,7 +153,7 @@ class TREE:
 
         return self
         
-    def predict(self, X_, cv = 0.9, option='fast'):
+    def predict(self, X_, cv = 0.9, gap = None, option='fast'):
         """Vectorized predictor on the original data points"""
 
         if X_.ndim == 1:
@@ -161,19 +161,48 @@ class TREE:
         else:
             X = X_
 
-        stack = [self.root]
-        ypred = self.clf_dict[stack[0].get_id()].predict(X, option=option)
+        queue = [self.root]
+        ypred = self.clf_dict[queue[0].get_id()].predict(X, option=option)
 
-        while stack:
-            child = self.node_dict[stack[0].get_id()].child # node list (not integers)
-            stack = stack[1:]
-            for c in child:
-                if c.cv_clf_all > cv: #  (unpropagacv_score_stdted scores)
-                    stack.append(c)
+        if gap is None:
+            while queue:
+                child = self.node_dict[queue[0].get_id()].child # node list (not integers)
+                queue = queue[1:]
+                for c in child:
+                    if c.cv_clf_all > cv: #  (unpropagated_score_std scores)
+                        queue.append(c)
+                        idx = np.where(ypred == c.get_id())[0]
+                        if len(idx) > 0:
+                            ypred[idx] = self.clf_dict[c.get_id()].predict(X[idx], option=option)
+        else:
+            # First find the depth of the tree you are constructing
+            terminal_clf = set([])
+            while queue:
+                parent_id = queue[0].get_id()
+                child = self.node_dict[parent_id].child # node list (not integers)
+                parent_score = queue[0].cv_clf_all
+                queue = queue[1:]
+                #parent_score = queue[0].cv_clf_all
+                gaps = []
+                for c in child:
+                    if len(c.child) != 0: # not a leaf node
+                        if parent_score - c.cv_clf_all < gap:
+                            if parent_id in terminal_clf:
+                                terminal_clf.remove(parent_id)
+                        queue.append(c)
+                        terminal_clf.add(c.get_id())
+            
+            queue = [self.root]
+            while queue:
+                child = self.node_dict[queue[0].get_id()].child # node list (not integers)
+                queue = queue[1:]
+                for c in child:
+                    if c.get_id() not in terminal_clf: #  (unpropagated_score_std scores)
+                        if len(c.child) != 0:
+                            queue.append(c)
                     idx = np.where(ypred == c.get_id())[0]
                     if len(idx) > 0:
                         ypred[idx] = self.clf_dict[c.get_id()].predict(X[idx], option=option)
-                    
         return ypred
     
     def possible_clusters(self, cv=0.9):

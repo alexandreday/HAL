@@ -468,9 +468,9 @@ class kNN_Graph:
         self.tree = TREE(self.merger_history, self.cluster_statistics,self.clf_type,self.clf_args, ypred_init, test_size_ratio=self.test_size_ratio)
         self.tree.fit(X, self.y_pred)
 
-    def predict(self, X, cv=0.5, option="fast"):
-        print('Predicting on %i points'%len(X))
-        return self.tree.predict(X, cv=cv, option=option)
+    def predict(self, X, cv=0.5, option="fast", gap=None):
+        print('-> Predicting on %i points'%len(X))
+        return self.tree.predict(X, cv=cv, gap=gap, option=option)
 
     # Plotly graph
     #def plot_kNN_graph(self, idx_pos, X=None, savefile=None):
