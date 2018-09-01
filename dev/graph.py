@@ -71,7 +71,7 @@ class kNN_Graph:
 
         self.fout = None#/FOUT('out.txt')
         self.n_edge = n_edge
-        self.gap_min = 0.005 # self-consistent way of determining this ?
+        self.gap_min = 0.01 # self-consistent way of determining this ?
         self.gap_option = "standard"
         self.y_murky = y_murky
         self.cluster_statistics = {} # node_id to median markers ... should be part of graph stuff ?

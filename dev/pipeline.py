@@ -94,6 +94,8 @@ class HAL():
         nn_pure_ratio=0.1,
         min_size_cluster=50,
         tsne_type = 'fft', # default is FFTW t-SNE
+        tsne_dim = 2,
+        bh_angle = 0.5,
         seed = 0,
         nh_size = "auto",
         file_name_prefix = None,
@@ -119,6 +121,8 @@ class HAL():
         self.perplexity = perplexity
         self.n_iteration_tsne = n_iteration_tsne
         self.tsne_type = tsne_type
+        self.bh_angle = bh_angle
+        self.tsne_dim = tsne_dim
 
         self.late_exag = late_exag
         self.alpha_late = alpha_late
@@ -402,6 +406,8 @@ class HAL():
             assert self.tsne_type == 'fft' # for now just use this one
             if self.run_tSNE:
                 Xtsne = FItSNE(
+                    no_dims=self.tsne_dim,
+                    theta = self.bh_angle,
                     np.ascontiguousarray(X.astype(np.float)),
                     start_late_exag_iter=self.late_exag, late_exag_coeff=self.alpha_late,
                     max_iter = self.n_iteration_tsne,
