@@ -347,11 +347,6 @@ class TREE:
 
             #self.node_dict[new_idx].info['idx_merged']
 
-
-
-
-
-
 def str_gate(marker, sign):
     if sign < 0. :
         return marker+"-"

@@ -92,8 +92,10 @@ class HAL():
         n_iteration_tsne =  1000,
         outlier_ratio=0.05,
         nn_pure_ratio=0.1,
+        gap_min=0.01,
         min_size_cluster=50,
         tsne_type = 'fft', # default is FFTW t-SNE
+        bh_angle = 0.5,
         seed = 0,
         nh_size = "auto",
         file_name_prefix = None,
@@ -119,6 +121,7 @@ class HAL():
         self.perplexity = perplexity
         self.n_iteration_tsne = n_iteration_tsne
         self.tsne_type = tsne_type
+        self.bh_angle = bh_angle
 
         self.late_exag = late_exag
         self.alpha_late = alpha_late
@@ -141,6 +144,7 @@ class HAL():
         self.n_bootstrap = n_bootstrap
         self.clf_type = clf_type
         self.n_clf_sample_max = n_clf_sample_max
+        self.gap_min =gap_min
         
         if clf_args is None:
             if clf_type == 'svm':
@@ -245,7 +249,8 @@ class HAL():
             clf_type = self.clf_type,
             clf_args = self.clf_args,
             n_edge = self.n_edge_kNN,
-            y_murky = self.dp_profile.y_murky
+            y_murky = self.dp_profile.y_murky,
+            gap_min= self.gap_min
         )
 
         self.kNN_graph.fit(X, ypred, n_bootstrap_shallow=5)
@@ -403,6 +408,7 @@ class HAL():
             if self.run_tSNE:
                 Xtsne = FItSNE(
                     np.ascontiguousarray(X.astype(np.float)),
+                    theta = self.bh_angle,
                     start_late_exag_iter=self.late_exag, late_exag_coeff=self.alpha_late,
                     max_iter = self.n_iteration_tsne,
                     perplexity= self.perplexity,

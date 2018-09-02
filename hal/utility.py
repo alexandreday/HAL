@@ -48,7 +48,8 @@ def make_hash_name(param, file=None):
             ['alpha_late', float],
             ['late_exag',int],
             [['preprocess_option',"whiten"],str],
-            [['preprocess_option',"zscore"],str]
+            [['preprocess_option',"zscore"],str],
+            ['bh_angle',float]
         ]
         prefix = "tsne"
     elif file =="fdc":
@@ -77,7 +78,8 @@ def make_hash_name(param, file=None):
 
     elif file =="kNN_coarse":
         out = [
-            [['file_name','kNN_precoarse'], str]
+            [['file_name','kNN_precoarse'], str],
+            ['gap_min', float]
         ]
         prefix = "kNN"
 
