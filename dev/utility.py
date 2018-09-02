@@ -206,7 +206,7 @@ def parse_command_line(argv):
         "n_bootstrap":int,
         "clf_test_size_ratio":float,
         "n_edge_kNN":int,
-        "gap_min",float
+        "gap_min":float
     }
     parameters = {}
     
