@@ -104,7 +104,7 @@ class HAL():
         run_tSNE = True, # if not True, put in a file name for reading
         n_job = "auto", # All available processors will be used
         n_bootstrap = 30,
-        n_edge_kNN = 4,
+        n_edge_kNN = 4, #-> check potential bug with number too small (2)
         verbose = 1
     ):
         # Preprocessing:
