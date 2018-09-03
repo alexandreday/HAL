@@ -116,7 +116,8 @@ class kNN_Graph:
             else:
                 clf_args_pre = self.clf_args
         elif self.clf_type == 'svm':
-            clf_args_pre = {'class_weight':'balanced', 'kernel': 'linear'}
+            clf_args_pre = self.clf_args
+            #clf_args_pre = {'class_weight':'balanced', 'kernel': 'linear'}
         elif self.clf_type == "nb":
             clf_args_pre = {}
         

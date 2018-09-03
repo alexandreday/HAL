@@ -254,11 +254,15 @@ class TREE:
                 std_scores = np.std(importance_matrix, axis=0)
                 self.feature_importance_dict[node_id] = [scores, std_scores]
         elif self.clf_type == "svm": # need to add options here for other kernels
-            for node_id, clf in self.clf_dict.items():
-                importance_matrix = np.vstack([c.coef_ for c in clf.clf_list]) # linear weights ... 
-                scores = np.mean(importance_matrix, axis=0)
-                std_scores = np.std(importance_matrix, axis=0)
-                self.feature_importance_dict[node_id] = [scores, std_scores]
+                for node_id, clf in self.clf_dict.items():
+                    if hasattr(clf.clf_list[0], 'coef_'):
+                        importance_matrix = np.vstack([c.coef_ for c in clf.clf_list]) # linear weights ... 
+                        scores = np.mean(importance_matrix, axis=0)
+                        std_scores = np.std(importance_matrix, axis=0)
+                        self.feature_importance_dict[node_id] = [scores, std_scores]
+                    else:
+                        self.feature_importance_dict[node_id] = [[-1]*X.shape[1], [-1]*X.shape[1]]
+
         else: 
             for node_id, clf in self.clf_dict.items():
                 self.feature_importance_dict[node_id] = [np.ones(X.shape[1]),np.ones(X.shape[1])]
