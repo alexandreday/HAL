@@ -14,6 +14,9 @@ def main():
     from sklearn.decomposition import PCA
     from sklearn.preprocessing import StandardScaler
 
+
+    print(F_matrix([0,0,1,1,1,2,2,2],[0,1,1,2,2,3,3,3]))
+    exit()
     # Confusion matrix example with F-measure stuff ->
     np.random.seed(0)
     X,y = datasets.load_iris(return_X_y=True)
@@ -26,8 +29,8 @@ def main():
     #print(model.cluster_label)
     #print(y)
     #plotting.cluster_w_label(xpca, model.cluster_label)
-    print(FLOWCAP_score(y, model.cluster_label))
-    print(HUNG_score(y, model.cluster_label))
+    print(FLOWCAP_score(y, model.cluster_label)[1])
+    print(HUNG_score(y, model.cluster_label)[1])
     exit()
     summary(y, model.cluster_label)
 
@@ -91,9 +94,18 @@ def F_matrix(y_true, y_pred, eps=1e-10):
 
     sensitivity = np.vstack([C[i]/(np.sum(C[i])+eps) for i in range(ntrue)])
     precision = np.vstack([C[:,j]/(np.sum(C[:,j])+eps) for j in range(npred)]).T
-    res = 2*np.reciprocal(1./(sensitivity+eps) + 1./(precision+eps))
-    res[res < 10*eps] = 0.
-    return res
+    F_matrix = 2*np.reciprocal(1./(sensitivity+eps) + 1./(precision+eps))
+    F_matrix[F_matrix < 10*eps] = 0.
+
+    yu_pred = np.unique(y_pred)
+    yu_true = np.unique(y_true)
+
+    if len(yu_pred) > len(yu_true):
+        yu_true = list(yu_true) + ['pad_%i'%i for i in range(len(yu_pred)-len(yu_true))]
+    elif len(yu_pred) < len(yu_true):
+        yu_pred = list(yu_pred) + ['pad_%i'%i for i in range(len(yu_true)-len(yu_pred))]
+
+    return pd.DataFrame(F_matrix, columns =yu_pred, index=yu_true)
 
 def FLOWCAP_score(y_true_, y_pred_):
     """F score is maximized individually for each population (true label)
@@ -147,7 +159,7 @@ def plot_table(df, dpi=500, fname='table.pdf'):
 
 def HUNG_score(y_true_, y_pred_):
     """F score is computed via the Hungarian algorithm which
-    determined the optimal match of populations to clusters
+    determines the optimal match of populations to clusters
     If there are more clusters than populations, then some clusters are left unassigned
     If there are more populations than clusters, then some populations are unassigned ... (problem !?)  
     """
@@ -158,8 +170,8 @@ def HUNG_score(y_true_, y_pred_):
     #y_u_pred = np.unique(y_pred_)
 
     F = F_matrix(y_true, y_pred)
-    C = 1 - F
-    t, p = LSA(C) # match -> two arrays true - pred
+    C = 1 - F # cost matrix 
+    t, p = LSA(C) # linear sum assigment problem (hungarian algorithm) match -> two arrays true - pred
 
     match_weight  = 1./C.shape[0]*np.ones(len(y_u_true),dtype=float)
 

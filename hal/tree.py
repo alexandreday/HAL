@@ -292,8 +292,8 @@ class TREE:
                 tmp_node = node
                 while tmp_node.parent != None: # reached the root
                     tmp_node = tmp_node.parent
-                    propagate_score*= tmp_node.cv_clf
-                    error_score +=tmp_node.cv_clf_std
+                    propagate_score *= tmp_node.cv_clf
+                    error_score += tmp_node.cv_clf_std
                 node.cv_clf_all = propagate_score - error_score # propagate full error (lower bound)
 
     def feature_path_predict(self, x, cv=0.9):

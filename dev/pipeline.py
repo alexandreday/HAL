@@ -80,7 +80,7 @@ class HAL():
         late_exag = 1000, # default is no late  exageration
         alpha_late = 2.0,
         preprocess_option=None,
-        n_cluster_init = 30,
+        n_cluster_init = 20,
         n_clf_sample_max = 500,
         clf_type = 'svm',
         clf_args = None,
@@ -91,8 +91,8 @@ class HAL():
         perplexity = 50,    
         n_iteration_tsne =  1000,
         outlier_ratio=0.05,
-        nn_pure_ratio=0.1,
-        gap_min=0.01,
+        nn_pure_ratio=0.0,
+        gap_min=0.01,   
         min_size_cluster=50,
         tsne_type = 'fft', # default is FFTW t-SNE
         bh_angle = 0.5,
@@ -279,8 +279,10 @@ class HAL():
 
     def load(self, s=None):
         if s is None:
+            assert check_exist(self.file_name['hal'], self.root), "hal model not saved for specified parameters"
             [self.robust_scaler, self.kNN_graph] = pickle.load(open(self.root+self.file_name['hal'],'rb'))
         else:
+            assert check_exist(self.file_name[s], self.root), "%s model not saved for specified parameters"%s
             return pickle.load(open(self.root+self.file_name[s],'rb'))
 
     def predict(self, X, cv=0.5, gap=None, preprocess_option="same", option="fast"):

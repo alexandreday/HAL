@@ -40,7 +40,7 @@ class DENSITY_PROFILER:
         
         self.density_model.eta = 0.
         rho = self.density_model.fit(X).rho # finds density based clusters
-        self.density_model.coarse_grain(np.linspace(0, eta, 100)) # stops when max number of clusters is reached 
+        self.density_model.coarse_grain(np.linspace(0, eta, 200)) # stops when max number of clusters is reached 
 
         self.y = np.copy(self.density_model.cluster_label)
         rho_argsort = np.argsort(rho)
