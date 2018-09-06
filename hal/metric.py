@@ -122,7 +122,7 @@ def FLOWCAP_score(y_true_, y_pred_):
     y_true, maptrue, invmaptrue = reindex(y_true_)
     y_pred, mappred, invmappred = reindex(y_pred_)
 
-    F = F_matrix(y_true, y_pred) # will pad for missing classes
+    F = F_matrix(y_true, y_pred).values # will pad for missing classes
     y_u_true, counts = np.unique(y_true, return_counts = True)
     y_u_pred = np.unique(y_pred)
     weight = counts/len(y_true) # weights of true populations
@@ -169,7 +169,7 @@ def HUNG_score(y_true_, y_pred_):
     y_u_true = np.unique(y_true_)
     #y_u_pred = np.unique(y_pred_)
 
-    F = F_matrix(y_true, y_pred)
+    F = F_matrix(y_true, y_pred).values
     C = 1 - F # cost matrix 
     t, p = LSA(C) # linear sum assigment problem (hungarian algorithm) match -> two arrays true - pred
 
