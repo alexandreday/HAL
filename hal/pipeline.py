@@ -144,7 +144,7 @@ class HAL():
         self.n_bootstrap = n_bootstrap
         self.clf_type = clf_type
         self.n_clf_sample_max = n_clf_sample_max
-        self.gap_min =gap_min
+        self.gap_min = gap_min
         
         if clf_args is None:
             if clf_type == 'svm':

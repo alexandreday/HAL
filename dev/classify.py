@@ -169,45 +169,15 @@ class CLF:
         y_pred = self.predict(X).flatten()
         return np.count_nonzero(y_pred == y)/len(y)
     
-    def train_test_split(self, X, y):
-        if self.y_unique is None:
-            self.y_unique = np.unique(y)
-        if len(self.idx_pos) ==0:
-            for yu in self.y_unique:
-                self.idx_pos[yu] = np.where(y==yu)[0]
-        
-        self.n_class = len(self.y_unique)
-        if self.class_count is None:
-            self.class_count = {yu:len(self.idx_pos[yu]) for yu in self.y_unique}
-        
-        idx_train=[]; idx_test = [];
-        train_ratio = 1.-self.test_size
-        n_max = self.n_sample_max
+    def optimize_clf(self, idx_folds, param_sweep):
+        vParNames = list(param_sweep.keys())
+        vParIterables = list(param_sweep.values())
+        for values in list(itertools.product(*vParIterables)):
+            param = dict(zip(vParNames, values))
+            self.param = param
+            # <==> evaluate classifier here <==> ... 
 
-        for yc in self.y_unique: # ===
-            
-            n_yc = self.class_count[yc]
-            np.random.shuffle(self.idx_pos[yc])
-
-            if n_yc > n_max:
-                idx_train.append(self.idx_pos[yc][:int(train_ratio*n_max)])
-                idx_test.append(self.idx_pos[yc][int(train_ratio*n_max):n_max])
-            else:
-                nsplit = int(train_ratio*n_yc)
-                if nsplit == 0:
-                    idx_train.append(self.idx_pos[yc][:int(0.5*n_yc)])
-                    idx_test.append(self.idx_pos[yc][int(0.5*n_yc):n_yc])
-                else:
-                    idx_train.append(self.idx_pos[yc][:nsplit])
-                    idx_test.append(self.idx_pos[yc][nsplit:n_yc])
-        
-        idx_train = np.hstack(idx_train)
-        idx_test = np.hstack(idx_test)
-
-        return X[idx_train],X[idx_test],y[idx_train],y[idx_test]
-
-
-    def idx_train_test_split(self, y, test_size = 0.8, n_sample_max = 1000, n_split=1): 
+    def idx_train_test_split(self, y, test_size = 0.8, n_sample_max = 1000, n_train_min=100, n_split=1): 
         """ 
         Splitting function of uneven populations (can be extremely unbalanced)
         
@@ -239,14 +209,44 @@ class CLF:
 
         train_size = 1. - test_size
 
-        y_unique, counts = np.unique(y, return_counts=True)
+        y_unique = np.unique(y)
         idx_pos = {}
         class_count = {}
+        n_yu_test = {} # stores the number of examples with category yu to put into the testing set
+        n_yu_train = {} # stores the number of examples with category yu to put into the training set
+
+        # the goal here is to make sure you always enough samples from each category ...
         for i, yu in enumerate(y_unique):
             idx_pos[yu] = np.where(y==yu)[0]
-            class_count[yu] = counts[i]
+            n_yu = len(idx_pos[yu])
+            n_test = int(test_size*n_yu)
+            n_train = int(train_size*n_yu)
 
-        idx_per_split = [[] for i in range(n_split)]
+            if n_train < n_train_min: # force a 80/20 train-test split
+                n_test = int(0.2*n_yu)
+                n_train = int(0.8*n_yu)
+            
+            if n_train > n_sample_max: # too many samples
+                n_train = n_sample_max
+
+            n_yu_test[yu] = n_test
+            n_yu_train[yu] = n_train
+
+        idx_split = []
+        for n in range(n_split):
+            idx_train = []
+            idx_test =[]
+            for i, yu in enumerate(y_unique):
+                np.random.shuffle(idx_pos[yu])
+                n_train = n_yu_train[yu]
+                n_test = n_yu_test[yu]
+                idx_train += list(idx_pos[yu][:n_train])
+                idx_test += list(idx_pos[yu][n_train:(n_train+n_test)])
+            idx_split.append([idx_train, idx_test])
+
+        return idx_split
+
+        """ idx_per_split = [[] for i in range(n_split)]
         
         for yc in y_unique:
             n_yc = class_count[yc]
@@ -279,4 +279,4 @@ class CLF:
             np.random.shuffle(idx_test)
             idx_per_split_concat.append([idx_train, idx_test])
 
-        return idx_per_split_concat
+        return idx_per_split_concat """
