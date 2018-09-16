@@ -169,11 +169,23 @@ def HUNG_score(y_true_, y_pred_):
     y_u_true = np.unique(y_true_)
     #y_u_pred = np.unique(y_pred_)
 
-    F = F_matrix(y_true, y_pred)
+    F = F_matrix(y_true, y_pred).values
     C = 1 - F # cost matrix 
     t, p = LSA(C) # linear sum assigment problem (hungarian algorithm) match -> two arrays true - pred
 
     match_weight  = 1./C.shape[0]*np.ones(len(y_u_true),dtype=float)
+
+
+    #print(C.values)
+    ##print(type(C.values))
+    #print((C.values)[t, p])
+    """ print(C)
+    print(t[:len(y_u_true)])
+    print(p[:len(y_u_true)])
+    print((1.-C[t, p])[:len(y_u_true)])
+    p
+    print(match_weight) """
+
 
     df = pd.DataFrame(OrderedDict({'true':t[:len(y_u_true)], 'predict':p[:len(y_u_true)], 'Fmeasure':(1.-C[t, p])[:len(y_u_true)],'weight':match_weight}))
 

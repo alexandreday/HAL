@@ -4,7 +4,9 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.model_selection import ShuffleSplit
 import numpy as np
 from collections import Counter
+import itertools
 import time
+from copy import deepcopy
 
 def most_common(lst):
     return max(set(lst), key=lst.count)
@@ -19,18 +21,38 @@ class CLF:
     clf_kwargs : optional keyword arguments for the classifier    
     """
 
-    def __init__(self, clf_type='svm', n_bootstrap=10, test_size = 0.8, n_sample_max = 1000, clf_kwargs=None):
+    def __init__(self, clf_type='svm', n_bootstrap=10, train_size = 0.8, n_sample_max = 1000, clf_kwargs=None):
         self.clf_type = clf_type
         self.n_bootstrap = n_bootstrap
         self.n_sample_max = n_sample_max
-        self.test_size = test_size
+        self.train_size = train_size
+
         if clf_kwargs is None:
+            self.clf_kwargs = {}
+        else:
+            self.clf_kwargs = clf_kwargs
+
+        if self.clf_type == 'svm':
+                self.clf = SVC(**self.clf_kwargs)
+
+        elif self.clf_type == 'rf':
+                if 'max_features' not in self.clf_kwargs.keys():
+                    self.clf_kwargs['max_features'] = min([int(X.shape[1]/2), 100])
+                if 'n_estimators' not in self.clf_kwargs.keys():
+                    self.clf_kwargs['n_estimators'] = 20
+                self.clf = RandomForestClassifier(**self.clf_kwargs)
+        elif self.clf_type == 'nb':
+                self.clf = GaussianNB()#**self.clf_kwargs)
+        else:
+            assert False
+
+        """ if clf_kwargs is None:
             if clf_type == 'svm':
                 self.clf_kwargs = {'kernel':'linear','class_weight':'balanced'}
             else:
                 self.clf_kwargs = {'class_weight':'balanced'}
         else:
-            self.clf_kwargs = clf_kwargs
+            self.clf_kwargs = clf_kwargs """
 
         self.trained = False
         self.cv_score = 1.0
@@ -65,22 +87,7 @@ class CLF:
         """
         #print('Training %s with n_bootstrap=%i, with nsample=%i'%(self.clf_type, self.n_bootstrap, len(X)))
 
-        s=time.time()
-
         self.trained = True
-        
-        if self.clf_type == 'svm':
-                clf = SVC(**self.clf_kwargs)
-        elif self.clf_type == 'rf':
-                if 'max_features' not in self.clf_kwargs.keys():
-                    self.clf_kwargs['max_features'] = min([int(X.shape[1]/2), 100])
-                if 'n_estimators' not in self.clf_kwargs.keys():
-                    self.clf_kwargs['n_estimators'] = 20
-                clf = RandomForestClassifier(**self.clf_kwargs)
-        elif self.clf_type == 'nb':
-                clf = GaussianNB()#**self.clf_kwargs)
-        else:
-            assert False
 
         predict_score = []; training_score = []; clf_list = []; xtrain_scaler_list = [];
         zero_eps = 1e-6
@@ -88,11 +95,10 @@ class CLF:
         self.y_unique = np.unique(y) # different labels
         assert len(self.y_unique) > 1, "Cluster provided only has a unique label, can't classify !"
         
-        dt = 0
-
-        idx_bootstrap_split = self.idx_train_test_split(y, test_size =self.test_size, n_split=self.n_bootstrap, n_sample_max=self.n_sample_max)
+        idx_bootstrap_split = self.idx_train_test_split(y, train_size=self.train_size, n_split=self.n_bootstrap, n_sample_max=self.n_sample_max)
         #print(len(idx_bootstrap_split[0][0]),'\t', len(idx_bootstrap_split[0][1]))
         for s in range(self.n_bootstrap):
+
             idx_train, idx_test = idx_bootstrap_split[s]
             xtrain, xtest, ytrain, ytest = X[idx_train], X[idx_test], y[idx_train], y[idx_test] 
             #= self.train_test_split(X, y)
@@ -102,24 +108,27 @@ class CLF:
             mu, inv_sigma = np.mean(xtrain, axis=0), 1./std
 
             xtrain = (xtrain - mu)*inv_sigma # zscoring the data cd
+
             xtest = (xtest - mu)*inv_sigma
-            #s2 = time.time()
-            clf.fit(xtrain, ytrain)
-            #dt += (time.time() - s2)
-    
+            
+            # train classifier
+            self.clf.fit(xtrain, ytrain)
+            
             # predict on train set
-            t_score = clf.score(xtrain, ytrain) 
+            t_score = self.clf.score(xtrain, ytrain) 
             
             training_score.append(t_score)
 
-            # predict on test set # maybe this is a noisy estimate ?
-            # 
-            p_score = clf.score(xtest[:500], ytest[:500])
+            # predict on validation set # maybe this is a noisy estimate ?
+            p_score = self.clf.score(xtest[:500], ytest[:500])
+
             predict_score.append(p_score)
 
-            clf_list.append(clf)
+            clf_list.append(deepcopy(self.clf))
+
             xtrain_scaler_list.append([mu, inv_sigma])
         
+        #print(predict_score)
         self.scaler_list = xtrain_scaler_list # scaling transformations (zero mean, unit std)
         self.cv_score = np.mean(predict_score)
         self.cv_score_median = np.median(predict_score)
@@ -131,8 +140,47 @@ class CLF:
         self.n_sample_ = len(y)
         self.idx_pos.clear()
 
-        #print('Done ALL in %.4f with training of %.4f'%(time.time()-s, dt))
         return self
+    
+    def set_params(self, param_dict):
+        self.clf.set_params(**param_dict)
+
+    def grid_search_optimize(self, X, y, grid_dict, objective = None, verbose=True):
+        """ Using specified value of parameters to sweep over
+        returns the CLF object with the best cross-validation
+        score on those parameters
+
+        Parameters 
+        ---------
+        grid_dict : dict
+            Dictionary of parameters to iterate. Example : grid_dict = {'C':[0.01,0.1,1,10]} 
+        """
+        if objective is None:
+            objective = lambda x : x.cv_score
+
+        vParIterables = list(grid_dict.values())
+        vParNames = list(grid_dict.keys())
+
+        best_score = -1
+
+        for values in list(itertools.product(*vParIterables)):
+            current_param = dict(zip(vParNames, values))
+            self.set_params(current_param)
+            self.fit(X, y)
+            current_score = objective(self)
+
+            if verbose:
+                print(current_param,'\t', current_score)
+
+            if current_score>best_score:
+                best_score = current_score
+                clf_best = deepcopy(self)
+                param_best = deepcopy(current_param)
+        if verbose:
+            print('Best objective is %.4f with parameters %s'%(best_score, str(param_best)))
+
+        return clf_best 
+
 
 
     def predict(self, X, option='fast'):
@@ -177,7 +225,7 @@ class CLF:
             self.param = param
             # <==> evaluate classifier here <==> ... 
 
-    def idx_train_test_split(self, y, test_size = 0.8, n_sample_max = 1000, n_train_min=100, n_split=1): 
+    def idx_train_test_split(self, y, train_size = 0.8, n_sample_max = 1000, n_train_min=20, n_split=1): 
         """ 
         Splitting function of uneven populations (can be extremely unbalanced)
         
@@ -192,7 +240,7 @@ class CLF:
         y: numpy array (shape = (n_sample))
             labels to split
 
-        test_size: float (default = 0.8)
+        train_size: float (default = 0.8)
             Ratio size of the test set
         
         n_sample_max: int (default = 1000)
@@ -207,7 +255,7 @@ class CLF:
             Each element of the returned list is [idx_train, idx_test], the location of the training samples and test samples to use
         """
 
-        train_size = 1. - test_size
+        test_size = 1. - train_size
 
         y_unique = np.unique(y)
         idx_pos = {}
@@ -245,38 +293,3 @@ class CLF:
             idx_split.append([idx_train, idx_test])
 
         return idx_split
-
-        """ idx_per_split = [[] for i in range(n_split)]
-        
-        for yc in y_unique:
-            n_yc = class_count[yc]
-            if n_yc < 200: 
-                # For small clusters take 50/50 splits
-                n_yc_test = min([int(0.5 * n_yc), n_sample_max])
-                n_yc_train = min([int(0.5 * n_yc), n_sample_max])
-            else:
-                # For large clusters take specified cluster splits
-                n_yc_test = min([int(test_size * n_yc), n_sample_max])
-                n_yc_train = min([int(train_size * n_yc), n_sample_max])
-
-            skf = ShuffleSplit(n_splits=n_split, test_size = n_yc_test, train_size = n_yc_train)
-
-            for enum_idx, idx_split in enumerate(skf.split(idx_pos[yc])):
-                p = idx_pos[yc][idx_split[0]], idx_pos[yc][idx_split[1]] # train and test set splits
-                idx_per_split[enum_idx].append(p)
-        
-        idx_per_split_concat = []
-        for i in range(n_split):
-            idx_train=[]
-            idx_test = []
-            for p in idx_per_split[i]:
-                idx_train.append(p[0])
-                idx_test.append(p[1])
-            idx_train=np.concatenate(idx_train)
-            idx_test=np.concatenate(idx_test)
-            
-            np.random.shuffle(idx_train)
-            np.random.shuffle(idx_test)
-            idx_per_split_concat.append([idx_train, idx_test])
-
-        return idx_per_split_concat """
