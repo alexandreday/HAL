@@ -101,7 +101,7 @@ class HAL():
         file_name_prefix = None,
         eta = 1.5,
         fdc_test_ratio_size = 0.8,
-        run_tSNE = True, # if not True, put in a file name for reading
+        fit_tsne = True, # if not True, put in a file name for reading
         n_job = "auto", # All available processors will be used
         n_bootstrap = 30,
         n_edge_kNN = 4, #-> check potential bug with number too small (2)
@@ -166,7 +166,7 @@ class HAL():
             root+="/"
 
         self.root = root
-        self.tsne = run_tSNE
+        self.tsne = fit_tsne
         self.warm_start = warm_start
 
         self.file_name = {}
@@ -177,7 +177,7 @@ class HAL():
         self.file_name['hal'] = make_hash_name(self.__dict__, file='hal')
 
         
-    def fit(self, data):
+    def fit(self, data, task="all"):
         """ Clustering and fitting random forest classifier ...
         Processing steps:
             1. zscore data
@@ -199,12 +199,11 @@ class HAL():
 
         self.n_feature = data.shape[1]
 
-        # standardized data for training
-        X_preprocess = self.preprocess(data, **self.preprocess_option)
+        # standardizes data, etc. 
+        X_original = self.preprocess(data, **self.preprocess_option)
 
-        # run t-SNE
-        # when running t-SNE, use raw data, it's to the user to provide his data in a correct format.
-        X_tsne = self.run_tSNE(data)
+        # dimensional reduction
+        X_tsne = self.fit_tsne(data)
    
         # purifies clusters
         self.density_cluster = FDC(
@@ -221,13 +220,13 @@ class HAL():
         self.ypred_init = np.copy(self.ypred) # important for later
 
         # Fitting kNN graph
-        self.fit_kNN_graph(X_preprocess, self.ypred)
+        self.fit_kNN_graph(X_original, self.ypred)
         
         # Coarse graining kNN graph
-        self.coarse_grain_kNN_graph(X_preprocess, self.ypred) # coarse grain
+        self.coarse_grain_kNN_graph(X_original, self.ypred) # coarse grain
 
         # Constructing predictive model
-        self.construct_model(X_preprocess) # links all classifiers together in a hierarchical model
+        self.construct_model(X_original) # links all classifiers together in a hierarchical model
 
         return self
 
@@ -381,7 +380,7 @@ class HAL():
 
         pickle.dump(self.dp_profile, open(self.root+ self.file_name['fdc'],'wb'))
 
-    def run_tSNE(self, X):
+    def fit_tsne(self, X):
         """
         Performs t-SNE dimensional reduction using a FFT based C-implementation of Barnes-Hut t-SNE (very fast)
         Optionally, one can specify the number of paralell jobs to run from the :n_jobs: parameter in the constructor.
@@ -407,7 +406,7 @@ class HAL():
             return pickle.load(open(self.root+tsnefile,'rb'))
         else:
             assert self.tsne_type == 'fft' # for now just use this one
-            if self.run_tSNE:
+            if self.fit_tsne:
                 Xtsne = FItSNE(
                     np.ascontiguousarray(X.astype(np.float)),
                     theta = self.bh_angle,

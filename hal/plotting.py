@@ -63,7 +63,7 @@ def cluster_w_label(X, y, Xcluster=None, show=True, savefile = None, fontsize =1
             # Position of each label.
             txt = ax.annotate(str(i),xy,
             xytext=(0,0), textcoords='offset points',
-            fontsize=fontsize,horizontalalignment='left', verticalalignment='left'
+            fontsize=fontsize,horizontalalignment='center', verticalalignment='center'
             )
             txt.set_path_effects([
                 PathEffects.Stroke(linewidth=5, foreground="w"),

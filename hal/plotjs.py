@@ -19,7 +19,7 @@ def runjs(root="./"):
     os.system(cmd)
     time.sleep(0.25)
     ######## ------------------ ######
-    os.system('python %s/custom_server.py 1'%out)
+    os.system('python3 %s/custom_server.py 1'%out)
 
 """ if __name__ == "__main__":
     plotjs() """
