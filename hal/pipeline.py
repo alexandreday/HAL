@@ -407,13 +407,18 @@ class HAL():
         else:
             assert self.tsne_type == 'fft' # for now just use this one
             if self.fit_tsne:
+                if self.n_job == -1:
+                    n_job = 0
+                else:
+                    n_job = self.n_job
                 Xtsne = FItSNE(
                     np.ascontiguousarray(X.astype(np.float)),
                     theta = self.bh_angle,
                     start_late_exag_iter=self.late_exag, late_exag_coeff=self.alpha_late,
                     max_iter = self.n_iteration_tsne,
                     perplexity= self.perplexity,
-                    rand_seed=self.seed
+                    rand_seed=self.seed,
+                    nthreads=self.n_job
                 )
             else:
                 Xtsne = X #simple trick for now, a bit memory wasteful but not a big deal.
