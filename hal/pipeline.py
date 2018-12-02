@@ -407,7 +407,7 @@ class HAL():
         else:
             assert self.tsne_type == 'fft' # for now just use this one
             if self.fit_tsne:
-                if self.n_job == -1:
+                if self.n_job == "auto":
                     n_job = 0
                 else:
                     n_job = self.n_job
