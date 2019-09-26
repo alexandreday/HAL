@@ -324,14 +324,17 @@ class HAL():
         and bar charts of feature information for each cluster
         """
         Xtsne = pickle.load(open(self.root+self.file_name['tsne'],'rb'))
-        
-        if feature_name is None:
-            feature_name_ = list(range(self.n_feature))
-        else:
-            assert len(feature_name) == self.n_feature, "Feature name list must have the same number of element as the number of features"
-            feature_name_ = feature_name
+        assert feature_name is not None
 
-        self.kNN_graph.tree.plot_tree(Xtsne, self.ypred_init, feature_name_)
+        #
+        
+        #if feature_name is None:
+        #    feature_name_ = list(range(self.n_feature))
+        #else:
+        #    assert len(feature_name) == self.n_feature, "Feature name list must have the same number of element as the number of features"
+        #    feature_name_ = feature_name
+
+        self.kNN_graph.tree.plot_tree(Xtsne, self.ypred_init, feature_name)
 
         runjs('js/')
 

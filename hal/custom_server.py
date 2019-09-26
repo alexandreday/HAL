@@ -1,9 +1,9 @@
 # Run python server on a different thread
-import http.server
-import socketserver
 import sys, os, random, string, signal, subprocess
 import time, random, string
 import platform
+import http.server
+import socketserver
 
 # run a subprocess to create server
 def random_string(n=50):
@@ -32,7 +32,7 @@ def run_cp_kill():
     # need to figure out relative copying, etc ... server should be created in same directory as .js files
 
     # Runs other process in the background
-    p = subprocess.Popen(('python %s/custom_server.py 2'%dir_path).split(" "),cwd=dir_path) # switch directory
+    p = subprocess.Popen(('/Users/alexday/anaconda3/bin/python3.6 %s/custom_server.py 2'%dir_path).split(" "),cwd=dir_path) # switch directory
 
     time.sleep(2.0) # wait for server to launch
     url = "http://localhost:8499/%s"%("index.html".strip(".html") +"_"+ random_tag + ".html")
@@ -52,6 +52,9 @@ def run_cp_kill():
     kill_local_server(p.pid)
 
 def run_local_server(port = 8000):
+    #import sys
+    #print(sys.version)
+
     socketserver.TCPServer.allow_reuse_address = True # required for fast reuse ! 
     """
     Check out :
