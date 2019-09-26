@@ -1,1 +1,1 @@
-# Error module for define error messages and how they are handled
+# Error module for defining error messages and how they are handled

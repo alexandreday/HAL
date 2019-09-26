@@ -12,7 +12,7 @@ from .tupledict import TupleDict
 from .tree import TREE
 from .utility import make_file_name, print_param, find_position_idx_center, make_hash_name
 from .purify import DENSITY_PROFILER
-from .plotjs import runjs
+#from .plotjs import runjs
 
 from fdc import FDC
 
@@ -51,7 +51,7 @@ class HAL():
         For rf the maximum number of features used in each split is 200.
         All populations are weigh balanced in the cost function.
     
-    clf_test_size_ratio: float (default = 0.8):
+    clf_train_size: float (default = 0.8):
         Split ratio (training is 0.2 and testing is 0.8 by defeault)used for each fold for used in the bagging estimates. 
 
     outlier_ratio: float (default=0.2)
@@ -96,7 +96,7 @@ class HAL():
         clf_args = None,
         warm_start = False,
         root = "info_hal", # default directory where information will be dumped
-        clf_test_size_ratio = 0.8,
+        clf_train_size= 0.8,
 
         perplexity = 50,    
         n_iteration_tsne =  1000,
@@ -150,7 +150,7 @@ class HAL():
         self.n_cluster_init = n_cluster_init
 
         # kNN graph parameters (=> probably I don't want any of this <=)
-        self.clf_test_size_ratio = clf_test_size_ratio
+        self.clf_train_size = clf_train_size
         self.n_bootstrap = n_bootstrap
         self.clf_type = clf_type
         self.n_clf_sample_max = n_clf_sample_max
@@ -254,7 +254,7 @@ class HAL():
 
         self.kNN_graph = kNN_Graph(
             n_bootstrap = self.n_bootstrap,
-            test_size_ratio = self.clf_test_size_ratio,
+            train_size = self.clf_train_size,
             n_sample_max=self.n_clf_sample_max,
             clf_type = self.clf_type,
             clf_args = self.clf_args,

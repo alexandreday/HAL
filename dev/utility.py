@@ -68,7 +68,7 @@ def make_hash_name(param, file=None):
     elif file =="kNN_precoarse":
         out = [
             [['file_name','fdc'], str], # how to make this stable ?
-            ['clf_test_size_ratio', float],
+            ['clf_train_size', float],
             ['clf_type', str],
             ['n_clf_sample_max',int],
             ['clf_args', str],

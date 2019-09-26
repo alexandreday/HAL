@@ -70,7 +70,7 @@ class TREENODE:
 class TREE:
     """ Contains all the hierachy and information concerning the clustering """
     
-    def __init__(self, merge_history, cluster_statistics, clf_type, clf_args, y_pred_init, test_size_ratio=0.8):
+    def __init__(self, merge_history, cluster_statistics, clf_type, clf_args, y_pred_init, train_size=0.8):
         #merger_history = list of  [edge, clf]
 
         self.merge_history = merge_history
@@ -78,7 +78,7 @@ class TREE:
         self.y_pred_init = y_pred_init # for computing f1-scores
         self.clf_args = clf_args
         self.clf_type = clf_type
-        self.test_size_ratio = test_size_ratio
+        self.train_size = train_size
 
     def fit(self, X, y_pred, n_bootstrap=10): 
         """ Fits hierarchical model"""
@@ -94,7 +94,11 @@ class TREE:
         """ Creating ROOT """
         _, y_new, clf_root = self.merge_history[-1]
         print(y_new)
-        self.root = TREENODE(id_ = y_new , cv_clf=clf_root.cv_score_median, cv_clf_std=clf_root.cv_score_std)
+
+        self.root = TREENODE(id_ = y_new, 
+                        cv_clf=clf_root.cv_score_median,
+                        cv_clf_std=clf_root.cv_score_std)
+
         self.node_dict[y_new] = self.root
         self.clf_dict[y_new] = clf_root
         
@@ -111,11 +115,11 @@ class TREE:
                 self.node_dict[y_new].cv_clf = clf.cv_score_median
                 self.node_dict[y_new].cv_clf_std = clf.cv_score_std
 
-
         # constructs the structures that have the information about the tree 
 
         # Use propagated node score
         self.compute_feature_importance_dict(X)
+
         self.compute_propagate_cv() # full probabilities
 
         self.compute_node_info()

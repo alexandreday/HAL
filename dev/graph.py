@@ -52,7 +52,7 @@ class kNN_Graph:
     """
     def __init__(self, 
         n_bootstrap = 10,  
-        test_size_ratio = 0.8,
+        train_size = 0.8,
         n_sample_max = 1000,
         clf_type='svm', 
         clf_args=None,
@@ -63,7 +63,7 @@ class kNN_Graph:
         ):
         
         self.n_bootstrap = n_bootstrap
-        self.test_size_ratio = test_size_ratio
+        self.train_size = train_size
         self.clf_type = clf_type
         self.n_sample_max = n_sample_max
         self.recomputed = False
@@ -423,7 +423,7 @@ class kNN_Graph:
                     del self.graph[(node_1, node_2)] # clearing memory
 
     def classify_edge(self, edge_tuple, X, y, clf_type=None, clf_args=None, 
-        n_bootstrap=None, test_size_ratio=None, n_sample_max = None):
+        n_bootstrap=None, train_size=None, n_sample_max = None):
         """ Trains a classifier for cluster edge_tuple[0] and edge_tuple[1]
 
         Important attributes are (for CLF object):
@@ -447,8 +447,8 @@ class kNN_Graph:
             clf_args = self.clf_args
         if n_bootstrap is None:
             n_bootstrap = self.n_bootstrap
-        if test_size_ratio is None:
-            test_size_ratio = self.test_size_ratio
+        if train_size is None:
+            train_size = self.train_size
         if n_sample_max is None:
             n_sample_max = self.n_sample_max
 
@@ -459,7 +459,12 @@ class kNN_Graph:
         Xsubset = X[pos_subset] # original space coordinates
         ysubset = y[pos_subset] # labels ---
 
-        return CLF(clf_type=clf_type, n_bootstrap=n_bootstrap, n_sample_max=n_sample_max, test_size=test_size_ratio, clf_kwargs=clf_args).fit(Xsubset, ysubset)
+        return CLF(
+                clf_type=clf_type, 
+                n_bootstrap=n_bootstrap,
+                n_sample_max=n_sample_max,
+                train_size=train_size,
+                clf_kwargs=clf_args).fit(Xsubset, ysubset)
     
     def coarse_grain(self, X, y_pred):
 
@@ -473,7 +478,7 @@ class kNN_Graph:
 
     def build_tree(self, X, ypred_init):
         print("Building tree")
-        self.tree = TREE(self.merger_history, self.cluster_statistics,self.clf_type,self.clf_args, ypred_init, test_size_ratio=self.test_size_ratio)
+        self.tree = TREE(self.merger_history, self.cluster_statistics,self.clf_type,self.clf_args, ypred_init, train_size=self.train_size)
         self.tree.fit(X, self.y_pred)
 
     def predict(self, X, cv=0.5, option="fast", gap=None):
