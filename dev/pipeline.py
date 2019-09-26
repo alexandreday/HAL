@@ -52,7 +52,7 @@ class HAL():
         All populations are weigh balanced in the cost function.
     
     clf_train_size: float (default = 0.8):
-        Split ratio (training is 0.2 and testing is 0.8 by defeault)used for each fold for used in the bagging estimates. 
+        Split ratio (training is 0.8 and testing is 0.2 by defeault) used for each fold in the bagging estimates. 
 
     outlier_ratio: float (default=0.2)
         Ratio of the lowest density points that are considered outliers
