@@ -1,0 +1,1 @@
+# Error module for define error messages and how they are handled

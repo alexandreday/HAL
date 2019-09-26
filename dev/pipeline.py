@@ -1,3 +1,5 @@
+# Main pipeline file for linking all the modules together
+
 from .graph import kNN_Graph
 from .tupledict import TupleDict
 from .tree import TREE
@@ -16,8 +18,9 @@ import pickle, os
 
 class HAL():
     """HAL-x : clustering via Hierarchial Agglomerative Learning.
-    Construct FFT t-SNE embedding and identif pure clusters. Constructs
-    a hierarchical classifer based on coarse-graining a k-NN graph
+    Starts by constructing a FFT-accelerated t-SNE embedding and proceeds to identifying pure clusters
+    using cross-validated density clustering on the resulting embedding. From the proposed clusters, constructs a 
+    hierarchical classifer based on coarse-graining a k-NN graph.
         
     Parameters
     -------------
