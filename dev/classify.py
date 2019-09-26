@@ -1,3 +1,12 @@
+'''
+Created on Jan 16, 2017
+
+@author: Alexandre Day
+
+Description : 
+    Module for performing cross-validation and classification 
+'''
+
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import GaussianNB

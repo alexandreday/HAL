@@ -1,3 +1,13 @@
+'''
+Created on Jan 16, 2017
+
+@author: Alexandre Day
+
+Description : 
+    Module and classes for custom k-NN graph
+'''
+
+
 from .classify import CLF
 from .tree import TREE
 import numpy as np
@@ -5,10 +15,6 @@ from copy import deepcopy
 import pickle, time
 from .tupledict import TupleDict
 from .utility import FOUT, compute_cluster_stats
-
-## == <==> 
-#### GOAL TODAY ---> make this kNN graph more clear and better sort out options and structures, etc.
-## == <==>
 
 class SINGLE_EDGE:
 

@@ -1,3 +1,12 @@
+'''
+Created on Sep 26, 2019
+
+@author: Alexandre Day
+
+Description : 
+    Class for embedders and providing different methods for embedding data
+'''
+
 import error as err
 
 class EMBEDDER()

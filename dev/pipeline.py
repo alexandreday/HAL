@@ -1,4 +1,11 @@
-# Main pipeline file for linking all the modules together
+'''
+Created on Jan 16, 2017
+
+@author: Alexandre Day
+
+Description : 
+    Main pipeline file for linking all the modules together
+'''
 
 from .graph import kNN_Graph
 from .tupledict import TupleDict

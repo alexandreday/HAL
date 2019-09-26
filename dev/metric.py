@@ -1,3 +1,12 @@
+'''
+Created on Jan 16, 2017
+
+@author: Alexandre Day
+
+Description : 
+    Metrics for quantifying the quality of the clustering
+'''
+
 import numpy as np
 from collections import OrderedDict
 from sklearn.metrics import confusion_matrix

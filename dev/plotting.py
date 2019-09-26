@@ -2,6 +2,9 @@
 Created on Jan 16, 2017
 
 @author: Alexandre Day
+
+Description : 
+    Plotting utilities for graphs, clustering, embedding and high-dimensional data
 '''
 
 import numpy as np
