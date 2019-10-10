@@ -8,5 +8,6 @@ from .metric import *
 from .classify import CLF
 from .purify import DENSITY_PROFILER
 from .utility import decode
+from .preprocessing import preprocess
 
 __all__ = ['kNN_Graph', 'HAL', 'TupleDict', 'TREE', 'CLF']

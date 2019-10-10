@@ -6,7 +6,7 @@ Created on Jan 16, 2017
 Description : 
     Main pipeline file for linking all the modules together
 '''
-
+from . import preprocessing as prep
 from .graph import kNN_Graph
 from .tupledict import TupleDict
 from .tree import TREE
@@ -17,11 +17,12 @@ from .purify import DENSITY_PROFILER
 from fdc import FDC
 
 from fitsne import FItSNE
-from sklearn.preprocessing import RobustScaler
 
 from collections import Counter
 import numpy as np
 import pickle, os
+
+__current_version__ = '0.9.9'
 
 class HAL():
     """HAL-x : clustering via Hierarchial Agglomerative Learning.
@@ -119,7 +120,7 @@ class HAL():
     ):
         # Preprocessing:
         if preprocess_option is None:
-            self.preprocess_option={"whiten":False,"zscore":True}
+            self.preprocess_option={"whiten":2.0,"zscore":True}
         else:
             self.preprocess_option = preprocess_option
             if "whiten" not in self.preprocess_option.keys():
@@ -186,6 +187,8 @@ class HAL():
         self.file_name['kNN_coarse'] = make_hash_name(self.__dict__, file='kNN_coarse')
         self.file_name['hal'] = make_hash_name(self.__dict__, file='hal')
 
+        print("Defined HAL object version %s"%__current_version__)
+
         
     def fit(self, data):
         """ Clustering and fitting random forest classifier ...
@@ -207,14 +210,18 @@ class HAL():
 
         np.random.seed(self.seed)
 
-        self.n_feature = data.shape[1]
+        self.n_data, self.n_feature = data.shape
+        print("Training on data set of dimensions : %s by %s"%data.shape)
+    
+        # 1 : Standardize data for classifier training
+        self.prep_data = prep.preprocess(data, **self.preprocess_option)
+        
+        # 2. : Run dimensional reduction method (t-SNE // UMAP // PCA)
+        # Note : When running t-SNE, use raw data: it is up to the user to provide his data with any special pre-processing
+        X_low_dim = dim_red.reduce_dimension(data, **self.reduce_dimension_option)
+        #X_tsne = self.run_tSNE(data)
 
-        # standardized data for training
-        X_preprocess = self.preprocess(data, **self.preprocess_option)
-
-        # run t-SNE
-        # when running t-SNE, use raw data, it's to the user to provide his data in a correct format.
-        X_tsne = self.run_tSNE(data)
+        return
    
         # purifies clusters
         self.density_cluster = FDC(
@@ -231,13 +238,13 @@ class HAL():
         self.ypred_init = np.copy(self.ypred) # important for later
 
         # Fitting kNN graph
-        self.fit_kNN_graph(X_preprocess, self.ypred)
+        self.fit_kNN_graph(self.prep_data['X'], self.ypred)
         
         # Coarse graining kNN graph
-        self.coarse_grain_kNN_graph(X_preprocess, self.ypred) # coarse grain
+        self.coarse_grain_kNN_graph(self.prep_data['X'], self.ypred) # coarse grain
 
         # Constructing predictive model
-        self.construct_model(X_preprocess) # links all classifiers together in a hierarchical model
+        self.construct_model(self.prep_data['X']) # links all classifiers together in a hierarchical model
 
         return self
 
