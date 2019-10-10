@@ -1,6 +1,6 @@
 # To do list
-- [x] Cocatenate and hash parameters in file name
-- [ ] Compress fdc file (nn.map can always be easily recomputed, no need to save that)
-- [ ] zooming in and out dashboard tree plot interface 
-- [ ] this is an incomplete item
+- [x] Concatenate and hash parameters in file name
+- [ ] Refactor pipeline, split out task into different modules. Main pipeline should only be calling the different modules
+- [ ] Produce code documentation (SPHINX)
+- [ ] Split-out HAL visual into a different project
 
