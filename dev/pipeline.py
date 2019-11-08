@@ -22,7 +22,7 @@ from collections import Counter
 import numpy as np
 import pickle, os
 
-__current_version__ = '0.9.9'
+#__current_version__ = '0.9.9'
 
 class HAL():
     """HAL-x : clustering via Hierarchial Agglomerative Learning.
@@ -88,7 +88,7 @@ class HAL():
     """
 
     def __init__(self, # parameters are roughly in order of importance or usefuless
-        late_exag = 1000, # default is no late  exageration
+        late_exag = 1000, # default is no late exageration
         alpha_late = 2.0,
         preprocess_option=None,
         n_cluster_init = 20,
@@ -187,7 +187,7 @@ class HAL():
         self.file_name['kNN_coarse'] = make_hash_name(self.__dict__, file='kNN_coarse')
         self.file_name['hal'] = make_hash_name(self.__dict__, file='hal')
 
-        print("Defined HAL object version %s"%__current_version__)
+        #print("Defined HAL object version %s"%__current_version__)
 
         
     def fit(self, data):

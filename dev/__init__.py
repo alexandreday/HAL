@@ -10,4 +10,6 @@ from .purify import DENSITY_PROFILER
 from .utility import decode
 from .preprocessing import preprocess
 
+__version__ = '0.9.9'
+
 __all__ = ['kNN_Graph', 'HAL', 'TupleDict', 'TREE', 'CLF']
