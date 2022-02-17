@@ -337,7 +337,7 @@ class HAL():
     def feature_median(self, cluster_idx):
         return self.kNN_graph.tree.node_dict['median_marker']['mu']
 
-    def plot_tree(self, feature_name = None):
+    def plot_tree(self, y_new=None, feature_name = None):
         """ Renders a dashboard with the hierarchical tree
         and bar charts of feature information for each cluster
         """
@@ -349,7 +349,10 @@ class HAL():
             assert len(feature_name) == self.n_feature, "Feature name list must have the same number of element as the number of features"
             feature_name_ = feature_name
 
-        self.kNN_graph.tree.plot_tree(Xtsne, self.ypred_init, feature_name_)
+        if y_new is None:
+            y_new=self.ypred_init
+        
+        self.kNN_graph.tree.plot_tree(Xtsne, y_new, feature_name_)
 
         runjs('js/')
 

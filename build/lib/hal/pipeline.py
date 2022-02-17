@@ -410,20 +410,19 @@ class HAL():
             return pickle.load(open(self.root+tsnefile,'rb'))
         else:
             assert self.tsne_type == 'fft' # for now just use this one
-            if self.tsne==True:
+            if self.fit_tsne:
                 if self.n_job == "auto":
                     n_job = 0
                 else:
                     n_job = self.n_job
                 Xtsne = FItSNE(
                     np.ascontiguousarray(X.astype(np.float)),
-                    no_dims=2,
                     theta = self.bh_angle,
                     start_late_exag_iter=self.late_exag, late_exag_coeff=self.alpha_late,
                     max_iter = self.n_iteration_tsne,
                     perplexity= self.perplexity,
                     rand_seed=self.seed,
-                    nthreads=n_job
+                    nthreads=self.n_job
                 )
             else:
                 Xtsne = X #simple trick for now, a bit memory wasteful but not a big deal.
