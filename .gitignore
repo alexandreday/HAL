@@ -1,5 +1,6 @@
 test/*
 *.pkl
+*.pyc
 *.txt
 *.pdf
 *.html

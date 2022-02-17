@@ -145,7 +145,7 @@ class HAL():
         self.density_cluster = None
         
         # Density clustering parameters
-        self.nh_size = nh_size
+        self.nh_size = nh_size                       
         self.eta = eta
         self.fdc_test_ratio_size = fdc_test_ratio_size
         self.n_cluster_init = n_cluster_init
