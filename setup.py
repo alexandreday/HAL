@@ -11,6 +11,7 @@ with open("README.md", "r") as fh:
 FITSNE_MIN_VERSION = '0.2.5'
 SCIKIT_MIN_VERSION = '0.19'
 FDC_MIN_VERSION='1.15'
+PD_MIN_VERSION='1.01'
 
 setup(
       name='hal-x',
@@ -23,7 +24,8 @@ setup(
       install_requires =[
         'fitsne>={0}'.format(FITSNE_MIN_VERSION),
         'scikit-learn>={0}'.format(SCIKIT_MIN_VERSION),
-        'fdc>={0}'.format(FDC_MIN_VERSION)
+        'fdc>={0}'.format(FDC_MIN_VERSION),
+	'pandas>={0}'.format(PD_MIN_VERSION)
       ],
       zip_safe=False,
       long_description=long_description,
@@ -31,7 +33,7 @@ setup(
       include_package_data=True,
       url="https://alexandreday.github.io/",
       classifiers=(
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     )

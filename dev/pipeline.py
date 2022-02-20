@@ -303,7 +303,7 @@ class HAL():
             return pickle.load(open(self.root+self.file_name[s],'rb'))
 
     def predict(self, X, cv=0.5, gap=None, preprocess_option="same", option="fast"):
-        if preprocess_option is "same":
+        if preprocess_option == "same":
             print("Preprocessing with same methods as during training\t", self.preprocess_option)
             X_preprocess = self.preprocess(X, **self.preprocess_option, verbose=False)
         else: # other options could be implemented 
@@ -317,9 +317,9 @@ class HAL():
             print("Preprocessing data, whiten = %s, zscore = %s"%(str(whiten), str(zscore)))
         X_tmp = X
         from sklearn.decomposition import PCA
-        if whiten is True:
+        if whiten == True:
             X_tmp = PCA(whiten=True).fit_transform(X)
-        if zscore is True:
+        if zscore == True:
             if hasattr(self, 'robust_scaler'):
                 X_tmp = self.robust_scaler.transform(X_tmp)
             else:

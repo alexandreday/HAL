@@ -83,7 +83,7 @@ class kNN_Graph:
         self.y_murky = y_murky
         self.cluster_statistics = {} # node_id to median markers ... should be part of graph stuff ?
         self.merger_history = []
-        self.cout = graph_cout if verbose is 1 else lambda *a, **k: None
+        self.cout = graph_cout if verbose == 1 else lambda *a, **k: None
         print("kNN-graph options:", self.__dict__)
         
     def fit(self, X, y_pred, n_bootstrap_shallow = 5):  
@@ -240,7 +240,7 @@ class kNN_Graph:
                 gap_LCB = -1
                 gap_error_prop = -1
 
-            if self.gap_option is "standard":
+            if self.gap_option == "standard":
                 self.node[yu] = gap_LCB
             else:
                 self.node[yu] = gap_error_prop
@@ -345,7 +345,7 @@ class kNN_Graph:
         gap_array = np.diff(edge_score[asort])
         gap_errors = edge_error[asort][:-1]+edge_error[asort][1:]
 
-        if self.gap_option is "standard":
+        if self.gap_option == "standard":
             return gap_array, asort, nn_idx_from_node, edge_score
         else:
             return gap_array-gap_errors, asort, nn_idx_from_node, edge_score

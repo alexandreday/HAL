@@ -1,6 +1,7 @@
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import ShuffleSplit
 import numpy as np
 from collections import Counter
@@ -15,7 +16,7 @@ class CLF:
     Parameters:
     ----------
     clf_type : str
-        Type of cluster, either 'svm' or 'rf'
+        Type of classifier, 'svm'|'rf'|'nb'|'logit'
     clf_kwargs : optional keyword arguments for the classifier    
     """
 
@@ -66,7 +67,7 @@ class CLF:
         #print('Training %s with n_bootstrap=%i, with nsample=%i'%(self.clf_type, self.n_bootstrap, len(X)))
 
         s=time.time()
-
+        
         self.trained = True
         
         if self.clf_type == 'svm':
@@ -79,6 +80,8 @@ class CLF:
                 clf = RandomForestClassifier(**self.clf_kwargs)
         elif self.clf_type == 'nb':
                 clf = GaussianNB()#**self.clf_kwargs)
+        elif self.clf_type == 'logit':
+                clf = LogisticRegression()
         else:
             assert False
 
@@ -86,15 +89,19 @@ class CLF:
         zero_eps = 1e-6
 
         self.y_unique = np.unique(y) # different labels
-        assert len(self.y_unique) > 1, "Cluster provided only has a unique label, can't classify !"
+        #if len(self.y_unique) ==1:
+        #return 
+        #assert len(self.y_unique) > 1, "Cluster provided only has a unique label, can't classify !"
         
         dt = 0
 
-        idx_bootstrap_split = self.idx_train_test_split(y, test_size =self.test_size, n_split=self.n_bootstrap, n_sample_max=self.n_sample_max)
-        #print(len(idx_bootstrap_split[0][0]),'\t', len(idx_bootstrap_split[0][1]))
+        #idx_bootstrap_split = self.idx_train_test_split(y, test_size =self.test_size, n_split=self.n_bootstrap, n_sample_max=self.n_sample_max)
+        #print(self.test_size)
+        idx_train, idx_test=self.idx_train_test_split_bootstrap(y, test_size=self.test_size, n=self.n_sample_max, n_boostrap_sample=self.n_bootstrap)
+
         for s in range(self.n_bootstrap):
-            idx_train, idx_test = idx_bootstrap_split[s]
-            xtrain, xtest, ytrain, ytest = X[idx_train], X[idx_test], y[idx_train], y[idx_test] 
+            #idx_train, idx_test = idx_bootstrap_split[s]
+            xtrain, xtest, ytrain, ytest = X[idx_train[s]], X[idx_test[s]], y[idx_train[s]], y[idx_test[s]]
             #= self.train_test_split(X, y)
             
             std = np.std(xtrain, axis = 0)    
@@ -114,7 +121,7 @@ class CLF:
 
             # predict on test set # maybe this is a noisy estimate ?
             # 
-            p_score = clf.score(xtest[:500], ytest[:500])
+            p_score = clf.score(xtest, ytest)
             predict_score.append(p_score)
 
             clf_list.append(clf)
@@ -137,7 +144,7 @@ class CLF:
 
     def predict(self, X, option='fast'):
         """Returns labels for X (-1, 1)"""
-        if option is 'fast':
+        if option == 'fast':
             mu, inv_sigma = self.scaler_list[0] # choose here median
             return self.clf_list[0].predict(inv_sigma*(X-mu))
 
@@ -206,6 +213,32 @@ class CLF:
 
         return X[idx_train],X[idx_test],y[idx_train],y[idx_test]
 
+    def idx_train_test_split_bootstrap(self, y, test_size=0.8, n=1000, n_boostrap_sample=5):
+        """
+        Boostrap sampling (sampling with replacement)
+
+        Parameters 
+        -----------
+        y: numpy array (shape = (n_sample))
+            labels to split
+
+        test_size: float (default = 0.8)
+            Ratio size of the test set
+        
+        n: int (default = 1000)
+            Number of data points per boostrap sample
+        
+        n_boostrap_sample: int (default = 5)
+            Number of boostrap samples
+
+        """
+        # Boostrap sampling (sampling with replacement)
+        ix=np.arange(len(y))
+        samples=np.random.choice(ix, size=n*n_boostrap_sample,replace=True).reshape(n_boostrap_sample, n)
+        test_ix=int(n*test_size)
+
+        return([samples[:,test_ix:],samples[:,0:test_ix]]) # Returns [train, test] samples
+        
 
     def idx_train_test_split(self, y, test_size = 0.8, n_sample_max = 1000, n_split=1): 
         """ 

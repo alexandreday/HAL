@@ -109,7 +109,7 @@ class CLF:
         for s in range(self.n_bootstrap):
 
             idx_train, idx_test = idx_bootstrap_split[s]
-            xtrain, xtest, ytrain, ytest = X[idx_train], X[idx_test], y[idx_train], y[idx_test] 
+            xtrain, xtest, ytrain, ytest = X[idx_train], X[idx_test], y[idx_train], y[idx_test]
             #= self.train_test_split(X, y)
             
             std = np.std(xtrain, axis = 0)    
