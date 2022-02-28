@@ -8,6 +8,7 @@ from .plotjs import runjs
 from fdc import FDC
 
 from fitsne import FItSNE
+from umap import UMAP
 from sklearn.preprocessing import RobustScaler
 
 from collections import Counter
@@ -203,7 +204,7 @@ class HAL():
         X_original = self.preprocess(data, **self.preprocess_option)
 
         # dimensional reduction
-        X_tsne = self.fit_tsne(data)
+        X_embed = self.fit_embedding(data)
    
         # purifies clusters
         self.density_cluster = FDC(
@@ -215,7 +216,7 @@ class HAL():
         )
 
         # Density clustering & finding outliers
-        self.purify(X_tsne)
+        self.purify(X_embed)
         self.dp_profile.describe()
         self.ypred_init = np.copy(self.ypred) # important for later
 
@@ -383,6 +384,16 @@ class HAL():
         del self.dp_profile.density_model.density_graph
 
         pickle.dump(self.dp_profile, open(self.root+ self.file_name['fdc'],'wb'))
+
+    def fit_embedding(self, X):
+        """
+        Performs dimensional reduction of X using either t-SNE or UMAP
+        """
+        if self.embed_method=='tsne':
+            return self.fit_tsne(X)
+        else:
+            self.umap_model=UMAP(n_neighbors=self.umap_n_neighbors, min_dist=self.umap_min_dist, metric=self.umap_metric) #
+            return UMAP.fit_transform(X)
 
     def fit_tsne(self, X):
         """

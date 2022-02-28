@@ -112,7 +112,7 @@ class kNN_Graph:
 
         if self.clf_type == 'rf':
             if self.clf_args is None:
-                clf_args_pre = {'class_weight':'balanced', 'n_estimators': 30, 'max_features': min([X.shape[1],200])}
+                clf_args_pre = {'class_weight':'balanced', 'n_estimators': 5}
             else:
                 clf_args_pre = self.clf_args
         elif self.clf_type == 'svm':

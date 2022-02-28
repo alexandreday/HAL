@@ -10,6 +10,18 @@ import time
 def most_common(lst):
     return max(set(lst), key=lst.count)
 
+class FakeCLF:
+    def __init__(self):
+        pass
+    def fit(self, X, y):
+        self.feature_importances_=np.array([1]*X.shape[1])
+        self.coef_=np.array([1]*X.shape[1])
+        self.unique_label=np.unique(y)[0]
+    def predict(self, X):
+        return np.array([self.unique_label]*X.shape[0])
+    def score(self, x, y):
+        return np.mean(self.predict(x)==y)
+
 class CLF:
     """ Implements a classifier for hierarchical clustering
 
@@ -111,7 +123,13 @@ class CLF:
             xtrain = (xtrain - mu)*inv_sigma # zscoring the data cd
             xtest = (xtest - mu)*inv_sigma
             #s2 = time.time()
-            clf.fit(xtrain, ytrain)
+            if len(np.unique(ytrain))>1:
+                clf.fit(xtrain, ytrain)
+            else:
+                clf=FakeCLF()
+                clf.fit(xtrain, ytrain)
+                #clf.unique_label=np.unique(ytrain)[0]
+
             #dt += (time.time() - s2)
     
             # predict on train set
@@ -132,6 +150,7 @@ class CLF:
         self.cv_score_median = np.median(predict_score)
         self.cv_score_iqr = np.percentile(predict_score, 80) - self.cv_score_median
         self.cv_score_std = np.std(predict_score)  
+        self.cv_score_std_error=np.std(predict_score)/np.sqrt(len(predict_score)) # Standard error
         self.mean_train_score = np.mean(training_score)
         self.std_train_score = np.std(training_score)
         self.clf_list = clf_list # > > classifier list for majority voting !
@@ -234,10 +253,22 @@ class CLF:
         """
         # Boostrap sampling (sampling with replacement)
         ix=np.arange(len(y))
-        samples=np.random.choice(ix, size=n*n_boostrap_sample,replace=True).reshape(n_boostrap_sample, n)
-        test_ix=int(n*test_size)
+        ix_split=int(len(y)*test_size) # Ix on which to split
+        n_test=int(n*test_size) # Boostrap size
+        n_train=n-n_test
 
-        return([samples[:,test_ix:],samples[:,0:test_ix]]) # Returns [train, test] samples
+        samples_train=[0]*n_boostrap_sample
+        samples_test=[0]*n_boostrap_sample
+
+        for i in range(n_boostrap_sample):
+            np.random.shuffle(ix) # Shuffle indices
+            ix_train=ix[ix_split:]
+            ix_test=ix[0:ix_split]
+
+            samples_train[i]=np.random.choice(ix_train, size=n_train,replace=True)#.reshape(n_boostrap_sample, n_train)
+            samples_test[i]=np.random.choice(ix_test, size=n_test,replace=True)#.reshape(n_boostrap_sample, n_test)
+    
+        return([np.vstack(samples_train),np.vstack(samples_test)])
         
 
     def idx_train_test_split(self, y, test_size = 0.8, n_sample_max = 1000, n_split=1): 
