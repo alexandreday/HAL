@@ -88,6 +88,13 @@ def make_hash_name(param, file=None):
             [['file_name','kNN_coarse'], str]
         ]
         prefix = "hal"
+    elif file=='umap':
+        out = [
+            ['umap_n_neighbors', int],
+            ['umap_min_dist', float],
+            ['umap_metric', str]
+        ]
+        prefix = "umap"
     
     file_name = prefix
     if param['file_name_prefix'] is not None:

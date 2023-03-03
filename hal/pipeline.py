@@ -106,7 +106,11 @@ class HAL():
         n_job = "auto", # All available processors will be used
         n_bootstrap = 30,
         n_edge_kNN = 4, #-> check potential bug with number too small (2)
-        verbose = 1
+        verbose = 1,
+        embed_method='tsne',
+        umap_n_neighbors=5,
+        umap_min_dist=0.3,
+        umap_metric='correlation'
     ):
         # Preprocessing:
         if preprocess_option is None:
@@ -119,6 +123,7 @@ class HAL():
                 self.preprocess_option["zscore"]=True
             
         # t-SNE parameters
+        self.embed_method=embed_method
         self.perplexity = perplexity
         self.n_iteration_tsne = n_iteration_tsne
         self.tsne_type = tsne_type
@@ -126,6 +131,12 @@ class HAL():
 
         self.late_exag = late_exag
         self.alpha_late = alpha_late
+
+        # UMAP parameters
+
+        self.umap_n_neighbors=umap_n_neighbors
+        self.umap_min_dist=umap_min_dist
+        self.umap_metric=umap_metric
 
         # Purification parameters 
         self.n_job = n_job
@@ -171,6 +182,7 @@ class HAL():
         self.warm_start = warm_start
 
         self.file_name = {}
+        self.file_name['umap'] = make_hash_name(self.__dict__, file='umap')
         self.file_name['tsne'] = make_hash_name(self.__dict__, file='tsne')
         self.file_name['fdc'] = make_hash_name(self.__dict__, file='fdc')
         self.file_name['kNN_precoarse'] = make_hash_name(self.__dict__, file='kNN_precoarse')
@@ -286,7 +298,7 @@ class HAL():
             return pickle.load(open(self.root+self.file_name[s],'rb'))
 
     def predict(self, X, cv=0.5, gap=None, preprocess_option="same", option="fast"):
-        if preprocess_option is "same":
+        if preprocess_option == "same":
             print("Preprocessing with same methods as during training\t", self.preprocess_option)
             X_preprocess = self.preprocess(X, **self.preprocess_option, verbose=False)
         else: # other options could be implemented 
@@ -300,9 +312,9 @@ class HAL():
             print("Preprocessing data, whiten = %s, zscore = %s"%(str(whiten), str(zscore)))
         X_tmp = X
         from sklearn.decomposition import PCA
-        if whiten is True:
+        if whiten == True:
             X_tmp = PCA(whiten=True).fit_transform(X)
-        if zscore is True:
+        if zscore == True:
             if hasattr(self, 'robust_scaler'):
                 X_tmp = self.robust_scaler.transform(X_tmp)
             else:
@@ -391,9 +403,14 @@ class HAL():
         """
         if self.embed_method=='tsne':
             return self.fit_tsne(X)
+        elif self.embed_method=='umap':
+            self.umap_model=UMAP(n_neighbors=self.umap_n_neighbors, min_dist=self.umap_min_dist, metric=self.umap_metric)
+            umapfile = self.file_name['umap']
+            Xumap=self.umap_model.fit_transform(X)
+            pickle.dump(Xumap, open(self.root+ umapfile,'wb'))
+            return Xumap
         else:
-            self.umap_model=UMAP(n_neighbors=self.umap_n_neighbors, min_dist=self.umap_min_dist, metric=self.umap_metric) #
-            return UMAP.fit_transform(X)
+            assert False, "Wrong embed method provided, use either tsne or umap"
 
     def fit_tsne(self, X):
         """
